@@ -8,7 +8,7 @@ export default async function SettingsPage() {
   const ai = getAiPlatformStatus();
   const usage = await getAiUsageStatus(getCurrentOwnerUserId());
   const storage = getStorageStatus();
-  const aiReady = ai.configured && ai.contractReady && ai.capturePathConfigured && ai.searchPathConfigured;
+  const aiReady = ai.configured && ai.contractReady && ai.clientConfigured;
 
   return (
     <main className="shell">
@@ -25,13 +25,18 @@ export default async function SettingsPage() {
         </section>
         <section className="card">
           <div className="timelineTitle">整理・文章検索</div>
-          <div className="timelineBody">{aiReady ? "AI Platform Core 接続可能" : "ローカルfallbackで利用可能"}</div>
-          <div className="formHint">共有契約は承認済み。接続先と同期operation pathが設定されると外部AIを使用します。</div>
+          <div className="timelineBody">{aiReady ? "AI Platform Core Gateway 接続可能" : "ローカルfallbackで利用可能"}</div>
+          <div className="formHint">AI Platform Coreの `/v1/gateway/run` を利用します。未接続でも基本操作は止まりません。</div>
+        </section>
+        <section className="card">
+          <div className="timelineTitle">今月のAI利用</div>
+          <div className="timelineBody">{usage.connected ? `${usage.usageCount ?? 0}回 · ${usage.totalTokens ?? 0} tokens` : "利用量連携はまだ有効ではありません"}</div>
+          <div className="formHint">利用量の正本はAI Platform Coreです。</div>
         </section>
         <section className="card">
           <div className="timelineTitle">AIポイント</div>
-          <div className="timelineBody">{usage.connected && typeof usage.balance === "number" ? `${usage.balance} points` : "残高連携はまだ有効ではありません"}</div>
-          <div className="formHint">AI利用量の正本はAI Platform Coreです。Velvet側で仮の残高は作りません。</div>
+          <div className="timelineBody">ポイント残高機能は未接続です</div>
+          <div className="formHint">Free/Proのポイント購入・残高は別の課金契約として実装します。Velvet側で仮残高は作りません。</div>
         </section>
       </div>
 
