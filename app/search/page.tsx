@@ -4,31 +4,36 @@ import { listPeople } from "@/lib/demo-data";
 import { listCaptures } from "@/lib/capture-repository";
 import { listGifts } from "@/lib/gift-repository";
 import { getCurrentOwnerUserId } from "@/lib/current-owner";
+import { matchesAllTerms, parseLocalSearchIntent } from "@/lib/search-intent";
+import { getAiPlatformStatus } from "@/lib/ai-platform-core";
 
-export default async function SearchPage({ searchParams }: { searchParams: Promise<{ q?: string }> }) {
-  const { q = "" } = await searchParams;
-  const query = q.trim().toLowerCase();
+export default async function SearchPage({ searchParams }: { searchParams: Promise<{ q?: string; natural?: string }> }) {
+  const { q = "", natural } = await searchParams;
+  const query = q.trim();
   const ownerUserId = getCurrentOwnerUserId();
   const people = listPeople(ownerUserId);
+  const intent = natural && query ? parseLocalSearchIntent(query) : undefined;
+  const terms = intent?.terms.length ? intent.terms : query ? [query] : [];
+  const aiStatus = getAiPlatformStatus();
 
-  const personResults = query
+  const personResults = terms.length
     ? people.filter((person) => {
         const haystack = [
           person.name,
           person.rank,
           ...person.personality,
           ...person.timeline.flatMap((item) => [item.date, item.title, item.body]),
-        ].filter(Boolean).join(" ").toLowerCase();
-        return haystack.includes(query);
+        ].filter(Boolean).join(" ");
+        return matchesAllTerms(haystack, terms);
       })
     : [];
 
-  const captureResults = query
-    ? listCaptures(ownerUserId).filter((entry) => entry.value.toLowerCase().includes(query)).slice(0, 20)
+  const captureResults = terms.length
+    ? listCaptures(ownerUserId).filter((entry) => matchesAllTerms(entry.value, terms)).slice(0, 20)
     : [];
 
-  const giftResults = query
-    ? listGifts(ownerUserId).filter((gift) => [gift.item, gift.occasion, gift.note].filter(Boolean).join(" ").toLowerCase().includes(query)).slice(0, 20)
+  const giftResults = terms.length
+    ? listGifts(ownerUserId).filter((gift) => matchesAllTerms([gift.item, gift.occasion, gift.note].filter(Boolean).join(" "), terms)).slice(0, 20)
     : [];
 
   const personMap = new Map(people.map((person) => [person.id, person]));
@@ -36,15 +41,31 @@ export default async function SearchPage({ searchParams }: { searchParams: Promi
   return (
     <main className="shell">
       <header className="header"><div className="brand">Search</div></header>
-      <form action="/search" method="get">
+      <form action="/search" method="get" className="stack">
         <input className="searchBox" name="q" defaultValue={q} placeholder="名前・趣味・特徴・前回の話など" autoComplete="off" />
+        <div className="searchActions">
+          <button className="secondaryButton" type="submit">検索</button>
+          <button className="secondaryButton" type="submit" name="natural" value="1">文章で探す</button>
+        </div>
       </form>
+
+      {natural && query && (
+        <div className="card noticeCard">
+          <div className="timelineTitle">文章検索</div>
+          <div className="timelineBody">{intent?.terms.length ? `「${intent.terms.join("」「")}」で絞り込みました。` : "検索語を解釈できませんでした。"}</div>
+          {!aiStatus.contractReady && <div className="formHint">現在はローカル解釈です。AI Platform Core正式契約後に同じ操作のまま高度化します。</div>}
+        </div>
+      )}
 
       {!query && (
         <>
           <div className="sectionTitle">例</div>
           <div className="chips">
             {["ゴルフ", "ロレックス", "既婚", "響", "メガネ", "財布"].map((value) => <Link className="chip" href={`/search?q=${encodeURIComponent(value)}`} key={value}>{value}</Link>)}
+          </div>
+          <div className="sectionTitle">文章でも検索</div>
+          <div className="chips">
+            {["ゴルフ好きでロレックスの人", "響が好きな既婚の人", "財布をもらった人"].map((value) => <Link className="chip" href={`/search?q=${encodeURIComponent(value)}&natural=1`} key={value}>{value}</Link>)}
           </div>
         </>
       )}
