@@ -9,15 +9,15 @@
 html, body { margin: 0; min-height: 100%; background: #111014; }
 body { min-height: 100vh; }
 a { color: inherit; text-decoration: none; }
-button, input { font: inherit; }
+button, input, select { font: inherit; }
 button { cursor: pointer; }
 
 .shell { max-width: 720px; margin: 0 auto; min-height: 100vh; padding: 20px 16px 96px; }
 .header { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-bottom: 22px; }
 .brand { font-size: 28px; font-weight: 750; letter-spacing: -0.03em; }
 .subtle { color: #a9a2ad; }
-.searchBox { width: 100%; border: 1px solid #2d2931; background: #1a181d; color: #fff; border-radius: 16px; padding: 14px 16px; outline: none; }
-.searchBox:focus { border-color: #6e6177; }
+.searchBox, .selectBox { width: 100%; border: 1px solid #2d2931; background: #1a181d; color: #fff; border-radius: 16px; padding: 14px 16px; outline: none; }
+.searchBox:focus, .selectBox:focus { border-color: #6e6177; }
 .card { background: #1a181d; border: 1px solid #28242c; border-radius: 20px; padding: 16px; }
 .stack { display: grid; gap: 12px; }
 .row { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
@@ -32,6 +32,8 @@ button { cursor: pointer; }
 .actions { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; }
 .action { border: 0; color: #fff; background: #26222a; border-radius: 16px; padding: 12px 8px; min-height: 48px; }
 .actionLink { display: grid; place-items: center; text-align: center; }
+.fullAction { width: 100%; height: 100%; }
+.activeAction { background: #3a3240; }
 .timeline { display: grid; gap: 10px; }
 .timelineItem { border-left: 2px solid #3a333e; padding: 2px 0 14px 14px; }
 .timelineDate { font-size: 12px; color: #918997; margin-bottom: 4px; }
@@ -48,8 +50,15 @@ button { cursor: pointer; }
 .fieldLabel { color: #c9c2cc; font-size: 13px; margin-bottom: -4px; }
 .formHint { color: #918997; font-size: 12px; line-height: 1.5; }
 .formError { color: #ffb4b4; font-size: 13px; }
-.primaryButton, .secondaryButton { width: 100%; border-radius: 16px; min-height: 50px; padding: 12px 16px; font-weight: 700; }
+.primaryButton, .secondaryButton, .dangerButton { width: 100%; border-radius: 16px; min-height: 50px; padding: 12px 16px; font-weight: 700; }
 .primaryButton { border: 0; background: #efe8f2; color: #171319; }
 .secondaryButton { border: 1px solid #3a343e; background: #211e24; color: #fff; }
+.dangerButton { border: 1px solid #5b3438; background: #2c1d20; color: #ffdfe2; }
 .compactForm { margin-top: 16px; }
+.choiceRow { gap: 8px; }
+.choiceChip { position: relative; border-radius: 999px; background: #252128; padding: 9px 12px; font-size: 13px; cursor: pointer; }
+.choiceChip input { position: absolute; opacity: 0; pointer-events: none; }
+.choiceChip:has(input:checked) { background: #efe8f2; color: #171319; }
+.inlineForm { display: grid; grid-template-columns: 1fr auto; gap: 8px; align-items: center; }
+.inlineForm .secondaryButton { width: auto; min-width: 76px; }
 @media (min-width: 700px) { .shell { padding-top: 32px; } }
