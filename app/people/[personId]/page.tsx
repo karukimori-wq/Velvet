@@ -12,7 +12,7 @@ export default async function PersonDetailPage({ params }: { params: Promise<{ p
     <main className="shell">
       <header className="header">
         <Link className="subtle" href="/people">‹ People</Link>
-        <span className="subtle">編集</span>
+        <Link className="subtle" href={`/people/${person.id}/edit`}>編集</Link>
       </header>
 
       <section className="hero">
@@ -32,7 +32,7 @@ export default async function PersonDetailPage({ params }: { params: Promise<{ p
       <div className="sectionTitle">クイック操作</div>
       <div className="actions">
         <button className="action" type="button">来店</button>
-        <button className="action" type="button">Capture</button>
+        <Link className="action actionLink" href={`/capture?personId=${person.id}`}>Capture</Link>
         <button className="action" type="button">Gift</button>
       </div>
 
