@@ -18,7 +18,7 @@ export default async function OrganizeCapturePage({ params }: { params: Promise<
   const capture = getCapture(captureId, ownerUserId);
   if (!capture) notFound();
 
-  const structured = await structureCapture(capture.value);
+  const structured = await structureCapture(capture.value, ownerUserId);
   const knowledge = structured.candidates.filter((candidate) => candidate.type === "knowledge");
   const deferred = structured.candidates.filter((candidate) => candidate.type !== "knowledge");
 
@@ -38,6 +38,7 @@ export default async function OrganizeCapturePage({ params }: { params: Promise<
 
       <div className="formHint" style={{ marginTop: 10 }}>
         {structured.mode === "ai" ? "AIで整理しました" : "ローカル整理を使用しました"} · trace {structured.trace.traceId.slice(0, 18)}…
+        {structured.activityId ? ` · activity ${structured.activityId}` : ""}
       </div>
 
       <form action={confirmKnowledgeCandidatesAction.bind(null, capture.id)} className="stack compactForm">
