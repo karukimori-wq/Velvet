@@ -1,4 +1,6 @@
-import { addPersonKnowledge, getPerson } from "@/lib/demo-data";
+import { getStorageMode } from "@/lib/storage/config";
+import { dbQuery } from "@/lib/storage/postgres";
+import { addPersonKnowledgeStore, getPersonStore } from "@/lib/person-store";
 
 export type CaptureKind = "knowledge" | "drink" | "work" | "hobby" | "appearance" | "accessory" | "marital_status" | "free_text";
 
@@ -17,18 +19,53 @@ function makeId() {
   return `capture_${Date.now().toString(36)}_${Math.random().toString(36).slice(2, 7)}`;
 }
 
-export function listCaptures(ownerUserId: string, personId?: string) {
-  return entries.filter((entry) => entry.ownerUserId === ownerUserId && (!personId || entry.personId === personId));
+type CaptureRow = {
+  id: string;
+  owner_user_id: string;
+  person_id: string | null;
+  kind: CaptureKind;
+  raw_text: string;
+  created_at: string;
+};
+
+function mapCapture(row: CaptureRow): CaptureEntry {
+  return {
+    id: row.id,
+    ownerUserId: row.owner_user_id,
+    personId: row.person_id ?? undefined,
+    kind: row.kind,
+    value: row.raw_text,
+    createdAt: new Date(row.created_at).toISOString(),
+  };
 }
 
-export function getCapture(id: string, ownerUserId: string) {
-  return entries.find((entry) => entry.id === id && entry.ownerUserId === ownerUserId);
+export async function listCaptures(ownerUserId: string, personId?: string): Promise<CaptureEntry[]> {
+  if (getStorageMode() !== "postgres") {
+    return entries.filter((entry) => entry.ownerUserId === ownerUserId && (!personId || entry.personId === personId));
+  }
+  const rows = await dbQuery<CaptureRow>(
+    `select id, owner_user_id, person_id, kind, raw_text, created_at::text
+     from velvet_captures
+     where owner_user_id = $1 and ($2::text is null or person_id = $2)
+     order by created_at desc`,
+    [ownerUserId, personId ?? null],
+  );
+  return rows.rows.map(mapCapture);
 }
 
-export function createCapture(input: { ownerUserId: string; personId?: string; kind?: CaptureKind; value: string }) {
+export async function getCapture(id: string, ownerUserId: string): Promise<CaptureEntry | undefined> {
+  if (getStorageMode() !== "postgres") return entries.find((entry) => entry.id === id && entry.ownerUserId === ownerUserId);
+  const rows = await dbQuery<CaptureRow>(
+    `select id, owner_user_id, person_id, kind, raw_text, created_at::text from velvet_captures where id = $1 and owner_user_id = $2 limit 1`,
+    [id, ownerUserId],
+  );
+  return rows.rows[0] ? mapCapture(rows.rows[0]) : undefined;
+}
+
+export async function createCapture(input: { ownerUserId: string; personId?: string; kind?: CaptureKind; value: string }): Promise<CaptureEntry | undefined> {
   const value = input.value.trim();
   if (!value) return undefined;
-  if (input.personId && !getPerson(input.personId, input.ownerUserId)) return undefined;
+  if (input.personId && !(await getPersonStore(input.personId, input.ownerUserId))) return undefined;
 
   const entry: CaptureEntry = {
     id: makeId(),
@@ -38,12 +75,18 @@ export function createCapture(input: { ownerUserId: string; personId?: string; k
     value,
     createdAt: new Date().toISOString(),
   };
-  entries.unshift(entry);
 
-  // Deterministic user-entered capture can be reused immediately as memory.
-  // AI-inferred restructuring must use a separate confirmation flow.
+  if (getStorageMode() !== "postgres") {
+    entries.unshift(entry);
+  } else {
+    await dbQuery(
+      `insert into velvet_captures (id, owner_user_id, person_id, raw_text, status, kind, created_at) values ($1,$2,$3,$4,'saved',$5,$6)`,
+      [entry.id, entry.ownerUserId, entry.personId ?? null, entry.value, entry.kind, entry.createdAt],
+    );
+  }
+
   if (input.personId && entry.kind !== "free_text") {
-    addPersonKnowledge(input.personId, value, input.ownerUserId);
+    await addPersonKnowledgeStore(input.personId, value, input.ownerUserId);
   }
 
   return entry;
