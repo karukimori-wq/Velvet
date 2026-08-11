@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { getCurrentOwnerUserId } from "@/lib/current-owner";
+import { getRequestIdentity } from "@/lib/auth/request-identity";
 import { listPeopleStore } from "@/lib/person-store";
 import { createRelationshipAction } from "../actions";
 
@@ -7,7 +7,8 @@ const labels = { friend: "友人", coworker: "同僚", boss: "上司", subordina
 
 export default async function NewRelationshipPage({ searchParams }: { searchParams: Promise<{ personId?: string }> }) {
   const { personId = "" } = await searchParams;
-  const people = await listPeopleStore(getCurrentOwnerUserId());
+  const { ownerUserId } = await getRequestIdentity();
+  const people = await listPeopleStore(ownerUserId);
 
   return (
     <main className="shell">
