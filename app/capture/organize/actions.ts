@@ -1,11 +1,11 @@
 "use server";
 
 import { redirect } from "next/navigation";
-import { getCurrentOwnerUserId } from "@/lib/current-owner";
+import { getRequestIdentity } from "@/lib/auth/request-identity";
 import { createCapture } from "@/lib/capture-repository";
 
 export async function organizeCaptureAction(personId: string | undefined, formData: FormData) {
-  const ownerUserId = getCurrentOwnerUserId();
+  const { ownerUserId } = await getRequestIdentity();
   const value = String(formData.get("value") ?? "").trim();
   if (!value) redirect(personId ? `/capture?personId=${personId}&error=empty` : "/capture?error=empty");
 
