@@ -28,7 +28,7 @@ const mapCapture = (row: CaptureRow): CaptureEntry => ({
 });
 
 export async function listCaptures(ownerUserId: string, personId?: string, options: ReadOptions = {}): Promise<CaptureEntry[]> {
-  const access = getPlanAccess(ownerUserId);
+  const access = await getPlanAccess(ownerUserId);
   if (getStorageMode() !== "postgres") {
     return entries.filter((entry) => entry.ownerUserId === ownerUserId && (!personId || entry.personId === personId) && (options.includeArchived || isWithinHistoryWindow(entry.createdAt, access)));
   }
@@ -44,7 +44,7 @@ export async function listCaptures(ownerUserId: string, personId?: string, optio
 }
 
 export async function getCapture(id: string, ownerUserId: string, options: ReadOptions = {}): Promise<CaptureEntry | undefined> {
-  const access = getPlanAccess(ownerUserId);
+  const access = await getPlanAccess(ownerUserId);
   if (getStorageMode() !== "postgres") {
     const entry = entries.find((item) => item.id === id && item.ownerUserId === ownerUserId);
     return entry && (options.includeArchived || isWithinHistoryWindow(entry.createdAt, access)) ? entry : undefined;
