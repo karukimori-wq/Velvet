@@ -1,4 +1,6 @@
 import { addPersonKnowledgeStore, createPersonStore, listPeopleStore, updatePersonBasicsStore } from "@/lib/person-store";
+import { getStorageMode } from "@/lib/storage/config";
+import { withTransaction } from "@/lib/storage/postgres";
 
 export type VelvetImportPerson = {
   name: string;
@@ -10,6 +12,16 @@ export type VelvetImportPayload = {
   version: "1.0";
   people: VelvetImportPerson[];
 };
+
+export type DuplicatePolicy = "skip" | "create_separate";
+
+function makeId(prefix: string) {
+  return `${prefix}_${Date.now().toString(36)}_${Math.random().toString(36).slice(2, 9)}`;
+}
+
+function normalizeName(value: string) {
+  return value.trim().toLocaleLowerCase("ja-JP");
+}
 
 export async function exportVelvetData(ownerUserId: string) {
   // Export is deliberately not constrained by the Free UI history window.
@@ -36,6 +48,9 @@ export function validateImportPayload(input: unknown): { ok: true; data: VelvetI
     if (!person || typeof person !== "object" || typeof person.name !== "string" || !person.name.trim()) {
       return { ok: false, error: `people[${index}].name が必要です` };
     }
+    if (person.rank !== undefined && typeof person.rank !== "string") {
+      return { ok: false, error: `people[${index}].rank は文字列にしてください` };
+    }
     if (person.personality !== undefined && (!Array.isArray(person.personality) || person.personality.some((value) => typeof value !== "string"))) {
       return { ok: false, error: `people[${index}].personality は文字列配列にしてください` };
     }
@@ -43,13 +58,58 @@ export function validateImportPayload(input: unknown): { ok: true; data: VelvetI
   return { ok: true, data: payload as VelvetImportPayload };
 }
 
-export async function importVelvetData(payload: VelvetImportPayload, ownerUserId: string) {
-  const createdIds: string[] = [];
-  for (const item of payload.people) {
-    const person = await createPersonStore(item.name, ownerUserId);
-    if (item.rank) await updatePersonBasicsStore(person.id, { rank: item.rank }, ownerUserId);
-    if (item.personality?.length) await addPersonKnowledgeStore(person.id, item.personality.join("、"), ownerUserId);
-    createdIds.push(person.id);
+export async function importVelvetData(payload: VelvetImportPayload, ownerUserId: string, duplicatePolicy: DuplicatePolicy) {
+  if (getStorageMode() !== "postgres") {
+    const existingNames = new Set((await listPeopleStore(ownerUserId, { includeArchived: true })).map((person) => normalizeName(person.name)));
+    const createdIds: string[] = [];
+    const skippedNames: string[] = [];
+    for (const item of payload.people) {
+      const normalized = normalizeName(item.name);
+      if (duplicatePolicy === "skip" && existingNames.has(normalized)) {
+        skippedNames.push(item.name.trim());
+        continue;
+      }
+      const person = await createPersonStore(item.name, ownerUserId);
+      if (item.rank) await updatePersonBasicsStore(person.id, { rank: item.rank }, ownerUserId);
+      if (item.personality?.length) await addPersonKnowledgeStore(person.id, item.personality.join("、"), ownerUserId);
+      existingNames.add(normalized);
+      createdIds.push(person.id);
+    }
+    return { createdIds, skippedNames };
   }
-  return createdIds;
+
+  return withTransaction(async (client) => {
+    const existing = await client.query<{ name: string }>("select name from velvet_people where owner_user_id = $1", [ownerUserId]);
+    const existingNames = new Set(existing.rows.map((row) => normalizeName(row.name)));
+    const createdIds: string[] = [];
+    const skippedNames: string[] = [];
+
+    for (const item of payload.people) {
+      const name = item.name.trim();
+      const normalized = normalizeName(name);
+      if (duplicatePolicy === "skip" && existingNames.has(normalized)) {
+        skippedNames.push(name);
+        continue;
+      }
+
+      const personId = makeId("person");
+      await client.query(
+        "insert into velvet_people (id, owner_user_id, name, rank) values ($1,$2,$3,$4)",
+        [personId, ownerUserId, name, item.rank?.trim() || null],
+      );
+
+      const values = Array.from(new Set((item.personality ?? []).map((value) => value.trim()).filter(Boolean)));
+      for (const value of values) {
+        await client.query(
+          "insert into velvet_knowledge (id, owner_user_id, person_id, value) values ($1,$2,$3,$4)",
+          [makeId("knowledge"), ownerUserId, personId, value],
+        );
+      }
+
+      existingNames.add(normalized);
+      createdIds.push(personId);
+    }
+
+    return { createdIds, skippedNames };
+  });
 }
