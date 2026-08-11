@@ -9,9 +9,7 @@ export async function organizeCaptureAction(personId: string | undefined, formDa
   const value = String(formData.get("value") ?? "").trim();
   if (!value) redirect(personId ? `/capture?personId=${personId}&error=empty` : "/capture?error=empty");
 
-  // Persist raw input first. Never lose the user's memo because structuring fails.
-  const raw = createCapture({ ownerUserId, personId, kind: "free_text", value });
+  const raw = await createCapture({ ownerUserId, personId, kind: "free_text", value });
   if (!raw) redirect(personId ? `/capture?personId=${personId}&error=invalid` : "/capture?error=invalid");
-
   redirect(`/capture/organize/${raw.id}`);
 }
