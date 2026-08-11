@@ -1,0 +1,53 @@
+import { addPersonKnowledge, createPerson, listPeople } from "@/lib/demo-data";
+import { currentOwnerUserId } from "@/lib/current-owner";
+
+export type VelvetImportPerson = {
+  name: string;
+  rank?: string;
+  personality?: string[];
+};
+
+export type VelvetImportPayload = {
+  version: "1.0";
+  people: VelvetImportPerson[];
+};
+
+export function exportVelvetData(ownerUserId = currentOwnerUserId()) {
+  return {
+    version: "1.0" as const,
+    exportedAt: new Date().toISOString(),
+    people: listPeople(ownerUserId).map((person) => ({
+      name: person.name,
+      rank: person.rank,
+      personality: person.personality,
+      timeline: person.timeline,
+    })),
+  };
+}
+
+export function validateImportPayload(input: unknown): { ok: true; data: VelvetImportPayload } | { ok: false; error: string } {
+  if (!input || typeof input !== "object") return { ok: false, error: "JSONオブジェクトではありません" };
+  const payload = input as Partial<VelvetImportPayload>;
+  if (payload.version !== "1.0") return { ok: false, error: "version は 1.0 が必要です" };
+  if (!Array.isArray(payload.people)) return { ok: false, error: "people 配列が必要です" };
+  for (const [index, person] of payload.people.entries()) {
+    if (!person || typeof person !== "object" || typeof person.name !== "string" || !person.name.trim()) {
+      return { ok: false, error: `people[${index}].name が必要です` };
+    }
+    if (person.personality !== undefined && (!Array.isArray(person.personality) || person.personality.some((value) => typeof value !== "string"))) {
+      return { ok: false, error: `people[${index}].personality は文字列配列にしてください` };
+    }
+  }
+  return { ok: true, data: payload as VelvetImportPayload };
+}
+
+export function importVelvetData(payload: VelvetImportPayload, ownerUserId = currentOwnerUserId()) {
+  const createdIds: string[] = [];
+  for (const item of payload.people) {
+    const person = createPerson(item.name, ownerUserId);
+    if (item.rank) person.rank = item.rank.trim() || undefined;
+    if (item.personality?.length) addPersonKnowledge(person.id, item.personality.join("、"), ownerUserId);
+    createdIds.push(person.id);
+  }
+  return createdIds;
+}
