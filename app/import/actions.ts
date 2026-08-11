@@ -2,7 +2,7 @@
 
 import { redirect } from "next/navigation";
 import { getRequestIdentity } from "@/lib/auth/request-identity";
-import { importVelvetData, validateImportPayload } from "@/lib/import-export";
+import { importVelvetData, validateImportPayload, type DuplicatePolicy } from "@/lib/import-export";
 
 export async function importJsonAction(formData: FormData) {
   const { ownerUserId } = await getRequestIdentity();
@@ -16,6 +16,8 @@ export async function importJsonAction(formData: FormData) {
   }
   const result = validateImportPayload(parsed);
   if (!result.ok) redirect(`/import?error=${encodeURIComponent(result.error)}`);
-  await importVelvetData(result.data, ownerUserId);
-  redirect("/people");
+
+  const duplicatePolicy: DuplicatePolicy = formData.get("duplicatePolicy") === "create_separate" ? "create_separate" : "skip";
+  const imported = await importVelvetData(result.data, ownerUserId, duplicatePolicy);
+  redirect(`/people?imported=${imported.createdIds.length}&skipped=${imported.skippedNames.length}`);
 }
