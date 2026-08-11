@@ -1,5 +1,5 @@
 import { BottomNav } from "@/components/bottom-nav";
-import { getCurrentOwnerUserId } from "@/lib/current-owner";
+import { getRequestIdentity } from "@/lib/auth/request-identity";
 import { listPeopleStore } from "@/lib/person-store";
 import { listScheduleEntries } from "@/lib/schedule-repository";
 import { createScheduleAction } from "./actions";
@@ -7,7 +7,7 @@ import { createScheduleAction } from "./actions";
 const kindLabel = { shift: "出勤", visit: "来店", birthday: "誕生日", unavailable: "NG時間", self_investment: "自己投資", other: "その他" } as const;
 
 export default async function SchedulePage() {
-  const ownerUserId = getCurrentOwnerUserId();
+  const { ownerUserId } = await getRequestIdentity();
   const [entries, people] = await Promise.all([listScheduleEntries(ownerUserId), listPeopleStore(ownerUserId)]);
 
   return (
