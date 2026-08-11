@@ -1,4 +1,3 @@
-import { getCurrentOwnerUserId } from "@/lib/current-owner";
 import { getStorageMode } from "@/lib/storage/config";
 import { dbQuery } from "@/lib/storage/postgres";
 import { addTimelineItemStore, getPersonStore } from "@/lib/person-store";
@@ -28,7 +27,7 @@ const mapRow = (row: RelationshipRow): Relationship => ({
   createdAt: new Date(row.created_at).toISOString(),
 });
 
-export async function listRelationships(ownerUserId = getCurrentOwnerUserId()) {
+export async function listRelationships(ownerUserId: string) {
   if (getStorageMode() !== "postgres") return relationships.filter((relationship) => relationship.ownerUserId === ownerUserId);
   const result = await dbQuery<RelationshipRow>(
     "select id, owner_user_id, person_a_id, person_b_id, relation_type, label, created_at::text from velvet_relationships where owner_user_id = $1 order by created_at desc",
@@ -37,11 +36,11 @@ export async function listRelationships(ownerUserId = getCurrentOwnerUserId()) {
   return result.rows.map(mapRow);
 }
 
-export async function listRelationshipsForPerson(personId: string, ownerUserId = getCurrentOwnerUserId()) {
+export async function listRelationshipsForPerson(personId: string, ownerUserId: string) {
   return (await listRelationships(ownerUserId)).filter((relationship) => relationship.personAId === personId || relationship.personBId === personId);
 }
 
-export async function createRelationship(values: { personAId: string; personBId: string; type: RelationshipType; note?: string }, ownerUserId = getCurrentOwnerUserId()) {
+export async function createRelationship(values: { personAId: string; personBId: string; type: RelationshipType; note?: string }, ownerUserId: string) {
   if (values.personAId === values.personBId) return undefined;
   const [personA, personB] = await Promise.all([getPersonStore(values.personAId, ownerUserId), getPersonStore(values.personBId, ownerUserId)]);
   if (!personA || !personB) return undefined;
