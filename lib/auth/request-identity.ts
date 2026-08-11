@@ -1,3 +1,4 @@
+import { timingSafeEqual } from "node:crypto";
 import { headers } from "next/headers";
 import { DEMO_OWNER_USER_ID } from "@/lib/current-owner";
 
@@ -13,6 +14,14 @@ function authMode() {
   if (value === "session") return "session" as const;
   if (value === "fixed_owner") return "fixed_owner" as const;
   return "demo" as const;
+}
+
+function secretMatches(expected: string, supplied: string | null) {
+  if (!supplied) return false;
+  const expectedBuffer = Buffer.from(expected);
+  const suppliedBuffer = Buffer.from(supplied);
+  if (expectedBuffer.length !== suppliedBuffer.length) return false;
+  return timingSafeEqual(expectedBuffer, suppliedBuffer);
 }
 
 /**
@@ -46,7 +55,7 @@ export async function getRequestIdentity(): Promise<RequestIdentity> {
 
   const requestHeaders = await headers();
   const suppliedSecret = requestHeaders.get("x-velvet-auth-bridge");
-  if (!suppliedSecret || suppliedSecret !== bridgeSecret) throw new Error("AUTH_SESSION_BRIDGE_INVALID");
+  if (!secretMatches(bridgeSecret, suppliedSecret)) throw new Error("AUTH_SESSION_BRIDGE_INVALID");
 
   const userId = requestHeaders.get("x-velvet-user-id")?.trim();
   const ownerUserId = requestHeaders.get("x-velvet-owner-user-id")?.trim();
