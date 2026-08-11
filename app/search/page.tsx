@@ -1,16 +1,16 @@
 import Link from "next/link";
 import { BottomNav } from "@/components/bottom-nav";
+import { getRequestIdentity } from "@/lib/auth/request-identity";
 import { listPeopleStore } from "@/lib/person-store";
 import { listCaptures } from "@/lib/capture-repository";
 import { listGifts } from "@/lib/gift-repository";
-import { getCurrentOwnerUserId } from "@/lib/current-owner";
 import { matchesAllTerms } from "@/lib/search-intent";
 import { parseSearchIntent } from "@/lib/ai-platform-core";
 
 export default async function SearchPage({ searchParams }: { searchParams: Promise<{ q?: string; natural?: string }> }) {
   const { q = "", natural } = await searchParams;
   const query = q.trim();
-  const ownerUserId = getCurrentOwnerUserId();
+  const { ownerUserId } = await getRequestIdentity();
   const [people, captures, gifts] = await Promise.all([
     listPeopleStore(ownerUserId),
     listCaptures(ownerUserId),
