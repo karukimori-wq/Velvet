@@ -1,4 +1,4 @@
-import { currentOwnerUserId } from "@/lib/current-owner";
+import { getCurrentOwnerUserId } from "@/lib/current-owner";
 import { getStorageMode } from "@/lib/storage/config";
 import { dbQuery } from "@/lib/storage/postgres";
 import { addTimelineItemStore, getPersonStore } from "@/lib/person-store";
@@ -30,7 +30,7 @@ const mapRow = (row: ScheduleRow): ScheduleEntry => ({
   createdAt: new Date(row.created_at).toISOString(),
 });
 
-export async function listScheduleEntries(ownerUserId = currentOwnerUserId()) {
+export async function listScheduleEntries(ownerUserId = getCurrentOwnerUserId()) {
   if (getStorageMode() !== "postgres") {
     return entries.filter((entry) => entry.ownerUserId === ownerUserId).sort((a, b) => (a.startsAt ?? a.createdAt).localeCompare(b.startsAt ?? b.createdAt));
   }
@@ -41,7 +41,7 @@ export async function listScheduleEntries(ownerUserId = currentOwnerUserId()) {
   return result.rows.map(mapRow);
 }
 
-export async function createScheduleEntry(values: Pick<ScheduleEntry, "kind" | "title"> & Partial<Pick<ScheduleEntry, "personId" | "startsAt" | "note">>, ownerUserId = currentOwnerUserId()) {
+export async function createScheduleEntry(values: Pick<ScheduleEntry, "kind" | "title"> & Partial<Pick<ScheduleEntry, "personId" | "startsAt" | "note">>, ownerUserId = getCurrentOwnerUserId()) {
   if (values.personId && !(await getPersonStore(values.personId, ownerUserId))) return undefined;
   const entry: ScheduleEntry = {
     id: makeId(), ownerUserId, kind: values.kind, title: values.title.trim(), personId: values.personId,
