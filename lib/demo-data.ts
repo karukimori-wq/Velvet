@@ -7,6 +7,7 @@ export type TimelineItem = {
 
 export type Person = {
   id: string;
+  ownerUserId: string;
   name: string;
   rank?: string;
   lastVisit?: string;
@@ -15,9 +16,12 @@ export type Person = {
   timeline: TimelineItem[];
 };
 
+const OWNER = "user_demo_owner";
+
 export const people: Person[] = [
   {
     id: "person_yamada",
+    ownerUserId: OWNER,
     name: "山田さん",
     rank: "VIP",
     lastVisit: "2026-08-02",
@@ -31,6 +35,7 @@ export const people: Person[] = [
   },
   {
     id: "person_sato",
+    ownerUserId: OWNER,
     name: "佐藤さん",
     lastVisit: "2026-07-29",
     personality: ["IT", "未婚", "サウナ", "白州"],
@@ -40,6 +45,7 @@ export const people: Person[] = [
   },
   {
     id: "person_tanaka",
+    ownerUserId: OWNER,
     name: "田中さん",
     rank: "A",
     personality: ["建築", "ゴルフ", "メガネ"],
@@ -47,6 +53,55 @@ export const people: Person[] = [
   },
 ];
 
-export function getPerson(id: string) {
-  return people.find((person) => person.id === id);
+function makeId(prefix: string) {
+  return `${prefix}_${Date.now().toString(36)}_${Math.random().toString(36).slice(2, 7)}`;
+}
+
+export function listPeople(ownerUserId = OWNER) {
+  return people.filter((person) => person.ownerUserId === ownerUserId);
+}
+
+export function getPerson(id: string, ownerUserId = OWNER) {
+  return people.find((person) => person.id === id && person.ownerUserId === ownerUserId);
+}
+
+export function createPerson(name: string, ownerUserId = OWNER) {
+  const person: Person = {
+    id: makeId("person"),
+    ownerUserId,
+    name: name.trim(),
+    personality: [],
+    timeline: [],
+  };
+  people.unshift(person);
+  return person;
+}
+
+export function updatePersonBasics(id: string, values: { name?: string; rank?: string }, ownerUserId = OWNER) {
+  const person = getPerson(id, ownerUserId);
+  if (!person) return undefined;
+  if (values.name?.trim()) person.name = values.name.trim();
+  const rank = values.rank?.trim();
+  person.rank = rank || undefined;
+  return person;
+}
+
+export function addPersonKnowledge(id: string, rawValue: string, ownerUserId = OWNER) {
+  const person = getPerson(id, ownerUserId);
+  if (!person) return undefined;
+  const values = rawValue
+    .split(/[、,\n]/)
+    .map((value) => value.trim())
+    .filter(Boolean);
+  for (const value of values) {
+    if (!person.personality.includes(value)) person.personality.push(value);
+  }
+  return person;
+}
+
+export function removePersonKnowledge(id: string, value: string, ownerUserId = OWNER) {
+  const person = getPerson(id, ownerUserId);
+  if (!person) return undefined;
+  person.personality = person.personality.filter((item) => item !== value);
+  return person;
 }
