@@ -3,6 +3,7 @@
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { getRequestIdentity } from "@/lib/auth/request-identity";
+import { createPersonContact, deletePersonContact, type ContactType } from "@/lib/contact-repository";
 import {
   addPersonKnowledgeStore,
   createPersonStore,
@@ -43,4 +44,25 @@ export async function removeKnowledgeAction(personId: string, value: string) {
   await removePersonKnowledgeStore(personId, value, ownerUserId);
   revalidatePath("/people");
   revalidatePath(`/people/${personId}`);
+}
+
+export async function addContactAction(personId: string, formData: FormData) {
+  const { ownerUserId } = await getRequestIdentity();
+  const rawType = String(formData.get("type") ?? "other");
+  const allowed: ContactType[] = ["phone", "email", "line", "instagram", "x", "tiktok", "other"];
+  const type = allowed.includes(rawType as ContactType) ? (rawType as ContactType) : "other";
+  const value = String(formData.get("value") ?? "").trim();
+  const label = String(formData.get("label") ?? "").trim();
+  const isPrimary = formData.get("isPrimary") === "on";
+  if (value) await createPersonContact({ personId, type, value, label, isPrimary }, ownerUserId);
+  revalidatePath(`/people/${personId}`);
+  revalidatePath(`/people/${personId}/edit`);
+  redirect(`/people/${personId}/edit`);
+}
+
+export async function deleteContactAction(personId: string, contactId: string) {
+  const { ownerUserId } = await getRequestIdentity();
+  await deletePersonContact(contactId, ownerUserId);
+  revalidatePath(`/people/${personId}`);
+  revalidatePath(`/people/${personId}/edit`);
 }
