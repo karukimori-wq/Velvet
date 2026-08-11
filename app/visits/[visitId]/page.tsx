@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { BottomNav } from "@/components/bottom-nav";
-import { getCurrentOwnerUserId } from "@/lib/current-owner";
+import { getRequestIdentity } from "@/lib/auth/request-identity";
 import { getPersonStore, listPeopleStore } from "@/lib/person-store";
 import { getVisit } from "@/lib/visit-repository";
 import { addParticipantAction, endVisitAction, updateVisitAction } from "../actions";
@@ -16,7 +16,7 @@ const paymentLabels: Record<string, string> = {
 
 export default async function ActiveVisitPage({ params }: { params: Promise<{ visitId: string }> }) {
   const { visitId } = await params;
-  const ownerUserId = getCurrentOwnerUserId();
+  const { ownerUserId } = await getRequestIdentity();
   const visit = await getVisit(visitId, ownerUserId);
   if (!visit) notFound();
 
