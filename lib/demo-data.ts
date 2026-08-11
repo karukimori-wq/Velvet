@@ -1,3 +1,5 @@
+import { DEMO_OWNER_USER_ID } from "@/lib/current-owner";
+
 export type TimelineItem = {
   id: string;
   date: string;
@@ -16,7 +18,7 @@ export type Person = {
   timeline: TimelineItem[];
 };
 
-const OWNER = "user_demo_owner";
+const OWNER = DEMO_OWNER_USER_ID;
 
 export const people: Person[] = [
   {
@@ -103,5 +105,14 @@ export function removePersonKnowledge(id: string, value: string, ownerUserId = O
   const person = getPerson(id, ownerUserId);
   if (!person) return undefined;
   person.personality = person.personality.filter((item) => item !== value);
+  return person;
+}
+
+export function prependTimelineItem(id: string, item: TimelineItem, ownerUserId = OWNER) {
+  const person = getPerson(id, ownerUserId);
+  if (!person) return undefined;
+  if (!person.timeline.some((existing) => existing.id === item.id)) {
+    person.timeline.unshift(item);
+  }
   return person;
 }
