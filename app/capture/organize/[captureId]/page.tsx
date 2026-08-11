@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { getCapture } from "@/lib/capture-repository";
-import { getCurrentOwnerUserId } from "@/lib/current-owner";
+import { getRequestIdentity } from "@/lib/auth/request-identity";
 import { structureCapture } from "@/lib/ai-platform-core";
 import { confirmKnowledgeCandidatesAction } from "./actions";
 
@@ -9,7 +9,7 @@ const labels = { knowledge: "パーソナリティ", schedule: "予定候補", g
 
 export default async function OrganizeCapturePage({ params }: { params: Promise<{ captureId: string }> }) {
   const { captureId } = await params;
-  const ownerUserId = getCurrentOwnerUserId();
+  const { ownerUserId } = await getRequestIdentity();
   const capture = await getCapture(captureId, ownerUserId);
   if (!capture) notFound();
 
