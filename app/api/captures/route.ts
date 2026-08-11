@@ -1,16 +1,16 @@
 import { NextResponse } from "next/server";
 import { createCapture, listCaptures, type CaptureKind } from "@/lib/capture-repository";
-import { getCurrentOwnerUserId } from "@/lib/current-owner";
+import { getRequestIdentity } from "@/lib/auth/request-identity";
 
 export async function GET(request: Request) {
-  const ownerUserId = getCurrentOwnerUserId();
+  const { ownerUserId } = await getRequestIdentity();
   const { searchParams } = new URL(request.url);
   const personId = searchParams.get("personId") || undefined;
   return NextResponse.json({ status: "success", captures: await listCaptures(ownerUserId, personId) });
 }
 
 export async function POST(request: Request) {
-  const ownerUserId = getCurrentOwnerUserId();
+  const { ownerUserId } = await getRequestIdentity();
   const body = await request.json().catch(() => ({}));
   const value = typeof body.value === "string" ? body.value : "";
   const personId = typeof body.personId === "string" ? body.personId : undefined;
