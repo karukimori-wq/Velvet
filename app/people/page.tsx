@@ -3,8 +3,8 @@ import { BottomNav } from "@/components/bottom-nav";
 import { getRequestIdentity } from "@/lib/auth/request-identity";
 import { listPeopleStore } from "@/lib/person-store";
 
-export default async function PeoplePage({ searchParams }: { searchParams: Promise<{ q?: string }> }) {
-  const { q = "" } = await searchParams;
+export default async function PeoplePage({ searchParams }: { searchParams: Promise<{ q?: string; imported?: string; skipped?: string }> }) {
+  const { q = "", imported, skipped } = await searchParams;
   const query = q.trim().toLowerCase();
   const identity = await getRequestIdentity();
   const people = await listPeopleStore(identity.ownerUserId);
@@ -18,6 +18,7 @@ export default async function PeoplePage({ searchParams }: { searchParams: Promi
         <div className="brand">People</div>
         <Link className="subtle" href="/people/new">＋ 追加</Link>
       </header>
+      {(imported || skipped) && <div className="card successCard">Import完了 · 追加 {Number(imported ?? 0)}件{Number(skipped ?? 0) > 0 ? ` · スキップ ${Number(skipped)}件` : ""}</div>}
       <form action="/people" method="get">
         <input className="searchBox" name="q" defaultValue={q} placeholder="名前・特徴・趣味・ブランドなど" autoComplete="off" />
       </form>
