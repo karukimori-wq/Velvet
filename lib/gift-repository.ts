@@ -28,7 +28,7 @@ const mapGift = (row: GiftRow): Gift => ({
 });
 
 export async function listGifts(ownerUserId: string, personId?: string, options: ReadOptions = {}): Promise<Gift[]> {
-  const access = getPlanAccess(ownerUserId);
+  const access = await getPlanAccess(ownerUserId);
   if (getStorageMode() !== "postgres") {
     return gifts.filter((gift) => gift.ownerUserId === ownerUserId && (!personId || gift.personId === personId) && (options.includeArchived || isWithinHistoryWindow(gift.occurredAt, access)));
   }
