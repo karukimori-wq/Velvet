@@ -43,7 +43,7 @@ export default async function PersonDetailPage({ params }: { params: Promise<{ p
           </form>
         )}
         <Link className="action actionLink" href={`/capture?personId=${person.id}`}>Capture</Link>
-        <button className="action" type="button">Gift</button>
+        <Link className="action actionLink" href={`/people/${person.id}/gift`}>Gift</Link>
       </div>
 
       {person.timeline.length > 0 && (
