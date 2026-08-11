@@ -1,13 +1,13 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import { getCurrentOwnerUserId } from "@/lib/current-owner";
+import { getRequestIdentity } from "@/lib/auth/request-identity";
 import { getPersonStore } from "@/lib/person-store";
 import { createGiftAction } from "./actions";
 
 export default async function GiftPage({ params, searchParams }: { params: Promise<{ personId: string }>; searchParams: Promise<{ error?: string }> }) {
   const { personId } = await params;
   const { error } = await searchParams;
-  const ownerUserId = getCurrentOwnerUserId();
+  const { ownerUserId } = await getRequestIdentity();
   const person = await getPersonStore(personId, ownerUserId);
   if (!person) notFound();
 
