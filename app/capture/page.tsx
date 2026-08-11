@@ -1,13 +1,13 @@
 import Link from "next/link";
 import { BottomNav } from "@/components/bottom-nav";
-import { getCurrentOwnerUserId } from "@/lib/current-owner";
+import { getRequestIdentity } from "@/lib/auth/request-identity";
 import { getPersonStore, listPeopleStore } from "@/lib/person-store";
 import { captureAction, quickCaptureAction } from "./actions";
 import { organizeCaptureAction } from "./organize/actions";
 
 export default async function CapturePage({ searchParams }: { searchParams: Promise<{ personId?: string; saved?: string; error?: string }> }) {
   const { personId, saved, error } = await searchParams;
-  const ownerUserId = getCurrentOwnerUserId();
+  const { ownerUserId } = await getRequestIdentity();
   const [person, people] = await Promise.all([
     personId ? getPersonStore(personId, ownerUserId) : Promise.resolve(undefined),
     listPeopleStore(ownerUserId),
