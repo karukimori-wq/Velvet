@@ -19,6 +19,11 @@ function makeId() {
   return `visit_${Date.now().toString(36)}_${Math.random().toString(36).slice(2, 7)}`;
 }
 
+function formatPayment(method?: Visit["paymentMethod"]) {
+  if (!method) return undefined;
+  return { cash: "現金", card: "カード", qr: "QR", receivable: "売掛", other: "その他" }[method];
+}
+
 export function listVisits(ownerUserId = OWNER) {
   return visits.filter((visit) => visit.ownerUserId === ownerUserId);
 }
@@ -56,7 +61,7 @@ export function addParticipant(visitId: string, personId: string, ownerUserId = 
 
 export function updateVisit(visitId: string, patch: Partial<Pick<Visit, "salesAmount" | "paymentMethod" | "seatingReason">>, ownerUserId = OWNER) {
   const visit = getVisit(visitId, ownerUserId);
-  if (!visit) return undefined;
+  if (!visit || visit.endedAt) return undefined;
   Object.assign(visit, patch);
   return visit;
 }
@@ -68,6 +73,23 @@ export function endVisit(visitId: string, ownerUserId = OWNER) {
     const endedAt = new Date();
     visit.endedAt = endedAt.toISOString();
     visit.durationMinutes = Math.max(0, Math.round((endedAt.getTime() - new Date(visit.startedAt).getTime()) / 60000));
+
+    const date = visit.startedAt.slice(0, 10);
+    const titleParts = [visit.seatingReason, formatPayment(visit.paymentMethod), typeof visit.salesAmount === "number" ? `¥${visit.salesAmount.toLocaleString("ja-JP")}` : undefined].filter(Boolean);
+    const title = titleParts.length > 0 ? titleParts.join(" · ") : "来店";
+    const body = typeof visit.durationMinutes === "number" ? `滞在 ${visit.durationMinutes}分` : undefined;
+
+    for (const personId of visit.participantIds) {
+      const person = getPerson(personId, ownerUserId);
+      if (!person) continue;
+      person.lastVisit = date;
+      person.timeline.unshift({
+        id: `${visit.id}_${personId}`,
+        date,
+        title,
+        body,
+      });
+    }
   }
   return visit;
 }
