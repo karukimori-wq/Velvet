@@ -1,13 +1,13 @@
 import Link from "next/link";
 import { BottomNav } from "@/components/bottom-nav";
-import { getCurrentOwnerUserId } from "@/lib/current-owner";
+import { getRequestIdentity } from "@/lib/auth/request-identity";
 import { listPeopleStore } from "@/lib/person-store";
 
 export default async function PeoplePage({ searchParams }: { searchParams: Promise<{ q?: string }> }) {
   const { q = "" } = await searchParams;
   const query = q.trim().toLowerCase();
-  const ownerUserId = getCurrentOwnerUserId();
-  const people = await listPeopleStore(ownerUserId);
+  const identity = await getRequestIdentity();
+  const people = await listPeopleStore(identity.ownerUserId);
   const filtered = query
     ? people.filter((person) => [person.name, person.rank, ...person.personality].filter(Boolean).join(" ").toLowerCase().includes(query))
     : people;
