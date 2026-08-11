@@ -1,7 +1,8 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { BottomNav } from "@/components/bottom-nav";
-import { getPerson, listPeople } from "@/lib/demo-data";
+import { getCurrentOwnerUserId } from "@/lib/current-owner";
+import { getPersonStore, listPeopleStore } from "@/lib/person-store";
 import { getVisit } from "@/lib/visit-repository";
 import { addParticipantAction, endVisitAction, updateVisitAction } from "../actions";
 
@@ -15,11 +16,12 @@ const paymentLabels: Record<string, string> = {
 
 export default async function ActiveVisitPage({ params }: { params: Promise<{ visitId: string }> }) {
   const { visitId } = await params;
-  const visit = getVisit(visitId);
+  const ownerUserId = getCurrentOwnerUserId();
+  const visit = await getVisit(visitId, ownerUserId);
   if (!visit) notFound();
 
-  const participants = visit.participantIds.map((id) => getPerson(id)).filter(Boolean);
-  const availablePeople = listPeople().filter((person) => !visit.participantIds.includes(person.id));
+  const participants = (await Promise.all(visit.participantIds.map((id) => getPersonStore(id, ownerUserId)))).filter(Boolean);
+  const availablePeople = (await listPeopleStore(ownerUserId)).filter((person) => !visit.participantIds.includes(person.id));
   const start = new Date(visit.startedAt);
   const elapsedMinutes = visit.endedAt
     ? visit.durationMinutes ?? 0
@@ -51,20 +53,12 @@ export default async function ActiveVisitPage({ params }: { params: Promise<{ vi
           <form action={updateVisitAction} className="stack">
             <input type="hidden" name="visitId" value={visit.id} />
             <div className="chips choiceRow">
-              {[
-                ["新規", "新規"],
-                ["指名", "指名"],
-                ["場内指名", "場内指名"],
-                ["ヘルプ", "ヘルプ"],
-                ["同伴", "同伴"],
-              ].map(([value, label]) => (
+              {[["新規", "新規"], ["指名", "指名"], ["場内指名", "場内指名"], ["ヘルプ", "ヘルプ"], ["同伴", "同伴"]].map(([value, label]) => (
                 <label className="choiceChip" key={value}><input type="radio" name="seatingReason" value={value} defaultChecked={visit.seatingReason === value} />{label}</label>
               ))}
             </div>
             <div className="chips choiceRow">
-              {[
-                ["cash", "現金"], ["card", "カード"], ["qr", "QR"], ["receivable", "売掛"], ["other", "その他"],
-              ].map(([value, label]) => (
+              {[["cash", "現金"], ["card", "カード"], ["qr", "QR"], ["receivable", "売掛"], ["other", "その他"]].map(([value, label]) => (
                 <label className="choiceChip" key={value}><input type="radio" name="paymentMethod" value={value} defaultChecked={visit.paymentMethod === value} />{label}</label>
               ))}
             </div>
