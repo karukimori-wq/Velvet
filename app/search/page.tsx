@@ -4,17 +4,16 @@ import { listPeople } from "@/lib/demo-data";
 import { listCaptures } from "@/lib/capture-repository";
 import { listGifts } from "@/lib/gift-repository";
 import { getCurrentOwnerUserId } from "@/lib/current-owner";
-import { matchesAllTerms, parseLocalSearchIntent } from "@/lib/search-intent";
-import { getAiPlatformStatus } from "@/lib/ai-platform-core";
+import { matchesAllTerms } from "@/lib/search-intent";
+import { parseSearchIntent } from "@/lib/ai-platform-core";
 
 export default async function SearchPage({ searchParams }: { searchParams: Promise<{ q?: string; natural?: string }> }) {
   const { q = "", natural } = await searchParams;
   const query = q.trim();
   const ownerUserId = getCurrentOwnerUserId();
   const people = listPeople(ownerUserId);
-  const intent = natural && query ? parseLocalSearchIntent(query) : undefined;
+  const intent = natural && query ? await parseSearchIntent(query) : undefined;
   const terms = intent?.terms.length ? intent.terms : query ? [query] : [];
-  const aiStatus = getAiPlatformStatus();
 
   const personResults = terms.length
     ? people.filter((person) => {
@@ -53,7 +52,7 @@ export default async function SearchPage({ searchParams }: { searchParams: Promi
         <div className="card noticeCard">
           <div className="timelineTitle">文章検索</div>
           <div className="timelineBody">{intent?.terms.length ? `「${intent.terms.join("」「")}」で絞り込みました。` : "検索語を解釈できませんでした。"}</div>
-          {!aiStatus.contractReady && <div className="formHint">現在はローカル解釈です。AI Platform Core正式契約後に同じ操作のまま高度化します。</div>}
+          {intent && <div className="formHint">{intent.mode === "ai" ? "AIで解釈" : "ローカル解釈"} · trace {intent.trace.traceId.slice(0, 18)}…</div>}
         </div>
       )}
 
