@@ -3,11 +3,11 @@
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { getCapture } from "@/lib/capture-repository";
-import { getCurrentOwnerUserId } from "@/lib/current-owner";
+import { getRequestIdentity } from "@/lib/auth/request-identity";
 import { addPersonKnowledgeStore } from "@/lib/person-store";
 
 export async function confirmKnowledgeCandidatesAction(captureId: string, formData: FormData) {
-  const ownerUserId = getCurrentOwnerUserId();
+  const { ownerUserId } = await getRequestIdentity();
   const capture = await getCapture(captureId, ownerUserId);
   if (!capture) redirect("/capture?error=missing");
 
