@@ -1,4 +1,5 @@
 import { DEMO_OWNER_USER_ID } from "@/lib/current-owner";
+import { getPlanAccess, isWithinHistoryWindow } from "@/lib/plan-access";
 import { getStorageMode } from "@/lib/storage/config";
 import { dbQuery, withTransaction } from "@/lib/storage/postgres";
 import { addTimelineItemStore, getPersonStore } from "@/lib/person-store";
@@ -15,6 +16,7 @@ export type Visit = {
   seatingReason?: string;
 };
 
+type ReadOptions = { includeArchived?: boolean };
 const OWNER = DEMO_OWNER_USER_ID;
 const visits: Visit[] = [];
 
@@ -54,11 +56,15 @@ function mapVisit(row: VisitRow, participantIds: string[]): Visit {
   };
 }
 
-export async function listVisits(ownerUserId = OWNER): Promise<Visit[]> {
-  if (getStorageMode() !== "postgres") return visits.filter((visit) => visit.ownerUserId === ownerUserId);
+export async function listVisits(ownerUserId = OWNER, options: ReadOptions = {}): Promise<Visit[]> {
+  const access = getPlanAccess(ownerUserId);
+  if (getStorageMode() !== "postgres") {
+    return visits.filter((visit) => visit.ownerUserId === ownerUserId && (options.includeArchived || isWithinHistoryWindow(visit.startedAt, access)));
+  }
+  const cutoff = options.includeArchived || access.fullHistory ? null : access.historyCutoff?.toISOString() ?? null;
   const [visitRows, participantRows] = await Promise.all([
-    dbQuery<VisitRow>(`select id, owner_user_id, started_at::text, ended_at::text, duration_minutes, sales_amount, payment_method, seating_reason from velvet_visits where owner_user_id = $1 order by started_at desc`, [ownerUserId]),
-    dbQuery<ParticipantRow>(`select visit_id, person_id from velvet_visit_participants where owner_user_id = $1`, [ownerUserId]),
+    dbQuery<VisitRow>(`select id, owner_user_id, started_at::text, ended_at::text, duration_minutes, sales_amount, payment_method, seating_reason from velvet_visits where owner_user_id = $1 and ($2::timestamptz is null or started_at >= $2) order by started_at desc`, [ownerUserId, cutoff]),
+    dbQuery<ParticipantRow>(`select vp.visit_id, vp.person_id from velvet_visit_participants vp join velvet_visits v on v.id = vp.visit_id and v.owner_user_id = vp.owner_user_id where vp.owner_user_id = $1 and ($2::timestamptz is null or v.started_at >= $2)`, [ownerUserId, cutoff]),
   ]);
   const participants = new Map<string, string[]>();
   for (const row of participantRows.rows) {
@@ -69,10 +75,15 @@ export async function listVisits(ownerUserId = OWNER): Promise<Visit[]> {
   return visitRows.rows.map((row) => mapVisit(row, participants.get(row.id) ?? []));
 }
 
-export async function getVisit(id: string, ownerUserId = OWNER): Promise<Visit | undefined> {
-  if (getStorageMode() !== "postgres") return visits.find((visit) => visit.id === id && visit.ownerUserId === ownerUserId);
+export async function getVisit(id: string, ownerUserId = OWNER, options: ReadOptions = {}): Promise<Visit | undefined> {
+  const access = getPlanAccess(ownerUserId);
+  if (getStorageMode() !== "postgres") {
+    const visit = visits.find((item) => item.id === id && item.ownerUserId === ownerUserId);
+    return visit && (options.includeArchived || isWithinHistoryWindow(visit.startedAt, access)) ? visit : undefined;
+  }
+  const cutoff = options.includeArchived || access.fullHistory ? null : access.historyCutoff?.toISOString() ?? null;
   const [visitRows, participantRows] = await Promise.all([
-    dbQuery<VisitRow>(`select id, owner_user_id, started_at::text, ended_at::text, duration_minutes, sales_amount, payment_method, seating_reason from velvet_visits where id = $1 and owner_user_id = $2 limit 1`, [id, ownerUserId]),
+    dbQuery<VisitRow>(`select id, owner_user_id, started_at::text, ended_at::text, duration_minutes, sales_amount, payment_method, seating_reason from velvet_visits where id = $1 and owner_user_id = $2 and ($3::timestamptz is null or started_at >= $3) limit 1`, [id, ownerUserId, cutoff]),
     dbQuery<ParticipantRow>(`select visit_id, person_id from velvet_visit_participants where visit_id = $1 and owner_user_id = $2`, [id, ownerUserId]),
   ]);
   const row = visitRows.rows[0];
