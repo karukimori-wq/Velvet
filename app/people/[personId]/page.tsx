@@ -2,11 +2,14 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { BottomNav } from "@/components/bottom-nav";
 import { getPerson } from "@/lib/demo-data";
+import { getActiveVisitForPerson } from "@/lib/visit-repository";
+import { startVisitAction } from "@/app/visits/actions";
 
 export default async function PersonDetailPage({ params }: { params: Promise<{ personId: string }> }) {
   const { personId } = await params;
   const person = getPerson(personId);
   if (!person) notFound();
+  const activeVisit = getActiveVisitForPerson(person.id);
 
   return (
     <main className="shell">
@@ -31,7 +34,14 @@ export default async function PersonDetailPage({ params }: { params: Promise<{ p
 
       <div className="sectionTitle">クイック操作</div>
       <div className="actions">
-        <button className="action" type="button">来店</button>
+        {activeVisit ? (
+          <Link className="action actionLink activeAction" href={`/visits/${activeVisit.id}`}>来店中</Link>
+        ) : (
+          <form action={startVisitAction}>
+            <input type="hidden" name="personId" value={person.id} />
+            <button className="action fullAction" type="submit">来店</button>
+          </form>
+        )}
         <Link className="action actionLink" href={`/capture?personId=${person.id}`}>Capture</Link>
         <button className="action" type="button">Gift</button>
       </div>
