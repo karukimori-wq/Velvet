@@ -1,4 +1,5 @@
-import { getPerson } from "@/lib/demo-data";
+import { getPerson, prependTimelineItem } from "@/lib/demo-data";
+import { DEMO_OWNER_USER_ID } from "@/lib/current-owner";
 
 export type Visit = {
   id: string;
@@ -12,7 +13,7 @@ export type Visit = {
   seatingReason?: string;
 };
 
-const OWNER = "user_demo_owner";
+const OWNER = DEMO_OWNER_USER_ID;
 const visits: Visit[] = [];
 
 function makeId() {
@@ -83,12 +84,12 @@ export function endVisit(visitId: string, ownerUserId = OWNER) {
       const person = getPerson(personId, ownerUserId);
       if (!person) continue;
       person.lastVisit = date;
-      person.timeline.unshift({
+      prependTimelineItem(personId, {
         id: `${visit.id}_${personId}`,
         date,
         title,
         body,
-      });
+      }, ownerUserId);
     }
   }
   return visit;
