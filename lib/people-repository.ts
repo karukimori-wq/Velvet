@@ -1,4 +1,5 @@
-import { getPersonStore, listPeopleStore, type Person } from "./person-store";
+import type { Person } from "./demo-data";
+import { getPersonStore, listPeopleStore } from "./person-store";
 
 export type PeopleQuery = {
   ownerUserId: string;
