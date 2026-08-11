@@ -1,8 +1,8 @@
-import { getCurrentOwnerUserId } from "@/lib/current-owner";
+import { getRequestIdentity } from "@/lib/auth/request-identity";
 import { getPlanAccess } from "@/lib/plan-access";
 
 export async function GET() {
-  const ownerUserId = getCurrentOwnerUserId();
+  const { ownerUserId } = await getRequestIdentity();
   const access = await getPlanAccess(ownerUserId);
   return Response.json({
     appName: "velvet",
