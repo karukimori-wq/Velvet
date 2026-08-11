@@ -1,9 +1,9 @@
 import { NextResponse } from "next/server";
-import { getCurrentOwnerUserId } from "@/lib/current-owner";
+import { getRequestIdentity } from "@/lib/auth/request-identity";
 import { endVisit, getVisit, updateVisit } from "@/lib/visit-repository";
 
 export async function GET(_request: Request, { params }: { params: Promise<{ visitId: string }> }) {
-  const ownerUserId = getCurrentOwnerUserId();
+  const { ownerUserId } = await getRequestIdentity();
   const { visitId } = await params;
   const visit = await getVisit(visitId, ownerUserId);
   if (!visit) return NextResponse.json({ status: "error", error: { code: "VISIT_NOT_FOUND", message: "visit not found" } }, { status: 404 });
@@ -11,7 +11,7 @@ export async function GET(_request: Request, { params }: { params: Promise<{ vis
 }
 
 export async function PATCH(request: Request, { params }: { params: Promise<{ visitId: string }> }) {
-  const ownerUserId = getCurrentOwnerUserId();
+  const { ownerUserId } = await getRequestIdentity();
   const { visitId } = await params;
   const body = await request.json().catch(() => ({}));
   const patch = {
@@ -25,7 +25,7 @@ export async function PATCH(request: Request, { params }: { params: Promise<{ vi
 }
 
 export async function POST(request: Request, { params }: { params: Promise<{ visitId: string }> }) {
-  const ownerUserId = getCurrentOwnerUserId();
+  const { ownerUserId } = await getRequestIdentity();
   const { visitId } = await params;
   const body = await request.json().catch(() => ({}));
   if (body.action !== "end") return NextResponse.json({ status: "error", error: { code: "INVALID_ACTION", message: "unsupported action" } }, { status: 400 });
