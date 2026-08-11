@@ -2,11 +2,13 @@ import Link from "next/link";
 import { getAiPlatformStatus } from "@/lib/ai-platform-core";
 import { getAiUsageStatus } from "@/lib/ai-usage";
 import { getStorageStatus } from "@/lib/storage-status";
+import { getCurrentOwnerUserId } from "@/lib/current-owner";
 
-export default function SettingsPage() {
+export default async function SettingsPage() {
   const ai = getAiPlatformStatus();
-  const usage = getAiUsageStatus();
+  const usage = await getAiUsageStatus(getCurrentOwnerUserId());
   const storage = getStorageStatus();
+  const aiReady = ai.configured && ai.contractReady && ai.capturePathConfigured && ai.searchPathConfigured;
 
   return (
     <main className="shell">
@@ -23,7 +25,8 @@ export default function SettingsPage() {
         </section>
         <section className="card">
           <div className="timelineTitle">整理・文章検索</div>
-          <div className="timelineBody">{ai.contractReady ? "AI Platform Core 接続済み" : "ローカル処理で利用中"}</div>
+          <div className="timelineBody">{aiReady ? "AI Platform Core 接続可能" : "ローカルfallbackで利用可能"}</div>
+          <div className="formHint">共有契約は承認済み。接続先と同期operation pathが設定されると外部AIを使用します。</div>
         </section>
         <section className="card">
           <div className="timelineTitle">AIポイント</div>
