@@ -8,12 +8,15 @@ import {
   type Person,
   type TimelineItem,
 } from "./demo-data";
+import { getPlanAccess, isWithinHistoryWindow } from "./plan-access";
 import { getStorageMode } from "./storage/config";
 import { dbQuery, withTransaction } from "./storage/postgres";
 
 function makeId(prefix: string) {
   return `${prefix}_${Date.now().toString(36)}_${Math.random().toString(36).slice(2, 9)}`;
 }
+
+type ReadOptions = { includeArchived?: boolean };
 
 type PersonRow = {
   id: string;
@@ -31,7 +34,19 @@ function toDateLabel(value: string | null | undefined) {
   return value ? new Date(value).toISOString().slice(0, 10) : undefined;
 }
 
-function mapRows(rows: PersonRow[], knowledgeRows: KnowledgeRow[], timelineRows: TimelineRow[]): Person[] {
+function applyMemoryAccess(person: Person, ownerUserId: string, options: ReadOptions): Person {
+  if (options.includeArchived) return { ...person, personality: [...person.personality], timeline: [...person.timeline] };
+  const access = getPlanAccess(ownerUserId);
+  return {
+    ...person,
+    lastVisit: person.lastVisit && isWithinHistoryWindow(person.lastVisit, access) ? person.lastVisit : undefined,
+    personality: [...person.personality],
+    timeline: person.timeline.filter((item) => isWithinHistoryWindow(item.date, access)).map((item) => ({ ...item })),
+  };
+}
+
+function mapRows(rows: PersonRow[], knowledgeRows: KnowledgeRow[], timelineRows: TimelineRow[], ownerUserId: string, options: ReadOptions): Person[] {
+  const access = getPlanAccess(ownerUserId);
   const knowledge = new Map<string, string[]>();
   for (const row of knowledgeRows) {
     const list = knowledge.get(row.person_id) ?? [];
@@ -42,12 +57,7 @@ function mapRows(rows: PersonRow[], knowledgeRows: KnowledgeRow[], timelineRows:
   const timeline = new Map<string, TimelineItem[]>();
   for (const row of timelineRows) {
     const list = timeline.get(row.person_id) ?? [];
-    list.push({
-      id: row.id,
-      date: toDateLabel(row.occurred_at) ?? "",
-      title: row.title,
-      body: row.body ?? undefined,
-    });
+    list.push({ id: row.id, date: toDateLabel(row.occurred_at) ?? "", title: row.title, body: row.body ?? undefined });
     timeline.set(row.person_id, list);
   }
 
@@ -56,32 +66,39 @@ function mapRows(rows: PersonRow[], knowledgeRows: KnowledgeRow[], timelineRows:
     ownerUserId: row.owner_user_id,
     name: row.name,
     rank: row.rank ?? undefined,
-    lastVisit: toDateLabel(row.last_visit),
+    lastVisit: options.includeArchived || isWithinHistoryWindow(row.last_visit ?? undefined, access) ? toDateLabel(row.last_visit) : undefined,
     nextVisit: row.next_visit ? new Date(row.next_visit).toISOString() : undefined,
     personality: knowledge.get(row.id) ?? [],
     timeline: timeline.get(row.id) ?? [],
   }));
 }
 
-export async function listPeopleStore(ownerUserId: string): Promise<Person[]> {
-  if (getStorageMode() !== "postgres") return listMemoryPeople(ownerUserId);
+export async function listPeopleStore(ownerUserId: string, options: ReadOptions = {}): Promise<Person[]> {
+  if (getStorageMode() !== "postgres") return listMemoryPeople(ownerUserId).map((person) => applyMemoryAccess(person, ownerUserId, options));
+  const access = getPlanAccess(ownerUserId);
+  const cutoff = options.includeArchived || access.fullHistory ? null : access.historyCutoff?.toISOString() ?? null;
   const [people, knowledge, timeline] = await Promise.all([
     dbQuery<PersonRow>(`select id, owner_user_id, name, rank, last_visit::text, next_visit::text from velvet_people where owner_user_id = $1 order by updated_at desc, name`, [ownerUserId]),
     dbQuery<KnowledgeRow>(`select person_id, value from velvet_knowledge where owner_user_id = $1 order by created_at`, [ownerUserId]),
-    dbQuery<TimelineRow>(`select person_id, id, occurred_at::text, title, body from velvet_timeline_items where owner_user_id = $1 order by occurred_at desc`, [ownerUserId]),
+    dbQuery<TimelineRow>(`select person_id, id, occurred_at::text, title, body from velvet_timeline_items where owner_user_id = $1 and ($2::timestamptz is null or occurred_at >= $2) order by occurred_at desc`, [ownerUserId, cutoff]),
   ]);
-  return mapRows(people.rows, knowledge.rows, timeline.rows);
+  return mapRows(people.rows, knowledge.rows, timeline.rows, ownerUserId, options);
 }
 
-export async function getPersonStore(personId: string, ownerUserId: string): Promise<Person | undefined> {
-  if (getStorageMode() !== "postgres") return getMemoryPerson(personId, ownerUserId);
+export async function getPersonStore(personId: string, ownerUserId: string, options: ReadOptions = {}): Promise<Person | undefined> {
+  if (getStorageMode() !== "postgres") {
+    const person = getMemoryPerson(personId, ownerUserId);
+    return person ? applyMemoryAccess(person, ownerUserId, options) : undefined;
+  }
+  const access = getPlanAccess(ownerUserId);
+  const cutoff = options.includeArchived || access.fullHistory ? null : access.historyCutoff?.toISOString() ?? null;
   const people = await dbQuery<PersonRow>(`select id, owner_user_id, name, rank, last_visit::text, next_visit::text from velvet_people where id = $1 and owner_user_id = $2 limit 1`, [personId, ownerUserId]);
   if (!people.rows[0]) return undefined;
   const [knowledge, timeline] = await Promise.all([
     dbQuery<KnowledgeRow>(`select person_id, value from velvet_knowledge where person_id = $1 and owner_user_id = $2 order by created_at`, [personId, ownerUserId]),
-    dbQuery<TimelineRow>(`select person_id, id, occurred_at::text, title, body from velvet_timeline_items where person_id = $1 and owner_user_id = $2 order by occurred_at desc`, [personId, ownerUserId]),
+    dbQuery<TimelineRow>(`select person_id, id, occurred_at::text, title, body from velvet_timeline_items where person_id = $1 and owner_user_id = $2 and ($3::timestamptz is null or occurred_at >= $3) order by occurred_at desc`, [personId, ownerUserId, cutoff]),
   ]);
-  return mapRows(people.rows, knowledge.rows, timeline.rows)[0];
+  return mapRows(people.rows, knowledge.rows, timeline.rows, ownerUserId, options)[0];
 }
 
 export async function createPersonStore(name: string, ownerUserId: string): Promise<Person> {
@@ -129,7 +146,7 @@ export async function addTimelineItemStore(personId: string, item: { id?: string
     const person = getMemoryPerson(personId, ownerUserId);
     if (!person) return undefined;
     person.timeline.unshift({ id: item.id ?? makeId("timeline"), date: item.date ?? new Date().toISOString().slice(0, 10), title: item.title, body: item.body });
-    return person;
+    return applyMemoryAccess(person, ownerUserId, {});
   }
   const id = item.id ?? makeId("timeline");
   const occurredAt = item.date ? new Date(`${item.date}T12:00:00.000Z`) : new Date();
