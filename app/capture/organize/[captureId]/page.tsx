@@ -2,7 +2,7 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { getCapture } from "@/lib/capture-repository";
 import { getCurrentOwnerUserId } from "@/lib/current-owner";
-import { organizeCaptureLocally } from "@/lib/ai-platform-core";
+import { structureCapture } from "@/lib/ai-platform-core";
 import { confirmKnowledgeCandidatesAction } from "./actions";
 
 const labels = {
@@ -18,9 +18,9 @@ export default async function OrganizeCapturePage({ params }: { params: Promise<
   const capture = getCapture(captureId, ownerUserId);
   if (!capture) notFound();
 
-  const candidates = organizeCaptureLocally(capture.value);
-  const knowledge = candidates.filter((candidate) => candidate.type === "knowledge");
-  const deferred = candidates.filter((candidate) => candidate.type !== "knowledge");
+  const structured = await structureCapture(capture.value);
+  const knowledge = structured.candidates.filter((candidate) => candidate.type === "knowledge");
+  const deferred = structured.candidates.filter((candidate) => candidate.type !== "knowledge");
 
   return (
     <main className="shell">
@@ -35,6 +35,10 @@ export default async function OrganizeCapturePage({ params }: { params: Promise<
       </section>
 
       <div className="card">{capture.value}</div>
+
+      <div className="formHint" style={{ marginTop: 10 }}>
+        {structured.mode === "ai" ? "AIで整理しました" : "ローカル整理を使用しました"} · trace {structured.trace.traceId.slice(0, 18)}…
+      </div>
 
       <form action={confirmKnowledgeCandidatesAction.bind(null, capture.id)} className="stack compactForm">
         {knowledge.length > 0 && <div className="sectionTitle">パーソナリティ候補</div>}
