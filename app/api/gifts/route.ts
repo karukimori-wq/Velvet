@@ -1,16 +1,16 @@
 import { NextResponse } from "next/server";
 import { createGift, listGifts, type GiftDirection } from "@/lib/gift-repository";
-import { getCurrentOwnerUserId } from "@/lib/current-owner";
+import { getRequestIdentity } from "@/lib/auth/request-identity";
 
 export async function GET(request: Request) {
-  const ownerUserId = getCurrentOwnerUserId();
+  const { ownerUserId } = await getRequestIdentity();
   const { searchParams } = new URL(request.url);
   const personId = searchParams.get("personId") || undefined;
   return NextResponse.json({ status: "success", gifts: await listGifts(ownerUserId, personId) });
 }
 
 export async function POST(request: Request) {
-  const ownerUserId = getCurrentOwnerUserId();
+  const { ownerUserId } = await getRequestIdentity();
   const body = await request.json().catch(() => ({}));
   const personId = typeof body.personId === "string" ? body.personId : "";
   const item = typeof body.item === "string" ? body.item : "";
