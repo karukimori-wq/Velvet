@@ -1,11 +1,20 @@
 import { addPersonKnowledgeStore, createPersonStore, listPeopleStore, updatePersonBasicsStore } from "@/lib/person-store";
+import { createPersonContact, listContacts, type ContactType } from "@/lib/contact-repository";
 import { getStorageMode } from "@/lib/storage/config";
 import { withTransaction } from "@/lib/storage/postgres";
+
+export type VelvetImportContact = {
+  type: ContactType;
+  value: string;
+  label?: string;
+  isPrimary?: boolean;
+};
 
 export type VelvetImportPerson = {
   name: string;
   rank?: string;
   personality?: string[];
+  contacts?: VelvetImportContact[];
 };
 
 export type VelvetImportPayload = {
@@ -14,6 +23,8 @@ export type VelvetImportPayload = {
 };
 
 export type DuplicatePolicy = "skip" | "create_separate";
+
+const allowedContactTypes: ContactType[] = ["phone", "email", "line", "instagram", "x", "tiktok", "other"];
 
 function makeId(prefix: string) {
   return `${prefix}_${Date.now().toString(36)}_${Math.random().toString(36).slice(2, 9)}`;
@@ -25,8 +36,17 @@ function normalizeName(value: string) {
 
 export async function exportVelvetData(ownerUserId: string) {
   // Export is deliberately not constrained by the Free UI history window.
-  // Users must be able to retrieve their own archived data.
-  const people = await listPeopleStore(ownerUserId, { includeArchived: true });
+  // Users must be able to retrieve their own archived data and contact backup.
+  const [people, contacts] = await Promise.all([
+    listPeopleStore(ownerUserId, { includeArchived: true }),
+    listContacts(ownerUserId),
+  ]);
+  const contactsByPerson = new Map<string, VelvetImportContact[]>();
+  for (const contact of contacts) {
+    const list = contactsByPerson.get(contact.personId) ?? [];
+    list.push({ type: contact.type, value: contact.value, label: contact.label, isPrimary: contact.isPrimary });
+    contactsByPerson.set(contact.personId, list);
+  }
   return {
     version: "1.0" as const,
     exportedAt: new Date().toISOString(),
@@ -34,6 +54,7 @@ export async function exportVelvetData(ownerUserId: string) {
       name: person.name,
       rank: person.rank,
       personality: person.personality,
+      contacts: contactsByPerson.get(person.id) ?? [],
       timeline: person.timeline,
     })),
   };
@@ -54,6 +75,14 @@ export function validateImportPayload(input: unknown): { ok: true; data: VelvetI
     if (person.personality !== undefined && (!Array.isArray(person.personality) || person.personality.some((value) => typeof value !== "string"))) {
       return { ok: false, error: `people[${index}].personality は文字列配列にしてください` };
     }
+    if (person.contacts !== undefined) {
+      if (!Array.isArray(person.contacts)) return { ok: false, error: `people[${index}].contacts は配列にしてください` };
+      for (const [contactIndex, contact] of person.contacts.entries()) {
+        if (!contact || typeof contact !== "object" || !allowedContactTypes.includes(contact.type) || typeof contact.value !== "string" || !contact.value.trim()) {
+          return { ok: false, error: `people[${index}].contacts[${contactIndex}] の type/value を確認してください` };
+        }
+      }
+    }
   }
   return { ok: true, data: payload as VelvetImportPayload };
 }
@@ -72,6 +101,9 @@ export async function importVelvetData(payload: VelvetImportPayload, ownerUserId
       const person = await createPersonStore(item.name, ownerUserId);
       if (item.rank) await updatePersonBasicsStore(person.id, { rank: item.rank }, ownerUserId);
       if (item.personality?.length) await addPersonKnowledgeStore(person.id, item.personality.join("、"), ownerUserId);
+      for (const contact of item.contacts ?? []) {
+        await createPersonContact({ personId: person.id, ...contact }, ownerUserId);
+      }
       existingNames.add(normalized);
       createdIds.push(person.id);
     }
@@ -103,6 +135,20 @@ export async function importVelvetData(payload: VelvetImportPayload, ownerUserId
         await client.query(
           "insert into velvet_knowledge (id, owner_user_id, person_id, value) values ($1,$2,$3,$4)",
           [makeId("knowledge"), ownerUserId, personId, value],
+        );
+      }
+
+      for (const contact of item.contacts ?? []) {
+        if (contact.isPrimary) {
+          await client.query(
+            "update velvet_person_contacts set is_primary = false, updated_at = now() where owner_user_id = $1 and person_id = $2 and contact_type = $3",
+            [ownerUserId, personId, contact.type],
+          );
+        }
+        await client.query(
+          `insert into velvet_person_contacts (id, owner_user_id, person_id, contact_type, label, value, is_primary)
+           values ($1,$2,$3,$4,$5,$6,$7)`,
+          [makeId("contact"), ownerUserId, personId, contact.type, contact.label?.trim() || null, contact.value.trim(), Boolean(contact.isPrimary)],
         );
       }
 
