@@ -2,10 +2,10 @@
 
 import { redirect } from "next/navigation";
 import { addParticipant, endVisit, startVisit, updateVisit } from "@/lib/visit-repository";
-import { getCurrentOwnerUserId } from "@/lib/current-owner";
+import { getRequestIdentity } from "@/lib/auth/request-identity";
 
 export async function startVisitAction(formData: FormData) {
-  const ownerUserId = getCurrentOwnerUserId();
+  const { ownerUserId } = await getRequestIdentity();
   const personId = String(formData.get("personId") || "");
   const visit = await startVisit(personId, ownerUserId);
   if (!visit) redirect(`/people/${personId}`);
@@ -13,7 +13,7 @@ export async function startVisitAction(formData: FormData) {
 }
 
 export async function endVisitAction(formData: FormData) {
-  const ownerUserId = getCurrentOwnerUserId();
+  const { ownerUserId } = await getRequestIdentity();
   const visitId = String(formData.get("visitId") || "");
   const visit = await endVisit(visitId, ownerUserId);
   if (!visit) redirect("/people");
@@ -22,7 +22,7 @@ export async function endVisitAction(formData: FormData) {
 }
 
 export async function updateVisitAction(formData: FormData) {
-  const ownerUserId = getCurrentOwnerUserId();
+  const { ownerUserId } = await getRequestIdentity();
   const visitId = String(formData.get("visitId") || "");
   const salesRaw = String(formData.get("salesAmount") || "").trim();
   const paymentRaw = String(formData.get("paymentMethod") || "").trim();
@@ -32,20 +32,16 @@ export async function updateVisitAction(formData: FormData) {
     ? (paymentRaw as "cash" | "card" | "qr" | "receivable" | "other")
     : undefined;
 
-  await updateVisit(
-    visitId,
-    {
-      salesAmount: salesRaw ? Number(salesRaw) : undefined,
-      paymentMethod,
-      seatingReason: seatingReason || undefined,
-    },
-    ownerUserId,
-  );
+  await updateVisit(visitId, {
+    salesAmount: salesRaw ? Number(salesRaw) : undefined,
+    paymentMethod,
+    seatingReason: seatingReason || undefined,
+  }, ownerUserId);
   redirect(`/visits/${visitId}`);
 }
 
 export async function addParticipantAction(formData: FormData) {
-  const ownerUserId = getCurrentOwnerUserId();
+  const { ownerUserId } = await getRequestIdentity();
   const visitId = String(formData.get("visitId") || "");
   const personId = String(formData.get("personId") || "");
   await addParticipant(visitId, personId, ownerUserId);
