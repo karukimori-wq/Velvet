@@ -2,10 +2,10 @@
 
 import { redirect } from "next/navigation";
 import { createGift, type GiftDirection } from "@/lib/gift-repository";
-import { getCurrentOwnerUserId } from "@/lib/current-owner";
+import { getRequestIdentity } from "@/lib/auth/request-identity";
 
 export async function createGiftAction(personId: string, direction: GiftDirection, formData: FormData) {
-  const ownerUserId = getCurrentOwnerUserId();
+  const { ownerUserId } = await getRequestIdentity();
   const item = String(formData.get("item") ?? "").trim();
   const rawValue = String(formData.get("estimatedValue") ?? "").trim();
   const estimatedValue = rawValue ? Number(rawValue) : undefined;
