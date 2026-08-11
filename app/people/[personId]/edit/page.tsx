@@ -1,12 +1,13 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import { getCurrentOwnerUserId } from "@/lib/current-owner";
+import { getRequestIdentity } from "@/lib/auth/request-identity";
 import { getPersonStore } from "@/lib/person-store";
 import { addKnowledgeAction, updatePersonAction } from "../../actions";
 
 export default async function EditPersonPage({ params }: { params: Promise<{ personId: string }> }) {
   const { personId } = await params;
-  const person = await getPersonStore(personId, getCurrentOwnerUserId());
+  const { ownerUserId } = await getRequestIdentity();
+  const person = await getPersonStore(personId, ownerUserId);
   if (!person) notFound();
 
   return (
