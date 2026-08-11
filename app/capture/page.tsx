@@ -1,15 +1,64 @@
+import Link from "next/link";
 import { BottomNav } from "@/components/bottom-nav";
+import { getPerson, listPeople } from "@/lib/demo-data";
+import { getCurrentOwnerUserId } from "@/lib/current-owner";
+import { captureAction, quickCaptureAction } from "./actions";
 
-export default function CapturePage() {
+export default async function CapturePage({ searchParams }: { searchParams: Promise<{ personId?: string; saved?: string; error?: string }> }) {
+  const { personId, saved, error } = await searchParams;
+  const ownerUserId = getCurrentOwnerUserId();
+  const person = personId ? getPerson(personId, ownerUserId) : undefined;
+  const learned = Array.from(new Set(listPeople(ownerUserId).flatMap((item) => item.personality))).slice(0, 10);
+
   return (
     <main className="shell">
-      <header className="header"><div className="brand">Capture</div></header>
-      <section className="hero"><h1>一言でも、音声でも。</h1><p>どこに保存するかは考えなくて大丈夫。</p></section>
-      <div className="card">
-        <div className="chips"><span className="chip">🍾 ボトル</span><span className="chip">🎁 Gift</span><span className="chip">👔 仕事</span><span className="chip">⛳ 趣味</span></div>
-        <div style={{ height: 12 }} />
-        <input className="searchBox" placeholder="例：黒縁メガネ、ロレックス、来月大阪" />
+      <header className="header">
+        <div className="brand">Capture</div>
+        {person && <Link className="subtle" href={`/people/${person.id}`}>{person.name}</Link>}
+      </header>
+
+      <section className="hero">
+        <h1>{person ? `${person.name}の記憶を追加` : "一言でも、すぐ残す。"}</h1>
+        <p>分類を考える必要はありません。明確な入力はそのまま記憶へ保存します。</p>
+      </section>
+
+      {saved && <div className="card successCard">保存しました</div>}
+      {error && <div className="formError">入力内容を確認してください。</div>}
+
+      <div className="sectionTitle">クイック</div>
+      <div className="chips">
+        {["メガネ", "既婚", "未婚", "ロレックス", "ゴルフ", "犬", "響", "白州"].map((value) => (
+          <form action={quickCaptureAction.bind(null, personId, "knowledge", value)} key={value}>
+            <button className="chip chipButton" type="submit">{value}</button>
+          </form>
+        ))}
       </div>
+
+      {learned.length > 0 && (
+        <>
+          <div className="sectionTitle">よく使う候補</div>
+          <div className="chips">
+            {learned.map((value) => (
+              <form action={quickCaptureAction.bind(null, personId, "knowledge", value)} key={value}>
+                <button className="chip chipButton" type="submit">{value}</button>
+              </form>
+            ))}
+          </div>
+        </>
+      )}
+
+      <div className="sectionTitle">まとめて追加</div>
+      <form action={captureAction.bind(null, personId, "knowledge")} className="stack">
+        <input className="searchBox" name="value" placeholder="例：黒髪、ロレックス、来月大阪、既婚" autoComplete="off" />
+        <div className="formHint">「、」区切りで複数の記憶を一度に追加できます。</div>
+        <button className="primaryButton" type="submit">記憶として保存</button>
+      </form>
+
+      <div className="sectionTitle">自由メモ</div>
+      <form action={captureAction.bind(null, personId, "free_text")} className="stack">
+        <input className="searchBox" name="value" placeholder="あとで整理したい内容をそのまま残す" autoComplete="off" />
+        <button className="secondaryButton" type="submit">そのまま保存</button>
+      </form>
       <BottomNav />
     </main>
   );
