@@ -2,11 +2,13 @@ import Link from "next/link";
 import { getAiPlatformStatus } from "@/lib/ai-platform-core";
 import { getAiUsageStatus } from "@/lib/ai-usage";
 import { getStorageStatus } from "@/lib/storage-status";
-import { getCurrentOwnerUserId } from "@/lib/current-owner";
+import { getRequestIdentity } from "@/lib/auth/request-identity";
+import { getPlanAccess } from "@/lib/plan-access";
 
 export default async function SettingsPage() {
+  const { ownerUserId } = await getRequestIdentity();
+  const [usage, access] = await Promise.all([getAiUsageStatus(ownerUserId), getPlanAccess(ownerUserId)]);
   const ai = getAiPlatformStatus();
-  const usage = await getAiUsageStatus(getCurrentOwnerUserId());
   const storage = getStorageStatus();
   const aiReady = ai.configured && ai.contractReady && ai.clientConfigured;
 
@@ -19,6 +21,7 @@ export default async function SettingsPage() {
 
       <div className="sectionTitle">状態</div>
       <div className="stack">
+        <section className="card"><div className="timelineTitle">プラン</div><div className="timelineBody">{access.plan === "pro" ? "Pro" : "Free"}</div><div className="formHint">契約状態はowner単位で管理します。</div></section>
         <section className="card">
           <div className="timelineTitle">データ保存</div>
           <div className="timelineBody">{storage.productionReady ? "永続化されています" : "開発用の一時保存です"}</div>
