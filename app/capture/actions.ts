@@ -2,10 +2,10 @@
 
 import { redirect } from "next/navigation";
 import { createCapture, type CaptureKind } from "@/lib/capture-repository";
-import { getCurrentOwnerUserId } from "@/lib/current-owner";
+import { getRequestIdentity } from "@/lib/auth/request-identity";
 
 export async function captureAction(personId: string | undefined, kind: CaptureKind, formData: FormData) {
-  const ownerUserId = getCurrentOwnerUserId();
+  const { ownerUserId } = await getRequestIdentity();
   const value = String(formData.get("value") ?? "").trim();
   if (!value) redirect(personId ? `/capture?personId=${personId}&error=empty` : "/capture?error=empty");
 
@@ -15,7 +15,7 @@ export async function captureAction(personId: string | undefined, kind: CaptureK
 }
 
 export async function quickCaptureAction(personId: string | undefined, kind: CaptureKind, value: string) {
-  const ownerUserId = getCurrentOwnerUserId();
+  const { ownerUserId } = await getRequestIdentity();
   await createCapture({ ownerUserId, personId, kind, value });
   redirect(personId ? `/capture?personId=${personId}&saved=1` : "/capture?saved=1");
 }
