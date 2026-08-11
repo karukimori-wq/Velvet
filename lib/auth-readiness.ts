@@ -3,24 +3,27 @@ export type VelvetAuthMode = "demo" | "fixed_owner" | "session";
 export function getAuthReadiness() {
   const configuredMode = process.env.VELVET_AUTH_MODE?.trim().toLowerCase();
   const fixedOwner = process.env.VELVET_OWNER_USER_ID?.trim();
+  const bridgeSecret = process.env.VELVET_SESSION_BRIDGE_SECRET?.trim();
   const mode: VelvetAuthMode = configuredMode === "session"
     ? "session"
-    : fixedOwner
+    : configuredMode === "fixed_owner" || fixedOwner
       ? "fixed_owner"
       : "demo";
 
-  // A real per-request session adapter is intentionally not claimed yet.
-  // `fixed_owner` is useful for private single-user testing, but would make
-  // every public visitor share one owner scope and is therefore not suitable
-  // for a public multi-account Velvet deployment.
-  const sessionAdapterImplemented = false;
-  const productionReady = mode === "session" && sessionAdapterImplemented;
+  const sessionAdapterImplemented = true;
+  const sessionConfigured = mode === "session" && Boolean(bridgeSecret);
+  const productionReady = sessionConfigured;
 
   return {
     mode,
     productionReady,
     sessionAdapterImplemented,
+    sessionConfigured,
     fixedOwnerConfigured: Boolean(fixedOwner),
-    errorCode: productionReady ? null : "AUTH_SESSION_NOT_IMPLEMENTED",
+    errorCode: productionReady
+      ? null
+      : mode !== "session"
+        ? "AUTH_SESSION_MODE_REQUIRED"
+        : "AUTH_SESSION_BRIDGE_SECRET_MISSING",
   };
 }
