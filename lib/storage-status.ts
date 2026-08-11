@@ -1,13 +1,16 @@
+import { getStorageReadiness } from "@/lib/storage/config";
+
 export type StorageStatus = {
-  mode: "memory" | "persistent";
+  mode: "memory" | "postgres";
   persistent: boolean;
   productionReady: boolean;
 };
 
 export function getStorageStatus(): StorageStatus {
+  const readiness = getStorageReadiness();
   return {
-    mode: "memory",
-    persistent: false,
-    productionReady: false,
+    mode: readiness.mode,
+    persistent: readiness.persistent,
+    productionReady: readiness.persistent,
   };
 }
