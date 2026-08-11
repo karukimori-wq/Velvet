@@ -1,3 +1,6 @@
+import { getStorageMode } from "./storage/config";
+import { dbQuery } from "./storage/postgres";
+
 export type VelvetPlan = "free" | "pro";
 
 export type PlanAccess = {
@@ -7,27 +10,37 @@ export type PlanAccess = {
   imagesAllowed: boolean;
 };
 
-/**
- * Temporary entitlement seam. Production billing/session integration should
- * resolve plan per authenticated owner, not from client input.
- *
- * Until that provider is connected, defaulting to Free is the safe behavior.
- */
-export function getPlanAccess(_ownerUserId: string, now = new Date()): PlanAccess {
-  const configured = process.env.VELVET_PLAN?.trim().toLowerCase();
-  const plan: VelvetPlan = configured === "pro" ? "pro" : "free";
-  if (plan === "pro") {
-    return { plan, fullHistory: true, imagesAllowed: true };
-  }
+type EntitlementRow = {
+  plan: VelvetPlan;
+  status: "active" | "inactive" | "past_due" | "canceled";
+};
 
+function buildAccess(plan: VelvetPlan, now: Date): PlanAccess {
+  if (plan === "pro") return { plan, fullHistory: true, imagesAllowed: true };
   const cutoff = new Date(now);
   cutoff.setUTCFullYear(cutoff.getUTCFullYear() - 1);
-  return {
-    plan,
-    historyCutoff: cutoff,
-    fullHistory: false,
-    imagesAllowed: false,
-  };
+  return { plan: "free", historyCutoff: cutoff, fullHistory: false, imagesAllowed: false };
+}
+
+/**
+ * Production entitlement source is per-owner data in PostgreSQL.
+ * Missing/inactive entitlement always falls back to Free.
+ *
+ * Memory mode keeps VELVET_PLAN only as a development convenience.
+ */
+export async function getPlanAccess(ownerUserId: string, now = new Date()): Promise<PlanAccess> {
+  if (getStorageMode() !== "postgres") {
+    const configured = process.env.VELVET_PLAN?.trim().toLowerCase();
+    return buildAccess(configured === "pro" ? "pro" : "free", now);
+  }
+
+  const result = await dbQuery<EntitlementRow>(
+    `select plan, status from velvet_owner_entitlements where owner_user_id = $1 limit 1`,
+    [ownerUserId],
+  );
+  const row = result.rows[0];
+  const plan: VelvetPlan = row?.plan === "pro" && row.status === "active" ? "pro" : "free";
+  return buildAccess(plan, now);
 }
 
 export function isWithinHistoryWindow(dateLike: string | Date | undefined, access: PlanAccess) {
