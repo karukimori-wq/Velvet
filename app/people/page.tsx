@@ -1,17 +1,21 @@
 import Link from "next/link";
 import { BottomNav } from "@/components/bottom-nav";
-import { people } from "@/lib/demo-data";
+import { listPeople } from "@/lib/demo-data";
 
 export default async function PeoplePage({ searchParams }: { searchParams: Promise<{ q?: string }> }) {
   const { q = "" } = await searchParams;
   const query = q.trim().toLowerCase();
+  const people = listPeople();
   const filtered = query
     ? people.filter((person) => [person.name, person.rank, ...person.personality].filter(Boolean).join(" ").toLowerCase().includes(query))
     : people;
 
   return (
     <main className="shell">
-      <header className="header"><div className="brand">People</div><Link className="subtle" href="/">閉じる</Link></header>
+      <header className="header">
+        <div className="brand">People</div>
+        <Link className="subtle" href="/people/new">＋ 追加</Link>
+      </header>
       <form action="/people" method="get">
         <input className="searchBox" name="q" defaultValue={q} placeholder="名前・特徴・趣味・ブランドなど" autoComplete="off" />
       </form>
