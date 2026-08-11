@@ -1,10 +1,11 @@
 import Link from "next/link";
 import { BottomNav } from "@/components/bottom-nav";
-import { getCurrentOwnerUserId } from "@/lib/current-owner";
+import { getRequestIdentity } from "@/lib/auth/request-identity";
 import { listPeopleStore } from "@/lib/person-store";
 
 export default async function HomePage() {
-  const people = await listPeopleStore(getCurrentOwnerUserId());
+  const identity = await getRequestIdentity();
+  const people = await listPeopleStore(identity.ownerUserId);
   const planned = people.filter((person) => person.nextVisit);
 
   return (
