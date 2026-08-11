@@ -1,5 +1,5 @@
-import { addPersonKnowledge, createPerson, listPeople } from "@/lib/demo-data";
 import { currentOwnerUserId } from "@/lib/current-owner";
+import { addPersonKnowledgeStore, createPersonStore, listPeopleStore, updatePersonBasicsStore } from "@/lib/person-store";
 
 export type VelvetImportPerson = {
   name: string;
@@ -12,11 +12,12 @@ export type VelvetImportPayload = {
   people: VelvetImportPerson[];
 };
 
-export function exportVelvetData(ownerUserId = currentOwnerUserId()) {
+export async function exportVelvetData(ownerUserId = currentOwnerUserId()) {
+  const people = await listPeopleStore(ownerUserId);
   return {
     version: "1.0" as const,
     exportedAt: new Date().toISOString(),
-    people: listPeople(ownerUserId).map((person) => ({
+    people: people.map((person) => ({
       name: person.name,
       rank: person.rank,
       personality: person.personality,
@@ -41,12 +42,12 @@ export function validateImportPayload(input: unknown): { ok: true; data: VelvetI
   return { ok: true, data: payload as VelvetImportPayload };
 }
 
-export function importVelvetData(payload: VelvetImportPayload, ownerUserId = currentOwnerUserId()) {
+export async function importVelvetData(payload: VelvetImportPayload, ownerUserId = currentOwnerUserId()) {
   const createdIds: string[] = [];
   for (const item of payload.people) {
-    const person = createPerson(item.name, ownerUserId);
-    if (item.rank) person.rank = item.rank.trim() || undefined;
-    if (item.personality?.length) addPersonKnowledge(person.id, item.personality.join("、"), ownerUserId);
+    const person = await createPersonStore(item.name, ownerUserId);
+    if (item.rank) await updatePersonBasicsStore(person.id, { rank: item.rank }, ownerUserId);
+    if (item.personality?.length) await addPersonKnowledgeStore(person.id, item.personality.join("、"), ownerUserId);
     createdIds.push(person.id);
   }
   return createdIds;
