@@ -20,6 +20,7 @@ button { cursor: pointer; }
 .searchBox:focus, .selectBox:focus { border-color: #6e6177; }
 .card { background: #1a181d; border: 1px solid #28242c; border-radius: 20px; padding: 16px; }
 .successCard { border-color: #3a5144; background: #18241d; color: #dff5e5; }
+.noticeCard { margin-top: 12px; border-color: #3a3440; background: #19161c; }
 .stack { display: grid; gap: 12px; }
 .row { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
 .personRow { display: flex; align-items: center; gap: 14px; min-height: 66px; }
@@ -64,6 +65,7 @@ button { cursor: pointer; }
 .choiceChip:has(input:checked) { background: #efe8f2; color: #171319; }
 .inlineForm { display: grid; grid-template-columns: 1fr auto; gap: 8px; align-items: center; }
 .inlineForm .secondaryButton { width: auto; min-width: 76px; }
+.searchActions { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
 .detailsCard { margin-top: 22px; border: 1px solid #2d2931; border-radius: 16px; padding: 14px 16px; background: #18161b; }
 .detailsCard summary { cursor: pointer; color: #c9c2cc; }
 .detailsBody { margin-top: 12px; }
