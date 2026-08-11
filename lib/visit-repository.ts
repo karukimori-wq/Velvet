@@ -1,4 +1,3 @@
-import { DEMO_OWNER_USER_ID } from "@/lib/current-owner";
 import { getPlanAccess, isWithinHistoryWindow } from "@/lib/plan-access";
 import { getStorageMode } from "@/lib/storage/config";
 import { dbQuery, withTransaction } from "@/lib/storage/postgres";
@@ -17,7 +16,6 @@ export type Visit = {
 };
 
 type ReadOptions = { includeArchived?: boolean };
-const OWNER = DEMO_OWNER_USER_ID;
 const visits: Visit[] = [];
 
 function makeId() {
@@ -56,7 +54,7 @@ function mapVisit(row: VisitRow, participantIds: string[]): Visit {
   };
 }
 
-export async function listVisits(ownerUserId = OWNER, options: ReadOptions = {}): Promise<Visit[]> {
+export async function listVisits(ownerUserId: string, options: ReadOptions = {}): Promise<Visit[]> {
   const access = await getPlanAccess(ownerUserId);
   if (getStorageMode() !== "postgres") {
     return visits.filter((visit) => visit.ownerUserId === ownerUserId && (options.includeArchived || isWithinHistoryWindow(visit.startedAt, access)));
@@ -75,7 +73,7 @@ export async function listVisits(ownerUserId = OWNER, options: ReadOptions = {})
   return visitRows.rows.map((row) => mapVisit(row, participants.get(row.id) ?? []));
 }
 
-export async function getVisit(id: string, ownerUserId = OWNER, options: ReadOptions = {}): Promise<Visit | undefined> {
+export async function getVisit(id: string, ownerUserId: string, options: ReadOptions = {}): Promise<Visit | undefined> {
   const access = await getPlanAccess(ownerUserId);
   if (getStorageMode() !== "postgres") {
     const visit = visits.find((item) => item.id === id && item.ownerUserId === ownerUserId);
@@ -90,7 +88,7 @@ export async function getVisit(id: string, ownerUserId = OWNER, options: ReadOpt
   return row ? mapVisit(row, participantRows.rows.map((item) => item.person_id)) : undefined;
 }
 
-export async function getActiveVisitForPerson(personId: string, ownerUserId = OWNER): Promise<Visit | undefined> {
+export async function getActiveVisitForPerson(personId: string, ownerUserId: string): Promise<Visit | undefined> {
   if (getStorageMode() !== "postgres") {
     return visits.find((visit) => visit.ownerUserId === ownerUserId && !visit.endedAt && visit.participantIds.includes(personId));
   }
@@ -109,7 +107,7 @@ export async function getActiveVisitForPerson(personId: string, ownerUserId = OW
   return row ? mapVisit(row, row.participant_ids) : undefined;
 }
 
-export async function startVisit(personId: string, ownerUserId = OWNER): Promise<Visit | undefined> {
+export async function startVisit(personId: string, ownerUserId: string): Promise<Visit | undefined> {
   const person = await getPersonStore(personId, ownerUserId);
   if (!person) return undefined;
   const existing = await getActiveVisitForPerson(personId, ownerUserId);
@@ -127,7 +125,7 @@ export async function startVisit(personId: string, ownerUserId = OWNER): Promise
   return visit;
 }
 
-export async function addParticipant(visitId: string, personId: string, ownerUserId = OWNER): Promise<Visit | undefined> {
+export async function addParticipant(visitId: string, personId: string, ownerUserId: string): Promise<Visit | undefined> {
   const [visit, person] = await Promise.all([getVisit(visitId, ownerUserId), getPersonStore(personId, ownerUserId)]);
   if (!visit || !person || visit.endedAt) return undefined;
   if (getStorageMode() !== "postgres") {
@@ -138,7 +136,7 @@ export async function addParticipant(visitId: string, personId: string, ownerUse
   return getVisit(visitId, ownerUserId);
 }
 
-export async function updateVisit(visitId: string, patch: Partial<Pick<Visit, "salesAmount" | "paymentMethod" | "seatingReason">>, ownerUserId = OWNER): Promise<Visit | undefined> {
+export async function updateVisit(visitId: string, patch: Partial<Pick<Visit, "salesAmount" | "paymentMethod" | "seatingReason">>, ownerUserId: string): Promise<Visit | undefined> {
   const visit = await getVisit(visitId, ownerUserId);
   if (!visit || visit.endedAt) return undefined;
   if (getStorageMode() !== "postgres") {
@@ -152,7 +150,7 @@ export async function updateVisit(visitId: string, patch: Partial<Pick<Visit, "s
   return getVisit(visitId, ownerUserId);
 }
 
-export async function endVisit(visitId: string, ownerUserId = OWNER): Promise<Visit | undefined> {
+export async function endVisit(visitId: string, ownerUserId: string): Promise<Visit | undefined> {
   const visit = await getVisit(visitId, ownerUserId);
   if (!visit) return undefined;
   if (visit.endedAt) return visit;
@@ -175,9 +173,6 @@ export async function endVisit(visitId: string, ownerUserId = OWNER): Promise<Vi
     await addTimelineItemStore(personId, { id: `${visit.id}_${personId}`, date, title, body, eventType: "visit", sourceRef: visit.id }, ownerUserId);
     if (getStorageMode() === "postgres") {
       await dbQuery(`update velvet_people set last_visit = $3, updated_at = now() where id = $1 and owner_user_id = $2`, [personId, ownerUserId, visit.startedAt]);
-    } else {
-      const person = await getPersonStore(personId, ownerUserId);
-      if (person) person.lastVisit = date;
     }
   }
   return getStorageMode() === "postgres" ? getVisit(visitId, ownerUserId) : visit;
