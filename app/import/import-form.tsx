@@ -9,12 +9,17 @@ const example = `{
     {
       "name": "山田さん",
       "rank": "VIP",
-      "personality": ["会社経営", "既婚", "ゴルフ", "ロレックス"]
+      "personality": ["会社経営", "既婚", "ゴルフ", "ロレックス"],
+      "contacts": [
+        { "type": "line", "value": "yamada_line", "isPrimary": true },
+        { "type": "instagram", "value": "@yamada" }
+      ]
     }
   ]
 }`;
 
-type PreviewPerson = { name: string; rank?: string; personality?: string[] };
+type PreviewContact = { type?: string; value?: string };
+type PreviewPerson = { name: string; rank?: string; personality?: string[]; contacts?: PreviewContact[] };
 
 function normalize(value: string) {
   return value.trim().toLocaleLowerCase("ja-JP");
@@ -36,7 +41,8 @@ export function ImportForm({ existingNames }: { existingNames: string[] }) {
         people.push(item as PreviewPerson);
       }
       const duplicates = people.filter((person) => existing.has(normalize(person.name)));
-      return { valid: true as const, people, duplicates };
+      const contactCount = people.reduce((sum, person) => sum + (Array.isArray(person.contacts) ? person.contacts.length : 0), 0);
+      return { valid: true as const, people, duplicates, contactCount };
     } catch {
       return { valid: false as const, message: "JSON形式を確認してください。" };
     }
@@ -50,6 +56,7 @@ export function ImportForm({ existingNames }: { existingNames: string[] }) {
         <div className="card">
           <div className="timelineTitle">登録前の確認 · {preview.people.length}人</div>
           <div className="timelineBody">{preview.people.slice(0, 6).map((person) => person.name).join(" · ")}{preview.people.length > 6 ? " …" : ""}</div>
+          {preview.contactCount > 0 && <div className="formHint">連絡先 {preview.contactCount}件も復元します。</div>}
           {preview.duplicates.length > 0 && <div className="formHint">同名候補 {preview.duplicates.length}人：{preview.duplicates.slice(0, 5).map((person) => person.name).join(" · ")}</div>}
         </div>
       ) : (
