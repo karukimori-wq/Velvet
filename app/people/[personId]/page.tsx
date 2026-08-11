@@ -1,15 +1,17 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { BottomNav } from "@/components/bottom-nav";
-import { getPerson } from "@/lib/demo-data";
+import { getCurrentOwnerUserId } from "@/lib/current-owner";
+import { getPersonStore } from "@/lib/person-store";
 import { getActiveVisitForPerson } from "@/lib/visit-repository";
 import { startVisitAction } from "@/app/visits/actions";
 
 export default async function PersonDetailPage({ params }: { params: Promise<{ personId: string }> }) {
   const { personId } = await params;
-  const person = getPerson(personId);
+  const ownerUserId = getCurrentOwnerUserId();
+  const person = await getPersonStore(personId, ownerUserId);
   if (!person) notFound();
-  const activeVisit = getActiveVisitForPerson(person.id);
+  const activeVisit = await getActiveVisitForPerson(person.id, ownerUserId);
 
   return (
     <main className="shell">
