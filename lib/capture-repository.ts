@@ -21,6 +21,10 @@ export function listCaptures(ownerUserId: string, personId?: string) {
   return entries.filter((entry) => entry.ownerUserId === ownerUserId && (!personId || entry.personId === personId));
 }
 
+export function getCapture(id: string, ownerUserId: string) {
+  return entries.find((entry) => entry.id === id && entry.ownerUserId === ownerUserId);
+}
+
 export function createCapture(input: { ownerUserId: string; personId?: string; kind?: CaptureKind; value: string }) {
   const value = input.value.trim();
   if (!value) return undefined;
@@ -37,7 +41,7 @@ export function createCapture(input: { ownerUserId: string; personId?: string; k
   entries.unshift(entry);
 
   // Deterministic user-entered capture can be reused immediately as memory.
-  // AI-inferred restructuring will use a separate confirmation flow later.
+  // AI-inferred restructuring must use a separate confirmation flow.
   if (input.personId && entry.kind !== "free_text") {
     addPersonKnowledge(input.personId, value, input.ownerUserId);
   }
