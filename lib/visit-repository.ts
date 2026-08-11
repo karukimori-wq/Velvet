@@ -57,7 +57,7 @@ function mapVisit(row: VisitRow, participantIds: string[]): Visit {
 }
 
 export async function listVisits(ownerUserId = OWNER, options: ReadOptions = {}): Promise<Visit[]> {
-  const access = getPlanAccess(ownerUserId);
+  const access = await getPlanAccess(ownerUserId);
   if (getStorageMode() !== "postgres") {
     return visits.filter((visit) => visit.ownerUserId === ownerUserId && (options.includeArchived || isWithinHistoryWindow(visit.startedAt, access)));
   }
@@ -76,7 +76,7 @@ export async function listVisits(ownerUserId = OWNER, options: ReadOptions = {})
 }
 
 export async function getVisit(id: string, ownerUserId = OWNER, options: ReadOptions = {}): Promise<Visit | undefined> {
-  const access = getPlanAccess(ownerUserId);
+  const access = await getPlanAccess(ownerUserId);
   if (getStorageMode() !== "postgres") {
     const visit = visits.find((item) => item.id === id && item.ownerUserId === ownerUserId);
     return visit && (options.includeArchived || isWithinHistoryWindow(visit.startedAt, access)) ? visit : undefined;
