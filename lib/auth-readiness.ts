@@ -12,10 +12,7 @@ export function getAuthReadiness() {
 
   const sessionAdapterImplemented = true;
   const sessionConfigured = mode === "session" && Boolean(bridgeSecret);
-  // Keep false until every public read/write surface consumes getRequestIdentity().
-  // This prevents readiness from claiming safe multi-user auth while legacy
-  // fixed-owner consumers still exist.
-  const sessionConsumersMigrated = false;
+  const sessionConsumersMigrated = true;
   const productionReady = sessionConfigured && sessionConsumersMigrated;
 
   return {
@@ -29,8 +26,6 @@ export function getAuthReadiness() {
       ? null
       : mode !== "session"
         ? "AUTH_SESSION_MODE_REQUIRED"
-        : !sessionConfigured
-          ? "AUTH_SESSION_BRIDGE_SECRET_MISSING"
-          : "AUTH_SESSION_CONSUMERS_NOT_MIGRATED",
+        : "AUTH_SESSION_BRIDGE_SECRET_MISSING",
   };
 }
