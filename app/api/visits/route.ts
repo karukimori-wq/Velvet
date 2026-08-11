@@ -1,14 +1,14 @@
 import { NextResponse } from "next/server";
-import { getCurrentOwnerUserId } from "@/lib/current-owner";
+import { getRequestIdentity } from "@/lib/auth/request-identity";
 import { listVisits, startVisit } from "@/lib/visit-repository";
 
 export async function GET() {
-  const ownerUserId = getCurrentOwnerUserId();
+  const { ownerUserId } = await getRequestIdentity();
   return NextResponse.json({ status: "success", visits: await listVisits(ownerUserId) });
 }
 
 export async function POST(request: Request) {
-  const ownerUserId = getCurrentOwnerUserId();
+  const { ownerUserId } = await getRequestIdentity();
   const body = await request.json().catch(() => ({}));
   const personId = typeof body.personId === "string" ? body.personId : "";
   const visit = await startVisit(personId, ownerUserId);
