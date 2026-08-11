@@ -1,5 +1,7 @@
-import { getPerson, prependTimelineItem } from "@/lib/demo-data";
 import { DEMO_OWNER_USER_ID } from "@/lib/current-owner";
+import { getStorageMode } from "@/lib/storage/config";
+import { dbQuery, withTransaction } from "@/lib/storage/postgres";
+import { addTimelineItemStore, getPersonStore } from "@/lib/person-store";
 
 export type Visit = {
   id: string;
@@ -25,72 +27,147 @@ function formatPayment(method?: Visit["paymentMethod"]) {
   return { cash: "現金", card: "カード", qr: "QR", receivable: "売掛", other: "その他" }[method];
 }
 
-export function listVisits(ownerUserId = OWNER) {
-  return visits.filter((visit) => visit.ownerUserId === ownerUserId);
-}
+type VisitRow = {
+  id: string;
+  owner_user_id: string;
+  started_at: string;
+  ended_at: string | null;
+  duration_minutes: number | null;
+  sales_amount: number | null;
+  payment_method: Visit["paymentMethod"] | null;
+  seating_reason: string | null;
+};
 
-export function getVisit(id: string, ownerUserId = OWNER) {
-  return visits.find((visit) => visit.id === id && visit.ownerUserId === ownerUserId);
-}
+type ParticipantRow = { visit_id: string; person_id: string };
 
-export function getActiveVisitForPerson(personId: string, ownerUserId = OWNER) {
-  return visits.find((visit) => visit.ownerUserId === ownerUserId && !visit.endedAt && visit.participantIds.includes(personId));
-}
-
-export function startVisit(personId: string, ownerUserId = OWNER) {
-  const person = getPerson(personId, ownerUserId);
-  if (!person) return undefined;
-  const existing = getActiveVisitForPerson(personId, ownerUserId);
-  if (existing) return existing;
-  const visit: Visit = {
-    id: makeId(),
-    ownerUserId,
-    participantIds: [personId],
-    startedAt: new Date().toISOString(),
+function mapVisit(row: VisitRow, participantIds: string[]): Visit {
+  return {
+    id: row.id,
+    ownerUserId: row.owner_user_id,
+    participantIds,
+    startedAt: new Date(row.started_at).toISOString(),
+    endedAt: row.ended_at ? new Date(row.ended_at).toISOString() : undefined,
+    durationMinutes: row.duration_minutes ?? undefined,
+    salesAmount: row.sales_amount ?? undefined,
+    paymentMethod: row.payment_method ?? undefined,
+    seatingReason: row.seating_reason ?? undefined,
   };
-  visits.unshift(visit);
+}
+
+export async function listVisits(ownerUserId = OWNER): Promise<Visit[]> {
+  if (getStorageMode() !== "postgres") return visits.filter((visit) => visit.ownerUserId === ownerUserId);
+  const [visitRows, participantRows] = await Promise.all([
+    dbQuery<VisitRow>(`select id, owner_user_id, started_at::text, ended_at::text, duration_minutes, sales_amount, payment_method, seating_reason from velvet_visits where owner_user_id = $1 order by started_at desc`, [ownerUserId]),
+    dbQuery<ParticipantRow>(`select visit_id, person_id from velvet_visit_participants where owner_user_id = $1`, [ownerUserId]),
+  ]);
+  const participants = new Map<string, string[]>();
+  for (const row of participantRows.rows) {
+    const list = participants.get(row.visit_id) ?? [];
+    list.push(row.person_id);
+    participants.set(row.visit_id, list);
+  }
+  return visitRows.rows.map((row) => mapVisit(row, participants.get(row.id) ?? []));
+}
+
+export async function getVisit(id: string, ownerUserId = OWNER): Promise<Visit | undefined> {
+  if (getStorageMode() !== "postgres") return visits.find((visit) => visit.id === id && visit.ownerUserId === ownerUserId);
+  const [visitRows, participantRows] = await Promise.all([
+    dbQuery<VisitRow>(`select id, owner_user_id, started_at::text, ended_at::text, duration_minutes, sales_amount, payment_method, seating_reason from velvet_visits where id = $1 and owner_user_id = $2 limit 1`, [id, ownerUserId]),
+    dbQuery<ParticipantRow>(`select visit_id, person_id from velvet_visit_participants where visit_id = $1 and owner_user_id = $2`, [id, ownerUserId]),
+  ]);
+  const row = visitRows.rows[0];
+  return row ? mapVisit(row, participantRows.rows.map((item) => item.person_id)) : undefined;
+}
+
+export async function getActiveVisitForPerson(personId: string, ownerUserId = OWNER): Promise<Visit | undefined> {
+  if (getStorageMode() !== "postgres") {
+    return visits.find((visit) => visit.ownerUserId === ownerUserId && !visit.endedAt && visit.participantIds.includes(personId));
+  }
+  const rows = await dbQuery<VisitRow & { participant_ids: string[] }>(
+    `select v.id, v.owner_user_id, v.started_at::text, v.ended_at::text, v.duration_minutes, v.sales_amount, v.payment_method, v.seating_reason,
+      array_agg(vp2.person_id order by vp2.person_id) as participant_ids
+     from velvet_visits v
+     join velvet_visit_participants vp on vp.visit_id = v.id and vp.owner_user_id = v.owner_user_id and vp.person_id = $1
+     join velvet_visit_participants vp2 on vp2.visit_id = v.id and vp2.owner_user_id = v.owner_user_id
+     where v.owner_user_id = $2 and v.ended_at is null
+     group by v.id
+     order by v.started_at desc limit 1`,
+    [personId, ownerUserId],
+  );
+  const row = rows.rows[0];
+  return row ? mapVisit(row, row.participant_ids) : undefined;
+}
+
+export async function startVisit(personId: string, ownerUserId = OWNER): Promise<Visit | undefined> {
+  const person = await getPersonStore(personId, ownerUserId);
+  if (!person) return undefined;
+  const existing = await getActiveVisitForPerson(personId, ownerUserId);
+  if (existing) return existing;
+
+  const visit: Visit = { id: makeId(), ownerUserId, participantIds: [personId], startedAt: new Date().toISOString() };
+  if (getStorageMode() !== "postgres") {
+    visits.unshift(visit);
+    return visit;
+  }
+  await withTransaction(async (client) => {
+    await client.query(`insert into velvet_visits (id, owner_user_id, started_at) values ($1,$2,$3)`, [visit.id, ownerUserId, visit.startedAt]);
+    await client.query(`insert into velvet_visit_participants (visit_id, owner_user_id, person_id) values ($1,$2,$3)`, [visit.id, ownerUserId, personId]);
+  });
   return visit;
 }
 
-export function addParticipant(visitId: string, personId: string, ownerUserId = OWNER) {
-  const visit = getVisit(visitId, ownerUserId);
-  const person = getPerson(personId, ownerUserId);
+export async function addParticipant(visitId: string, personId: string, ownerUserId = OWNER): Promise<Visit | undefined> {
+  const [visit, person] = await Promise.all([getVisit(visitId, ownerUserId), getPersonStore(personId, ownerUserId)]);
   if (!visit || !person || visit.endedAt) return undefined;
-  if (!visit.participantIds.includes(personId)) visit.participantIds.push(personId);
-  return visit;
+  if (getStorageMode() !== "postgres") {
+    if (!visit.participantIds.includes(personId)) visit.participantIds.push(personId);
+    return visit;
+  }
+  await dbQuery(`insert into velvet_visit_participants (visit_id, owner_user_id, person_id) values ($1,$2,$3) on conflict do nothing`, [visitId, ownerUserId, personId]);
+  return getVisit(visitId, ownerUserId);
 }
 
-export function updateVisit(visitId: string, patch: Partial<Pick<Visit, "salesAmount" | "paymentMethod" | "seatingReason">>, ownerUserId = OWNER) {
-  const visit = getVisit(visitId, ownerUserId);
+export async function updateVisit(visitId: string, patch: Partial<Pick<Visit, "salesAmount" | "paymentMethod" | "seatingReason">>, ownerUserId = OWNER): Promise<Visit | undefined> {
+  const visit = await getVisit(visitId, ownerUserId);
   if (!visit || visit.endedAt) return undefined;
-  Object.assign(visit, patch);
-  return visit;
+  if (getStorageMode() !== "postgres") {
+    Object.assign(visit, patch);
+    return visit;
+  }
+  await dbQuery(
+    `update velvet_visits set sales_amount = $3, payment_method = $4, seating_reason = $5 where id = $1 and owner_user_id = $2 and ended_at is null`,
+    [visitId, ownerUserId, patch.salesAmount ?? null, patch.paymentMethod ?? null, patch.seatingReason ?? null],
+  );
+  return getVisit(visitId, ownerUserId);
 }
 
-export function endVisit(visitId: string, ownerUserId = OWNER) {
-  const visit = getVisit(visitId, ownerUserId);
+export async function endVisit(visitId: string, ownerUserId = OWNER): Promise<Visit | undefined> {
+  const visit = await getVisit(visitId, ownerUserId);
   if (!visit) return undefined;
-  if (!visit.endedAt) {
-    const endedAt = new Date();
-    visit.endedAt = endedAt.toISOString();
-    visit.durationMinutes = Math.max(0, Math.round((endedAt.getTime() - new Date(visit.startedAt).getTime()) / 60000));
+  if (visit.endedAt) return visit;
 
-    const date = visit.startedAt.slice(0, 10);
-    const titleParts = [visit.seatingReason, formatPayment(visit.paymentMethod), typeof visit.salesAmount === "number" ? `¥${visit.salesAmount.toLocaleString("ja-JP")}` : undefined].filter(Boolean);
-    const title = titleParts.length > 0 ? titleParts.join(" · ") : "来店";
-    const body = typeof visit.durationMinutes === "number" ? `滞在 ${visit.durationMinutes}分` : undefined;
+  const endedAt = new Date();
+  const durationMinutes = Math.max(0, Math.round((endedAt.getTime() - new Date(visit.startedAt).getTime()) / 60000));
+  visit.endedAt = endedAt.toISOString();
+  visit.durationMinutes = durationMinutes;
 
-    for (const personId of visit.participantIds) {
-      const person = getPerson(personId, ownerUserId);
-      if (!person) continue;
-      person.lastVisit = date;
-      prependTimelineItem(personId, {
-        id: `${visit.id}_${personId}`,
-        date,
-        title,
-        body,
-      }, ownerUserId);
+  if (getStorageMode() === "postgres") {
+    await dbQuery(`update velvet_visits set ended_at = $3, duration_minutes = $4 where id = $1 and owner_user_id = $2 and ended_at is null`, [visitId, ownerUserId, visit.endedAt, durationMinutes]);
+  }
+
+  const date = visit.startedAt.slice(0, 10);
+  const titleParts = [visit.seatingReason, formatPayment(visit.paymentMethod), typeof visit.salesAmount === "number" ? `¥${visit.salesAmount.toLocaleString("ja-JP")}` : undefined].filter(Boolean);
+  const title = titleParts.length > 0 ? titleParts.join(" · ") : "来店";
+  const body = `滞在 ${durationMinutes}分`;
+
+  for (const personId of visit.participantIds) {
+    await addTimelineItemStore(personId, { id: `${visit.id}_${personId}`, date, title, body, eventType: "visit", sourceRef: visit.id }, ownerUserId);
+    if (getStorageMode() === "postgres") {
+      await dbQuery(`update velvet_people set last_visit = $3, updated_at = now() where id = $1 and owner_user_id = $2`, [personId, ownerUserId, visit.startedAt]);
+    } else {
+      const person = await getPersonStore(personId, ownerUserId);
+      if (person) person.lastVisit = date;
     }
   }
-  return visit;
+  return getStorageMode() === "postgres" ? getVisit(visitId, ownerUserId) : visit;
 }
