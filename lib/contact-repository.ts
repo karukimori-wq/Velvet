@@ -39,18 +39,21 @@ const mapRow = (row: ContactRow): PersonContact => ({
   createdAt: new Date(row.created_at).toISOString(),
 });
 
-export async function listPersonContacts(personId: string, ownerUserId: string): Promise<PersonContact[]> {
-  if (!(await getPersonStore(personId, ownerUserId))) return [];
+export async function listContacts(ownerUserId: string): Promise<PersonContact[]> {
   if (getStorageMode() !== "postgres") {
-    return memoryContacts.filter((item) => item.ownerUserId === ownerUserId && item.personId === personId);
+    return memoryContacts.filter((item) => item.ownerUserId === ownerUserId);
   }
   const result = await dbQuery<ContactRow>(
     `select id, owner_user_id, person_id, contact_type, label, value, is_primary, created_at::text
-     from velvet_person_contacts where owner_user_id = $1 and person_id = $2
-     order by is_primary desc, created_at`,
-    [ownerUserId, personId],
+     from velvet_person_contacts where owner_user_id = $1 order by created_at`,
+    [ownerUserId],
   );
   return result.rows.map(mapRow);
+}
+
+export async function listPersonContacts(personId: string, ownerUserId: string): Promise<PersonContact[]> {
+  if (!(await getPersonStore(personId, ownerUserId))) return [];
+  return (await listContacts(ownerUserId)).filter((item) => item.personId === personId).sort((a, b) => Number(b.isPrimary) - Number(a.isPrimary));
 }
 
 export async function createPersonContact(values: { personId: string; type: ContactType; value: string; label?: string; isPrimary?: boolean }, ownerUserId: string) {
