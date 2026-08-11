@@ -1,4 +1,4 @@
-import { currentOwnerUserId } from "@/lib/current-owner";
+import { getCurrentOwnerUserId } from "@/lib/current-owner";
 import { addPersonKnowledgeStore, createPersonStore, listPeopleStore, updatePersonBasicsStore } from "@/lib/person-store";
 
 export type VelvetImportPerson = {
@@ -12,8 +12,10 @@ export type VelvetImportPayload = {
   people: VelvetImportPerson[];
 };
 
-export async function exportVelvetData(ownerUserId = currentOwnerUserId()) {
-  const people = await listPeopleStore(ownerUserId);
+export async function exportVelvetData(ownerUserId = getCurrentOwnerUserId()) {
+  // Export is deliberately not constrained by the Free UI history window.
+  // Users must be able to retrieve their own archived data.
+  const people = await listPeopleStore(ownerUserId, { includeArchived: true });
   return {
     version: "1.0" as const,
     exportedAt: new Date().toISOString(),
@@ -42,7 +44,7 @@ export function validateImportPayload(input: unknown): { ok: true; data: VelvetI
   return { ok: true, data: payload as VelvetImportPayload };
 }
 
-export async function importVelvetData(payload: VelvetImportPayload, ownerUserId = currentOwnerUserId()) {
+export async function importVelvetData(payload: VelvetImportPayload, ownerUserId = getCurrentOwnerUserId()) {
   const createdIds: string[] = [];
   for (const item of payload.people) {
     const person = await createPersonStore(item.name, ownerUserId);
