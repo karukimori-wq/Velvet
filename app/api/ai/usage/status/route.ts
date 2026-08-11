@@ -1,8 +1,9 @@
 import { getAiUsageStatus } from "@/lib/ai-usage";
-import { getCurrentOwnerUserId } from "@/lib/current-owner";
+import { getRequestIdentity } from "@/lib/auth/request-identity";
 
 export async function GET() {
-  const usage = await getAiUsageStatus(getCurrentOwnerUserId());
+  const { ownerUserId } = await getRequestIdentity();
+  const usage = await getAiUsageStatus(ownerUserId);
   return Response.json({
     appName: "velvet",
     domain: "ai-usage",
