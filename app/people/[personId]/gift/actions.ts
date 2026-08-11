@@ -12,7 +12,7 @@ export async function createGiftAction(personId: string, direction: GiftDirectio
   const occasion = String(formData.get("occasion") ?? "").trim();
   const note = String(formData.get("note") ?? "").trim();
 
-  const gift = createGift({
+  const gift = await createGift({
     ownerUserId,
     personId,
     direction,
@@ -21,7 +21,6 @@ export async function createGiftAction(personId: string, direction: GiftDirectio
     occasion,
     note,
   });
-
   if (!gift) redirect(`/people/${personId}/gift?error=1`);
   redirect(`/people/${personId}`);
 }
