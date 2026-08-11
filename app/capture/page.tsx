@@ -3,6 +3,7 @@ import { BottomNav } from "@/components/bottom-nav";
 import { getPerson, listPeople } from "@/lib/demo-data";
 import { getCurrentOwnerUserId } from "@/lib/current-owner";
 import { captureAction, quickCaptureAction } from "./actions";
+import { organizeCaptureAction } from "./organize/actions";
 
 export default async function CapturePage({ searchParams }: { searchParams: Promise<{ personId?: string; saved?: string; error?: string }> }) {
   const { personId, saved, error } = await searchParams;
@@ -19,7 +20,7 @@ export default async function CapturePage({ searchParams }: { searchParams: Prom
 
       <section className="hero">
         <h1>{person ? `${person.name}の記憶を追加` : "一言でも、すぐ残す。"}</h1>
-        <p>分類を考える必要はありません。明確な入力はそのまま記憶へ保存します。</p>
+        <p>明確なものは1タップ。まとまったメモは、保存してから必要な部分だけ整理できます。</p>
       </section>
 
       {saved && <div className="card successCard">保存しました</div>}
@@ -47,11 +48,18 @@ export default async function CapturePage({ searchParams }: { searchParams: Prom
         </>
       )}
 
-      <div className="sectionTitle">まとめて追加</div>
-      <form action={captureAction.bind(null, personId, "knowledge")} className="stack">
+      <div className="sectionTitle">まとめて整理</div>
+      <form action={organizeCaptureAction.bind(null, personId)} className="stack">
         <input className="searchBox" name="value" placeholder="例：黒髪、ロレックス、来月大阪、既婚" autoComplete="off" />
-        <div className="formHint">「、」区切りで複数の記憶を一度に追加できます。</div>
-        <button className="primaryButton" type="submit">記憶として保存</button>
+        <div className="formHint">元メモを先に保存し、候補を確認してから反映します。</div>
+        <button className="primaryButton" type="submit">保存して整理</button>
+      </form>
+
+      <div className="sectionTitle">そのまま記憶</div>
+      <form action={captureAction.bind(null, personId, "knowledge")} className="stack">
+        <input className="searchBox" name="value" placeholder="確実な内容をそのまま追加" autoComplete="off" />
+        <div className="formHint">「、」区切りで複数追加できます。</div>
+        <button className="secondaryButton" type="submit">パーソナリティへ追加</button>
       </form>
 
       <div className="sectionTitle">自由メモ</div>
