@@ -4,19 +4,30 @@ export type AiUsageStatus = {
   configured: boolean;
   sourceOfTruth: "ai-platform-core";
   connected: boolean;
-  balance?: number;
-  unit?: "points";
+  usageCount?: number;
+  totalTokens?: number;
+  totalCost?: number;
+  pointBalanceAvailable: false;
   message: string;
   trace?: TraceContext;
 };
 
+function usageEndpoint() {
+  const base = process.env.AI_PLATFORM_CORE_URL?.trim().replace(/\/$/, "");
+  if (!base) return undefined;
+  const path = process.env.AI_PLATFORM_CORE_USAGE_PATH?.trim() || "/v1/analytics/usage";
+  return `${base}${path.startsWith("/") ? path : `/${path}`}`;
+}
+
 export async function getAiUsageStatus(ownerUserId?: string): Promise<AiUsageStatus> {
-  const endpoint = process.env.AI_PLATFORM_CORE_USAGE_URL?.trim();
-  if (!endpoint) {
+  const endpoint = usageEndpoint();
+  const client = process.env.AI_PLATFORM_CORE_CLIENT_ID?.trim();
+  if (!endpoint || !client) {
     return {
       configured: false,
       sourceOfTruth: "ai-platform-core",
       connected: false,
+      pointBalanceAvailable: false,
       message: "AI usage source of truth is not connected yet.",
     };
   }
@@ -24,8 +35,9 @@ export async function getAiUsageStatus(ownerUserId?: string): Promise<AiUsageSta
   const trace = createTraceContext();
   try {
     const url = new URL(endpoint);
-    url.searchParams.set("sourceApp", "velvet");
-    if (ownerUserId) url.searchParams.set("ownerUserId", ownerUserId);
+    url.searchParams.set("client", client);
+    url.searchParams.set("period", "month");
+    if (ownerUserId) url.searchParams.set("userId", ownerUserId);
 
     const response = await fetch(url, {
       method: "GET",
@@ -37,29 +49,24 @@ export async function getAiUsageStatus(ownerUserId?: string): Promise<AiUsageSta
         configured: true,
         sourceOfTruth: "ai-platform-core",
         connected: false,
+        pointBalanceAvailable: false,
         message: `AI usage endpoint returned ${response.status}.`,
         trace,
       };
     }
 
     const payload = await response.json() as {
-      balance?: number;
-      pointsBalance?: number;
-      unit?: string;
-      status?: string;
+      ok?: boolean;
+      summary?: { usageCount?: number; totalTokens?: number; totalCost?: number };
     };
-    const balance = typeof payload.balance === "number"
-      ? payload.balance
-      : typeof payload.pointsBalance === "number"
-        ? payload.pointsBalance
-        : undefined;
-
-    if (typeof balance !== "number") {
+    const summary = payload.summary;
+    if (!payload.ok || !summary) {
       return {
         configured: true,
         sourceOfTruth: "ai-platform-core",
         connected: false,
-        message: "Usage endpoint responded, but no verified point balance was returned.",
+        pointBalanceAvailable: false,
+        message: "Usage endpoint responded with an unexpected shape.",
         trace,
       };
     }
@@ -68,9 +75,11 @@ export async function getAiUsageStatus(ownerUserId?: string): Promise<AiUsageSta
       configured: true,
       sourceOfTruth: "ai-platform-core",
       connected: true,
-      balance,
-      unit: "points",
-      message: "AI point balance loaded from AI Platform Core.",
+      usageCount: typeof summary.usageCount === "number" ? summary.usageCount : 0,
+      totalTokens: typeof summary.totalTokens === "number" ? summary.totalTokens : 0,
+      totalCost: typeof summary.totalCost === "number" ? summary.totalCost : 0,
+      pointBalanceAvailable: false,
+      message: "AI usage loaded from AI Platform Core. Point balance is a separate future billing capability.",
       trace,
     };
   } catch {
@@ -78,6 +87,7 @@ export async function getAiUsageStatus(ownerUserId?: string): Promise<AiUsageSta
       configured: true,
       sourceOfTruth: "ai-platform-core",
       connected: false,
+      pointBalanceAvailable: false,
       message: "AI usage endpoint could not be reached.",
       trace,
     };
