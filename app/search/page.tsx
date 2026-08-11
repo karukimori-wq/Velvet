@@ -12,7 +12,7 @@ export default async function SearchPage({ searchParams }: { searchParams: Promi
   const query = q.trim();
   const ownerUserId = getCurrentOwnerUserId();
   const people = listPeople(ownerUserId);
-  const intent = natural && query ? await parseSearchIntent(query) : undefined;
+  const intent = natural && query ? await parseSearchIntent(query, ownerUserId) : undefined;
   const terms = intent?.terms.length ? intent.terms : query ? [query] : [];
 
   const personResults = terms.length
@@ -52,7 +52,7 @@ export default async function SearchPage({ searchParams }: { searchParams: Promi
         <div className="card noticeCard">
           <div className="timelineTitle">文章検索</div>
           <div className="timelineBody">{intent?.terms.length ? `「${intent.terms.join("」「")}」で絞り込みました。` : "検索語を解釈できませんでした。"}</div>
-          {intent && <div className="formHint">{intent.mode === "ai" ? "AIで解釈" : "ローカル解釈"} · trace {intent.trace.traceId.slice(0, 18)}…</div>}
+          {intent && <div className="formHint">{intent.mode === "ai" ? "AIで解釈" : "ローカル解釈"} · trace {intent.trace.traceId.slice(0, 18)}…{intent.activityId ? ` · activity ${intent.activityId}` : ""}</div>}
         </div>
       )}
 
