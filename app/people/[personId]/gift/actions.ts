@@ -4,23 +4,12 @@ import { redirect } from "next/navigation";
 import { createGift, type GiftDirection } from "@/lib/gift-repository";
 import { getRequestIdentity } from "@/lib/auth/request-identity";
 
-export async function createGiftAction(personId: string, direction: GiftDirection, formData: FormData) {
-  const { ownerUserId } = await getRequestIdentity();
+export async function createGiftAction(customerId: string, direction: GiftDirection, formData: FormData) {
+  const { workspaceId, userId } = await getRequestIdentity();
   const item = String(formData.get("item") ?? "").trim();
-  const rawValue = String(formData.get("estimatedValue") ?? "").trim();
-  const estimatedValue = rawValue ? Number(rawValue) : undefined;
   const occasion = String(formData.get("occasion") ?? "").trim();
   const note = String(formData.get("note") ?? "").trim();
-
-  const gift = await createGift({
-    ownerUserId,
-    personId,
-    direction,
-    item,
-    estimatedValue: Number.isFinite(estimatedValue) ? estimatedValue : undefined,
-    occasion,
-    note,
-  });
-  if (!gift) redirect(`/people/${personId}/gift?error=1`);
-  redirect(`/people/${personId}`);
+  const gift = await createGift({ workspaceId, userId, customerId, direction, item, occasion, note });
+  if (!gift) redirect(`/people/${customerId}/gift?error=1`);
+  redirect(`/people/${customerId}`);
 }
