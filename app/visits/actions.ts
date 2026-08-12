@@ -18,7 +18,7 @@ export async function endVisitAction(formData: FormData) {
   const visit = await endVisit(visitId, ownerUserId);
   if (!visit) redirect("/people");
   const primaryPersonId = visit.participantIds[0];
-  redirect(primaryPersonId ? `/people/${primaryPersonId}` : "/people");
+  redirect(primaryPersonId ? `/people/${primaryPersonId}?justEnded=${encodeURIComponent(visit.id)}` : "/people");
 }
 
 export async function quickUpdateVisitAction(visitId: string, field: "seatingReason" | "paymentMethod" | "visitContext", value: string) {
