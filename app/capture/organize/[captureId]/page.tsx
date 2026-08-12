@@ -14,7 +14,8 @@ export default async function OrganizeCapturePage({ params }: { params: Promise<
   if (!capture) notFound();
   const structured = await structureCapture(capture.value, ownerUserId);
   const knowledge = structured.candidates.filter((candidate) => candidate.type === "knowledge");
-  const deferred = structured.candidates.filter((candidate) => candidate.type !== "knowledge");
+  const schedules = structured.candidates.filter((candidate) => candidate.type === "schedule");
+  const deferred = structured.candidates.filter((candidate) => candidate.type !== "knowledge" && candidate.type !== "schedule");
 
   return <main className="shell">
     <header className="header"><Link className="subtle" href={capture.customerId ? `/capture?customerId=${capture.customerId}` : "/capture"}>‹ 戻る</Link><span className="subtle">整理</span></header>
@@ -24,9 +25,19 @@ export default async function OrganizeCapturePage({ params }: { params: Promise<
     <form action={confirmKnowledgeCandidatesAction.bind(null, capture.id)} className="stack compactForm">
       {knowledge.length > 0 && <div className="sectionTitle">パーソナリティ候補</div>}
       {knowledge.map((candidate, index) => <label className="card row" key={`${candidate.value}-${index}`}><span>{candidate.value}</span><input type="checkbox" name="knowledge" value={candidate.value} defaultChecked /></label>)}
+
+      {schedules.length > 0 && <div className="sectionTitle">予定候補</div>}
+      {schedules.map((candidate, index) => <section className="card stack" key={`${candidate.value}-${index}`}>
+        <div><div className="formHint">予定候補</div><div className="timelineTitle">{candidate.value}</div></div>
+        <input type="hidden" name="scheduleValue" value={candidate.value} />
+        <label className="fieldLabel" htmlFor={`schedule-${index}`}>登録する場合だけ日時を入力</label>
+        <input className="searchBox" id={`schedule-${index}`} type="datetime-local" name="scheduleStartsAt" />
+        <div className="formHint">日時が空欄なら登録しません。Velvetが勝手に予定化することはありません。</div>
+      </section>)}
+
       {deferred.length > 0 && <div className="sectionTitle">確認が必要な候補</div>}
-      {deferred.map((candidate, index) => <div className="card" key={`${candidate.type}-${candidate.value}-${index}`}><div className="formHint">{labels[candidate.type]}</div><div>{candidate.value}</div><div className="formHint">現時点では勝手に予定/Giftへ登録しません。</div></div>)}
-      <button className="primaryButton" type="submit">選んだ内容を追加</button>
+      {deferred.map((candidate, index) => <div className="card" key={`${candidate.type}-${candidate.value}-${index}`}><div className="formHint">{labels[candidate.type]}</div><div>{candidate.value}</div><div className="formHint">現時点では勝手にGift等へ登録しません。</div></div>)}
+      <button className="primaryButton" type="submit">確認した内容を追加</button>
     </form>
   </main>;
 }
