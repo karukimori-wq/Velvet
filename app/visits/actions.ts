@@ -1,7 +1,7 @@
 "use server";
 
 import { redirect } from "next/navigation";
-import { addParticipant, endVisit, startVisit, updateVisit, type VisitContext } from "@/lib/visit-repository";
+import { addParticipant, endVisit, startVisit, updateVisit, type NominationType, type ReceivableStatus, type VisitContext } from "@/lib/visit-repository";
 import { getRequestIdentity } from "@/lib/auth/request-identity";
 
 export async function startVisitAction(formData: FormData) {
@@ -21,21 +21,23 @@ export async function endVisitAction(formData: FormData) {
   redirect(primaryPersonId ? `/people/${primaryPersonId}?justEnded=${encodeURIComponent(visit.id)}` : "/people");
 }
 
-export async function quickUpdateVisitAction(visitId: string, field: "seatingReason" | "paymentMethod" | "visitContext", value: string) {
+export async function quickUpdateVisitAction(visitId: string, field: "seatingReason" | "paymentMethod" | "visitContext" | "nominationType" | "receivableStatus", value: string) {
   const { ownerUserId } = await getRequestIdentity();
   if (field === "seatingReason") {
-    await updateVisit(visitId, {
-      seatingReason: value || undefined,
-      visitContext: value === "同伴" ? "accompaniment" : undefined,
-    }, ownerUserId);
+    await updateVisit(visitId, { seatingReason: value || undefined, visitContext: value === "同伴" ? "accompaniment" : undefined }, ownerUserId);
   } else if (field === "visitContext") {
     const allowed: VisitContext[] = ["solo", "group", "entertainment", "business", "accompaniment", "other"];
-    const visitContext = allowed.includes(value as VisitContext) ? value as VisitContext : undefined;
-    if (visitContext) await updateVisit(visitId, { visitContext }, ownerUserId);
+    if (allowed.includes(value as VisitContext)) await updateVisit(visitId, { visitContext: value as VisitContext }, ownerUserId);
+  } else if (field === "nominationType") {
+    const allowed: NominationType[] = ["main", "in_store", "help", "free", "other"];
+    if (allowed.includes(value as NominationType)) await updateVisit(visitId, { nominationType: value as NominationType }, ownerUserId);
+  } else if (field === "receivableStatus") {
+    const allowed: ReceivableStatus[] = ["open", "partial", "paid"];
+    if (allowed.includes(value as ReceivableStatus)) await updateVisit(visitId, { receivableStatus: value as ReceivableStatus }, ownerUserId);
   } else {
     const allowed = ["cash", "card", "qr", "receivable", "other"] as const;
     const paymentMethod = allowed.includes(value as (typeof allowed)[number]) ? value as (typeof allowed)[number] : undefined;
-    if (paymentMethod) await updateVisit(visitId, { paymentMethod }, ownerUserId);
+    if (paymentMethod) await updateVisit(visitId, { paymentMethod, receivableStatus: paymentMethod === "receivable" ? "open" : undefined }, ownerUserId);
   }
   redirect(`/visits/${visitId}`);
 }
@@ -43,13 +45,19 @@ export async function quickUpdateVisitAction(visitId: string, field: "seatingRea
 export async function updateVisitAction(formData: FormData) {
   const { ownerUserId } = await getRequestIdentity();
   const visitId = String(formData.get("visitId") || "");
-  const salesRaw = String(formData.get("salesAmount") || "").trim();
-  const patch: { salesAmount?: number } = {};
-  if (salesRaw) {
-    const value = Number(salesRaw);
-    if (Number.isFinite(value) && value >= 0) patch.salesAmount = value;
-  }
-  await updateVisit(visitId, patch, ownerUserId);
+  const numeric = (name: string) => {
+    const raw = String(formData.get(name) || "").trim();
+    if (!raw) return undefined;
+    const value = Number(raw);
+    return Number.isFinite(value) && value >= 0 ? value : undefined;
+  };
+  await updateVisit(visitId, {
+    salesAmount: numeric("salesAmount"),
+    receivableAmount: numeric("receivableAmount"),
+    drinkCount: numeric("drinkCount"),
+    bottleCount: numeric("bottleCount"),
+    bottleNote: String(formData.get("bottleNote") || "").trim() || undefined,
+  }, ownerUserId);
   redirect(`/visits/${visitId}`);
 }
 
