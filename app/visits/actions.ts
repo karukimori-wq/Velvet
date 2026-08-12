@@ -24,7 +24,10 @@ export async function endVisitAction(formData: FormData) {
 export async function quickUpdateVisitAction(visitId: string, field: "seatingReason" | "paymentMethod" | "visitContext", value: string) {
   const { ownerUserId } = await getRequestIdentity();
   if (field === "seatingReason") {
-    await updateVisit(visitId, { seatingReason: value || undefined }, ownerUserId);
+    await updateVisit(visitId, {
+      seatingReason: value || undefined,
+      visitContext: value === "同伴" ? "accompaniment" : undefined,
+    }, ownerUserId);
   } else if (field === "visitContext") {
     const allowed: VisitContext[] = ["solo", "group", "entertainment", "business", "accompaniment", "other"];
     const visitContext = allowed.includes(value as VisitContext) ? value as VisitContext : undefined;
