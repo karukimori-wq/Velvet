@@ -13,8 +13,15 @@ const contactLabels: Record<string, string> = {
 };
 const maritalLabels: Record<string, string> = { unmarried: "未婚", married: "既婚", unknown: "婚姻状況不明" };
 
-export default async function PersonDetailPage({ params }: { params: Promise<{ personId: string }> }) {
+export default async function PersonDetailPage({
+  params,
+  searchParams,
+}: {
+  params: Promise<{ personId: string }>;
+  searchParams: Promise<{ justEnded?: string }>;
+}) {
   const { personId } = await params;
+  const { justEnded } = await searchParams;
   const identity = await getRequestIdentity();
   const person = await getPersonStore(personId, identity.ownerUserId);
   if (!person) notFound();
@@ -41,6 +48,13 @@ export default async function PersonDetailPage({ params }: { params: Promise<{ p
         <h1>{person.name}{person.rank ? ` · ${person.rank}` : ""}</h1>
         {person.nextVisit && <p>{person.nextVisit} 来店予定</p>}
       </section>
+
+      {justEnded && !activeVisit && (
+        <Link className="card actionLink noticeCard" href={`/capture?personId=${person.id}&fromVisit=${encodeURIComponent(justEnded)}`}>
+          <div className="timelineTitle">30秒メモ</div>
+          <div className="timelineBody">覚えているうちに、タップ中心で残す</div>
+        </Link>
+      )}
 
       {(person.personality.length > 0 || profileValues.length > 0) && <>
         <div className="sectionTitle">パーソナリティ</div>
