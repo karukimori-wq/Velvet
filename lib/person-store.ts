@@ -28,7 +28,7 @@ type PersonRow = {
 };
 
 type KnowledgeRow = { person_id: string; value: string };
-type TimelineRow = { person_id: string; id: string; occurred_at: string; title: string; body: string | null };
+type TimelineRow = { person_id: string; id: string; occurred_at: string; title: string; body: string | null; event_type: string; source_ref: string | null };
 
 function toDateLabel(value: string | null | undefined) {
   return value ? new Date(value).toISOString().slice(0, 10) : undefined;
@@ -55,7 +55,14 @@ function mapRows(rows: PersonRow[], knowledgeRows: KnowledgeRow[], timelineRows:
   const timeline = new Map<string, TimelineItem[]>();
   for (const row of timelineRows) {
     const list = timeline.get(row.person_id) ?? [];
-    list.push({ id: row.id, date: toDateLabel(row.occurred_at) ?? "", title: row.title, body: row.body ?? undefined });
+    list.push({
+      id: row.id,
+      date: toDateLabel(row.occurred_at) ?? "",
+      title: row.title,
+      body: row.body ?? undefined,
+      eventType: row.event_type,
+      sourceRef: row.source_ref ?? undefined,
+    });
     timeline.set(row.person_id, list);
   }
 
@@ -78,7 +85,7 @@ export async function listPeopleStore(ownerUserId: string, options: ReadOptions 
   const [people, knowledge, timeline] = await Promise.all([
     dbQuery<PersonRow>(`select id, owner_user_id, name, rank, last_visit::text, next_visit::text from velvet_people where owner_user_id = $1 order by updated_at desc, name`, [ownerUserId]),
     dbQuery<KnowledgeRow>(`select person_id, value from velvet_knowledge where owner_user_id = $1 order by created_at`, [ownerUserId]),
-    dbQuery<TimelineRow>(`select person_id, id, occurred_at::text, title, body from velvet_timeline_items where owner_user_id = $1 and ($2::timestamptz is null or occurred_at >= $2) order by occurred_at desc`, [ownerUserId, cutoff]),
+    dbQuery<TimelineRow>(`select person_id, id, occurred_at::text, title, body, event_type, source_ref from velvet_timeline_items where owner_user_id = $1 and ($2::timestamptz is null or occurred_at >= $2) order by occurred_at desc`, [ownerUserId, cutoff]),
   ]);
   return mapRows(people.rows, knowledge.rows, timeline.rows, access, options);
 }
@@ -94,7 +101,7 @@ export async function getPersonStore(personId: string, ownerUserId: string, opti
   if (!people.rows[0]) return undefined;
   const [knowledge, timeline] = await Promise.all([
     dbQuery<KnowledgeRow>(`select person_id, value from velvet_knowledge where person_id = $1 and owner_user_id = $2 order by created_at`, [personId, ownerUserId]),
-    dbQuery<TimelineRow>(`select person_id, id, occurred_at::text, title, body from velvet_timeline_items where person_id = $1 and owner_user_id = $2 and ($3::timestamptz is null or occurred_at >= $3) order by occurred_at desc`, [personId, ownerUserId, cutoff]),
+    dbQuery<TimelineRow>(`select person_id, id, occurred_at::text, title, body, event_type, source_ref from velvet_timeline_items where person_id = $1 and owner_user_id = $2 and ($3::timestamptz is null or occurred_at >= $3) order by occurred_at desc`, [personId, ownerUserId, cutoff]),
   ]);
   return mapRows(people.rows, knowledge.rows, timeline.rows, access, options)[0];
 }
@@ -143,7 +150,14 @@ export async function addTimelineItemStore(personId: string, item: { id?: string
   if (getStorageMode() !== "postgres") {
     const person = getMemoryPerson(personId, ownerUserId);
     if (!person) return undefined;
-    person.timeline.unshift({ id: item.id ?? makeId("timeline"), date: item.date ?? new Date().toISOString().slice(0, 10), title: item.title, body: item.body });
+    person.timeline.unshift({
+      id: item.id ?? makeId("timeline"),
+      date: item.date ?? new Date().toISOString().slice(0, 10),
+      title: item.title,
+      body: item.body,
+      eventType: item.eventType,
+      sourceRef: item.sourceRef,
+    });
     const access = await getPlanAccess(ownerUserId);
     return applyMemoryAccess(person, access, {});
   }
