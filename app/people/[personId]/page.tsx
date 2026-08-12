@@ -5,7 +5,7 @@ import { getRequestIdentity } from "@/lib/auth/request-identity";
 import { listPersonContacts } from "@/lib/contact-repository";
 import { getPersonProfile } from "@/lib/person-profile-repository";
 import { getPersonStore } from "@/lib/person-store";
-import { getActiveVisitForPerson } from "@/lib/visit-repository";
+import { getActiveVisitForPerson, getPersonVisitStats } from "@/lib/visit-repository";
 import { startVisitAction } from "@/app/visits/actions";
 
 const contactLabels: Record<string, string> = {
@@ -13,6 +13,7 @@ const contactLabels: Record<string, string> = {
 };
 const maritalLabels: Record<string, string> = { unmarried: "未婚", married: "既婚", unknown: "婚姻状況不明" };
 const eventLabels: Record<string, string> = { visit: "来店", conversation: "会話", gift: "Gift", schedule: "予定", relationship: "関係" };
+const paymentLabels: Record<string, string> = { cash: "現金", card: "カード", qr: "QR", receivable: "売掛", other: "その他" };
 
 export default async function PersonDetailPage({
   params,
@@ -26,10 +27,11 @@ export default async function PersonDetailPage({
   const identity = await getRequestIdentity();
   const person = await getPersonStore(personId, identity.ownerUserId);
   if (!person) notFound();
-  const [activeVisit, contacts, profile] = await Promise.all([
+  const [activeVisit, contacts, profile, visitStats] = await Promise.all([
     getActiveVisitForPerson(person.id, identity.ownerUserId),
     listPersonContacts(person.id, identity.ownerUserId),
     getPersonProfile(person.id, identity.ownerUserId),
+    getPersonVisitStats(person.id, identity.ownerUserId),
   ]);
   const profileValues = [
     profile?.occupation,
@@ -93,6 +95,21 @@ export default async function PersonDetailPage({
         <Link className="action actionLink" href={`/people/${person.id}/gift`}>Gift</Link>
         <Link className="action actionLink" href={`/relationships/new?personId=${person.id}`}>関係</Link>
       </div>
+
+      {visitStats.visitCount > 0 && (
+        <details className="detailsCard">
+          <summary>実績を見る</summary>
+          <div className="detailsBody stack">
+            <div className="chips">
+              <span className="chip">来店 {visitStats.visitCount}回</span>
+              <span className="chip">累計 ¥{visitStats.totalSales.toLocaleString("ja-JP")}</span>
+              {visitStats.averageStayMinutes !== undefined && <span className="chip">平均滞在 {visitStats.averageStayMinutes}分</span>}
+              {visitStats.lastVisitAt && <span className="chip">最終来店 {visitStats.lastVisitAt.slice(0, 10)}</span>}
+              {visitStats.commonPaymentMethod && <span className="chip">支払 {paymentLabels[visitStats.commonPaymentMethod] ?? visitStats.commonPaymentMethod}</span>}
+            </div>
+          </div>
+        </details>
+      )}
 
       {person.timeline.length > 0 ? <>
         <div className="sectionTitle">タイムライン</div>
