@@ -2,51 +2,31 @@
 
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
-import { getRequestIdentity } from "@/lib/auth/request-identity";
-import {
-  addPersonKnowledgeStore,
-  removePersonKnowledgeStore,
-} from "@/lib/person-store";
 
-export async function createPersonAction() {
-  throw new Error("VELVET_CUSTOMER_CREATION_DISABLED: Customer master is owned by Growth Engine.");
+function customerWriteNotOwned(): never {
+  throw new Error("VELVET_CUSTOMER_WRITE_NOT_OWNED: Customer master and legacy Person records are read-only. Use Growth Engine for Customer data and Velvet Customer Memory for professional notes.");
 }
 
-export async function updatePersonAction(personId: string) {
+export async function createPersonAction() { return customerWriteNotOwned(); }
+export async function addKnowledgeAction() { return customerWriteNotOwned(); }
+export async function removeKnowledgeAction() { return customerWriteNotOwned(); }
+
+export async function updatePersonAction(customerId: string) {
   revalidatePath("/people");
-  revalidatePath(`/people/${personId}`);
-  redirect(`/people/${personId}`);
+  revalidatePath(`/people/${customerId}`);
+  redirect(`/people/${customerId}`);
 }
 
-export async function updatePersonProfileAction(personId: string) {
-  revalidatePath(`/people/${personId}`);
-  revalidatePath(`/people/${personId}/edit`);
-  redirect(`/people/${personId}`);
+export async function updatePersonProfileAction(customerId: string) {
+  revalidatePath(`/people/${customerId}`);
+  redirect(`/people/${customerId}`);
 }
 
-export async function addKnowledgeAction(personId: string, formData: FormData) {
-  const { ownerUserId } = await getRequestIdentity();
-  const value = String(formData.get("value") ?? "").trim();
-  if (value) await addPersonKnowledgeStore(personId, value, ownerUserId);
-  revalidatePath("/people");
-  revalidatePath(`/people/${personId}`);
-  redirect(`/people/${personId}`);
+export async function addContactAction(customerId: string) {
+  revalidatePath(`/people/${customerId}`);
+  redirect(`/people/${customerId}`);
 }
 
-export async function removeKnowledgeAction(personId: string, value: string) {
-  const { ownerUserId } = await getRequestIdentity();
-  await removePersonKnowledgeStore(personId, value, ownerUserId);
-  revalidatePath("/people");
-  revalidatePath(`/people/${personId}`);
-}
-
-export async function addContactAction(personId: string) {
-  revalidatePath(`/people/${personId}`);
-  revalidatePath(`/people/${personId}/edit`);
-  redirect(`/people/${personId}/edit`);
-}
-
-export async function deleteContactAction(personId: string) {
-  revalidatePath(`/people/${personId}`);
-  revalidatePath(`/people/${personId}/edit`);
+export async function deleteContactAction(customerId: string) {
+  revalidatePath(`/people/${customerId}`);
 }
