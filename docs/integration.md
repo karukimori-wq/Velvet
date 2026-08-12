@@ -1,4 +1,4 @@
-# Velvet Integration Boundaries v1.0
+# Velvet Integration Boundaries v1.1
 
 Velvet is a Professional App connected to Growth Engine.
 
@@ -60,9 +60,60 @@ Do not return private memo bodies by default. Do not return `paymentStatus`, `sa
 
 AI Platform Core owns AI execution and AI usage. Velvet may send only the minimum user-triggered memo/search content needed for a capability. Customer/Payment/Sales canonical data is not copied into AI Platform Core.
 
-## SNS Planner
+## SNS Planner / MessageDraft
 
-Velvet may hand off explicit user-selected communication intent. Private customer notes and timeline bodies are not automatically sent. Growth Engine remains responsible for business targeting/intent; SNS Planner owns draft wording.
+`MessageDraft` is a formal contract owned by SNS Planner.
+
+Approved operations used by the platform:
+- `MessageDraft.Generate`
+- `MessageDraft.Rewrite`
+- `MessageDraft.Metadata`
+
+MVP HTTP mapping for generation:
+- `POST /api/message-drafts`
+
+Velvet exposes an explicit user-triggered handoff from the customer detail UI. Velvet does not own or persist MessageDraft canonical state.
+
+Velvet sends only the approved minimum request fields:
+- `workspaceId`
+- `userId`
+- `sourceApp: velvet`
+- `targetStudio: velvet`
+- `channel`
+- `purpose`
+- `audienceSegment`
+- `tone`
+- `cta`
+- `inputRef`
+
+For a customer-specific request, `inputRef` is reference-only, e.g. `velvet:customer:<customerId>`.
+
+Velvet must not send through MessageDraft:
+- Customer master records
+- contact-list dumps
+- payment state
+- `salesAmount`
+- Stripe data
+- full professional notes
+- full conversation timeline bodies
+- API keys / access tokens / secret prompts
+
+Expected response fields:
+- top-level `status` in `success | warning | error | skipped`
+- `messageDraftId`
+- `messageDraftStatus`
+- `channel`
+- `purpose`
+- `eventName: sns.message_draft.created.v1`
+- `traceId`
+- `correlationId`
+- `requestId`
+
+Velvet may display returned draft text if the SNS Planner transport includes it, but does not make that text canonical. SNS Planner owns MessageDraft state and publishes `sns.message_draft.created.v1` / `sns.message_draft.updated.v1`.
+
+Runtime configuration:
+- `SNS_PLANNER_BASE_URL`
+- status surface: `GET /api/message-drafts/status`
 
 ## Platform Admin
 
