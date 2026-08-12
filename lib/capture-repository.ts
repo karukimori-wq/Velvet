@@ -28,13 +28,42 @@ export async function getCapture(id: string, workspaceId: string, userId: string
 export async function getCaptureSuggestions(workspaceId: string, userId: string, customerId?: string, limit = 18): Promise<CaptureSuggestion[]> {
   const [captures, memory] = await Promise.all([listCaptures(workspaceId, userId), customerId ? getCustomerMemory(workspaceId, userId, customerId) : Promise.resolve(undefined)]);
   const scores = new Map<string, CaptureSuggestion>();
-  const add = (value: string, score: number, source: CaptureSuggestion["source"]) => { const v = value.trim(); if (!v || v.length > 30) return; const old = scores.get(v); if (!old || score > old.score) scores.set(v, { value: v, score, source }); };
-  for (const value of memory?.tags ?? []) add(value, 100, "customer");
-  const usage = new Map<string, number>();
-  for (const capture of captures) if (!['free_text','conversation_note'].includes(capture.kind)) for (const raw of capture.value.split(/[、,\n]/)) { const v = raw.trim(); if (v) usage.set(v, (usage.get(v) ?? 0) + (capture.customerId === customerId ? 5 : 1)); }
-  for (const [value, count] of usage) add(value, 30 + count * 5, customerId && captures.some((c) => c.customerId === customerId && c.value.includes(value)) ? "customer" : "recent");
+  const add = (value: string, score: number, source: CaptureSuggestion["source"]) => {
+    const v = value.trim();
+    if (!v || v.length > 30) return;
+    const old = scores.get(v);
+    if (!old || score > old.score) scores.set(v, { value: v, score, source });
+  };
+
+  for (const value of memory?.tags ?? []) add(value, 110, "customer");
+
+  const usage = new Map<string, { count: number; customerCount: number; latestAt: number }>();
+  const now = Date.now();
+  for (const capture of captures) {
+    if (["free_text", "conversation_note"].includes(capture.kind)) continue;
+    const createdAt = new Date(capture.createdAt).getTime();
+    for (const raw of capture.value.split(/[、,\n]/)) {
+      const value = raw.trim();
+      if (!value) continue;
+      const current = usage.get(value) ?? { count: 0, customerCount: 0, latestAt: 0 };
+      current.count += 1;
+      if (customerId && capture.customerId === customerId) current.customerCount += 1;
+      current.latestAt = Math.max(current.latestAt, createdAt);
+      usage.set(value, current);
+    }
+  }
+
+  for (const [value, info] of usage) {
+    const ageDays = Math.max(0, (now - info.latestAt) / 86_400_000);
+    const recencyScore = ageDays <= 1 ? 24 : ageDays <= 7 ? 18 : ageDays <= 30 ? 10 : ageDays <= 90 ? 4 : 0;
+    const frequencyScore = Math.min(30, info.count * 4);
+    const customerScore = Math.min(50, info.customerCount * 12);
+    const source: CaptureSuggestion["source"] = info.customerCount > 0 ? "customer" : "recent";
+    add(value, 25 + frequencyScore + customerScore + recencyScore, source);
+  }
+
   defaults.forEach((value, index) => add(value, 10 - index * 0.1, "default"));
-  return [...scores.values()].sort((a,b) => b.score-a.score).slice(0, limit);
+  return [...scores.values()].sort((a, b) => b.score - a.score || a.value.localeCompare(b.value, "ja")).slice(0, limit);
 }
 
 export async function createCapture(input: { workspaceId: string; userId: string; customerId?: string; kind?: CaptureKind; value: string }): Promise<CaptureEntry | undefined> {
