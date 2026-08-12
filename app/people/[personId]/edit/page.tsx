@@ -2,7 +2,7 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { getRequestIdentity } from "@/lib/auth/request-identity";
 import { listPersonContacts } from "@/lib/contact-repository";
-import { getPersonProfile } from "@/lib/person-profile-repository";
+import { getPersonProfile, listAllPersonProfiles } from "@/lib/person-profile-repository";
 import { getPersonStore } from "@/lib/person-store";
 import { addContactAction, addKnowledgeAction, deleteContactAction, updatePersonAction, updatePersonProfileAction } from "../../actions";
 
@@ -10,15 +10,21 @@ const contactLabels: Record<string, string> = {
   phone: "電話", email: "メール", line: "LINE", instagram: "Instagram", x: "X", tiktok: "TikTok", other: "その他",
 };
 
+const unique = (values: Array<string | undefined>) => Array.from(new Set(values.filter(Boolean) as string[]));
+
 export default async function EditPersonPage({ params }: { params: Promise<{ personId: string }> }) {
   const { personId } = await params;
   const { ownerUserId } = await getRequestIdentity();
   const person = await getPersonStore(personId, ownerUserId);
   if (!person) notFound();
-  const [contacts, profile] = await Promise.all([
+  const [contacts, profile, allProfiles] = await Promise.all([
     listPersonContacts(personId, ownerUserId),
     getPersonProfile(personId, ownerUserId),
+    listAllPersonProfiles(ownerUserId),
   ]);
+  const occupationSuggestions = unique(allProfiles.map((item) => item.occupation));
+  const companySuggestions = unique(allProfiles.map((item) => item.company));
+  const areaSuggestions = unique(allProfiles.map((item) => item.area));
 
   return (
     <main className="shell">
@@ -35,9 +41,13 @@ export default async function EditPersonPage({ params }: { params: Promise<{ per
       <details className="detailsCard" open={Boolean(profile)}>
         <summary>{profile ? "基本プロフィールを編集" : "基本プロフィールを追加"}</summary>
         <form action={updatePersonProfileAction.bind(null, person.id)} className="stack detailsBody">
-          <input className="searchBox" name="occupation" defaultValue={profile?.occupation ?? ""} placeholder="職業（任意）" autoComplete="off" />
-          <input className="searchBox" name="company" defaultValue={profile?.company ?? ""} placeholder="会社・勤務先（任意）" autoComplete="off" />
-          <input className="searchBox" name="area" defaultValue={profile?.area ?? ""} placeholder="住んでいる/活動エリア（任意）" autoComplete="off" />
+          <input className="searchBox" name="occupation" list="occupation-suggestions" defaultValue={profile?.occupation ?? ""} placeholder="職業（任意）" autoComplete="off" />
+          <datalist id="occupation-suggestions">{occupationSuggestions.map((value) => <option value={value} key={value} />)}</datalist>
+          <input className="searchBox" name="company" list="company-suggestions" defaultValue={profile?.company ?? ""} placeholder="会社・勤務先（任意）" autoComplete="off" />
+          <datalist id="company-suggestions">{companySuggestions.map((value) => <option value={value} key={value} />)}</datalist>
+          <input className="searchBox" name="area" list="area-suggestions" defaultValue={profile?.area ?? ""} placeholder="住んでいる/活動エリア（任意）" autoComplete="off" />
+          <datalist id="area-suggestions">{areaSuggestions.map((value) => <option value={value} key={value} />)}</datalist>
+          <div className="formHint">過去に入力した職業・会社・エリアは候補として再利用されます。</div>
           <label className="fieldLabel" htmlFor="birthDate">生年月日（任意）</label>
           <input id="birthDate" className="searchBox" type="date" name="birthDate" defaultValue={profile?.birthDate ?? ""} />
           <select className="selectBox" name="maritalStatus" defaultValue={profile?.maritalStatus ?? ""}>
