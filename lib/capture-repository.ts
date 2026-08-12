@@ -1,9 +1,9 @@
 import { getPlanAccess, isWithinHistoryWindow } from "@/lib/plan-access";
 import { getStorageMode } from "@/lib/storage/config";
 import { dbQuery } from "@/lib/storage/postgres";
-import { addPersonKnowledgeStore, getPersonStore, listPeopleStore } from "@/lib/person-store";
+import { addPersonKnowledgeStore, addTimelineItemStore, getPersonStore, listPeopleStore } from "@/lib/person-store";
 
-export type CaptureKind = "knowledge" | "drink" | "work" | "hobby" | "appearance" | "accessory" | "marital_status" | "free_text";
+export type CaptureKind = "knowledge" | "drink" | "work" | "hobby" | "appearance" | "accessory" | "marital_status" | "conversation_note" | "free_text";
 export type CaptureEntry = {
   id: string;
   ownerUserId: string;
@@ -87,13 +87,11 @@ export async function getCaptureSuggestions(ownerUserId: string, personId?: stri
     if (!existing || score > existing.score) scores.set(normalized, { value: normalized, score, source });
   };
 
-  // Person-specific memory wins. These are the most likely things the user wants to re-confirm quickly.
   for (const value of person?.personality ?? []) add(value, 100, "person");
 
-  // Repeated/recent captures become the user's personal stamp dictionary.
   const usage = new Map<string, { count: number; latest: number; personCount: number }>();
   for (const capture of captures) {
-    if (capture.kind === "free_text") continue;
+    if (capture.kind === "free_text" || capture.kind === "conversation_note") continue;
     for (const value of splitCandidateValues(capture.value)) {
       const current = usage.get(value) ?? { count: 0, latest: 0, personCount: 0 };
       current.count += 1;
@@ -109,7 +107,6 @@ export async function getCaptureSuggestions(ownerUserId: string, personId?: stri
     add(value, score, info.personCount > 0 ? "person" : "recent");
   }
 
-  // Existing personality across all people also feeds the reusable dictionary.
   const personalityFrequency = new Map<string, number>();
   for (const item of people) for (const value of item.personality) personalityFrequency.set(value, (personalityFrequency.get(value) ?? 0) + 1);
   for (const [value, count] of personalityFrequency) add(value, 30 + Math.min(20, count * 3), "recent");
@@ -129,6 +126,17 @@ export async function createCapture(input: { ownerUserId: string; personId?: str
     `insert into velvet_captures (id, owner_user_id, person_id, raw_text, status, kind, created_at) values ($1,$2,$3,$4,'saved',$5,$6)`,
     [entry.id, entry.ownerUserId, entry.personId ?? null, entry.value, entry.kind, entry.createdAt],
   );
-  if (input.personId && entry.kind !== "free_text") await addPersonKnowledgeStore(input.personId, value, input.ownerUserId);
+
+  if (input.personId && entry.kind === "conversation_note") {
+    await addTimelineItemStore(input.personId, {
+      id: `timeline_${entry.id}`,
+      title: "会話メモ",
+      body: value,
+      eventType: "conversation_note",
+      sourceRef: entry.id,
+    }, input.ownerUserId);
+  } else if (input.personId && entry.kind !== "free_text") {
+    await addPersonKnowledgeStore(input.personId, value, input.ownerUserId);
+  }
   return entry;
 }
