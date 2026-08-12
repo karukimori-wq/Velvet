@@ -58,6 +58,7 @@ button { cursor: pointer; }
 .primaryButton { border: 0; background: #efe8f2; color: #171319; }
 .secondaryButton { border: 1px solid #3a343e; background: #211e24; color: #fff; }
 .dangerButton { border: 1px solid #5b3438; background: #2c1d20; color: #ffdfe2; }
+.compactButton { width: auto; min-height: 38px; padding: 8px 12px; }
 .compactForm { margin-top: 16px; }
 .choiceRow { gap: 8px; }
 .choiceChip { position: relative; border-radius: 999px; background: #252128; padding: 9px 12px; font-size: 13px; cursor: pointer; }
