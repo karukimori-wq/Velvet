@@ -1,142 +1,47 @@
-import { getPlanAccess, isWithinHistoryWindow } from "@/lib/plan-access";
 import { getStorageMode } from "@/lib/storage/config";
 import { dbQuery } from "@/lib/storage/postgres";
-import { addPersonKnowledgeStore, addTimelineItemStore, getPersonStore, listPeopleStore } from "@/lib/person-store";
+import { getCustomerMemory, upsertCustomerMemory } from "@/lib/customer-memory-repository";
+import { addProfessionalTimelineItem } from "@/lib/professional-timeline-repository";
 
 export type CaptureKind = "knowledge" | "drink" | "work" | "hobby" | "appearance" | "accessory" | "marital_status" | "conversation_note" | "free_text";
-export type CaptureEntry = {
-  id: string;
-  ownerUserId: string;
-  personId?: string;
-  kind: CaptureKind;
-  value: string;
-  createdAt: string;
-};
+export type CaptureEntry = { id: string; workspaceId: string; userId: string; customerId?: string; kind: CaptureKind; value: string; createdAt: string };
+export type CaptureSuggestion = { value: string; source: "customer" | "recent" | "default"; score: number };
 
-export type CaptureSuggestion = {
-  value: string;
-  source: "person" | "recent" | "default";
-  score: number;
-};
-
-type ReadOptions = { includeArchived?: boolean };
 const entries: CaptureEntry[] = [];
 const makeId = () => `capture_${Date.now().toString(36)}_${Math.random().toString(36).slice(2, 7)}`;
+const defaults = ["メガネ", "黒髪", "既婚", "未婚", "ロレックス", "ゴルフ", "犬", "響", "白州", "旅行", "会社経営", "甘いもの好き"];
+type CaptureRow = { id: string; workspace_id: string; user_id: string; customer_id: string | null; kind: CaptureKind; raw_text: string; created_at: string };
+const mapRow = (row: CaptureRow): CaptureEntry => ({ id: row.id, workspaceId: row.workspace_id, userId: row.user_id, customerId: row.customer_id ?? undefined, kind: row.kind, value: row.raw_text, createdAt: new Date(row.created_at).toISOString() });
 
-const defaultSuggestions = [
-  "メガネ", "黒髪", "既婚", "未婚", "ロレックス", "ゴルフ", "犬", "響", "白州", "旅行", "会社経営", "甘いもの好き",
-];
-
-type CaptureRow = { id: string; owner_user_id: string; person_id: string | null; kind: CaptureKind; raw_text: string; created_at: string };
-const mapCapture = (row: CaptureRow): CaptureEntry => ({
-  id: row.id,
-  ownerUserId: row.owner_user_id,
-  personId: row.person_id ?? undefined,
-  kind: row.kind,
-  value: row.raw_text,
-  createdAt: new Date(row.created_at).toISOString(),
-});
-
-export async function listCaptures(ownerUserId: string, personId?: string, options: ReadOptions = {}): Promise<CaptureEntry[]> {
-  const access = await getPlanAccess(ownerUserId);
-  if (getStorageMode() !== "postgres") {
-    return entries.filter((entry) => entry.ownerUserId === ownerUserId && (!personId || entry.personId === personId) && (options.includeArchived || isWithinHistoryWindow(entry.createdAt, access)));
-  }
-  const cutoff = options.includeArchived || access.fullHistory ? null : access.historyCutoff?.toISOString() ?? null;
-  const rows = await dbQuery<CaptureRow>(
-    `select id, owner_user_id, person_id, kind, raw_text, created_at::text
-     from velvet_captures
-     where owner_user_id = $1 and ($2::text is null or person_id = $2) and ($3::timestamptz is null or created_at >= $3)
-     order by created_at desc`,
-    [ownerUserId, personId ?? null, cutoff],
-  );
-  return rows.rows.map(mapCapture);
+export async function listCaptures(workspaceId: string, userId: string, customerId?: string): Promise<CaptureEntry[]> {
+  if (getStorageMode() !== "postgres") return entries.filter((entry) => entry.workspaceId === workspaceId && entry.userId === userId && (!customerId || entry.customerId === customerId));
+  const rows = await dbQuery<CaptureRow>(`select id, workspace_id, user_id, customer_id, kind, raw_text, created_at::text from velvet_professional_captures where workspace_id=$1 and user_id=$2 and ($3::text is null or customer_id=$3) order by created_at desc`, [workspaceId, userId, customerId ?? null]);
+  return rows.rows.map(mapRow);
 }
 
-export async function getCapture(id: string, ownerUserId: string, options: ReadOptions = {}): Promise<CaptureEntry | undefined> {
-  const access = await getPlanAccess(ownerUserId);
-  if (getStorageMode() !== "postgres") {
-    const entry = entries.find((item) => item.id === id && item.ownerUserId === ownerUserId);
-    return entry && (options.includeArchived || isWithinHistoryWindow(entry.createdAt, access)) ? entry : undefined;
-  }
-  const cutoff = options.includeArchived || access.fullHistory ? null : access.historyCutoff?.toISOString() ?? null;
-  const rows = await dbQuery<CaptureRow>(
-    `select id, owner_user_id, person_id, kind, raw_text, created_at::text from velvet_captures where id = $1 and owner_user_id = $2 and ($3::timestamptz is null or created_at >= $3) limit 1`,
-    [id, ownerUserId, cutoff],
-  );
-  return rows.rows[0] ? mapCapture(rows.rows[0]) : undefined;
+export async function getCapture(id: string, workspaceId: string, userId: string): Promise<CaptureEntry | undefined> {
+  if (getStorageMode() !== "postgres") return entries.find((entry) => entry.id === id && entry.workspaceId === workspaceId && entry.userId === userId);
+  const rows = await dbQuery<CaptureRow>(`select id, workspace_id, user_id, customer_id, kind, raw_text, created_at::text from velvet_professional_captures where id=$1 and workspace_id=$2 and user_id=$3 limit 1`, [id, workspaceId, userId]);
+  return rows.rows[0] ? mapRow(rows.rows[0]) : undefined;
 }
 
-function splitCandidateValues(raw: string) {
-  return raw.split(/[、,\n]/).map((value) => value.trim()).filter((value) => value.length > 0 && value.length <= 30);
-}
-
-export async function getCaptureSuggestions(ownerUserId: string, personId?: string, limit = 18): Promise<CaptureSuggestion[]> {
-  const [captures, people, person] = await Promise.all([
-    listCaptures(ownerUserId),
-    listPeopleStore(ownerUserId),
-    personId ? getPersonStore(personId, ownerUserId) : Promise.resolve(undefined),
-  ]);
+export async function getCaptureSuggestions(workspaceId: string, userId: string, customerId?: string, limit = 18): Promise<CaptureSuggestion[]> {
+  const [captures, memory] = await Promise.all([listCaptures(workspaceId, userId), customerId ? getCustomerMemory(workspaceId, userId, customerId) : Promise.resolve(undefined)]);
   const scores = new Map<string, CaptureSuggestion>();
-  const now = Date.now();
-
-  const add = (value: string, score: number, source: CaptureSuggestion["source"]) => {
-    const normalized = value.trim();
-    if (!normalized || normalized.length > 30) return;
-    const existing = scores.get(normalized);
-    if (!existing || score > existing.score) scores.set(normalized, { value: normalized, score, source });
-  };
-
-  for (const value of person?.personality ?? []) add(value, 100, "person");
-
-  const usage = new Map<string, { count: number; latest: number; personCount: number }>();
-  for (const capture of captures) {
-    if (capture.kind === "free_text" || capture.kind === "conversation_note") continue;
-    for (const value of splitCandidateValues(capture.value)) {
-      const current = usage.get(value) ?? { count: 0, latest: 0, personCount: 0 };
-      current.count += 1;
-      current.latest = Math.max(current.latest, new Date(capture.createdAt).getTime());
-      if (personId && capture.personId === personId) current.personCount += 1;
-      usage.set(value, current);
-    }
-  }
-  for (const [value, info] of usage) {
-    const ageDays = Math.max(0, (now - info.latest) / 86_400_000);
-    const recency = Math.max(0, 20 - Math.min(20, ageDays));
-    const score = 35 + Math.min(25, info.count * 4) + recency + Math.min(30, info.personCount * 10);
-    add(value, score, info.personCount > 0 ? "person" : "recent");
-  }
-
-  const personalityFrequency = new Map<string, number>();
-  for (const item of people) for (const value of item.personality) personalityFrequency.set(value, (personalityFrequency.get(value) ?? 0) + 1);
-  for (const [value, count] of personalityFrequency) add(value, 30 + Math.min(20, count * 3), "recent");
-
-  for (const [index, value] of defaultSuggestions.entries()) add(value, 10 - index * 0.1, "default");
-
-  return [...scores.values()].sort((a, b) => b.score - a.score || a.value.localeCompare(b.value, "ja")).slice(0, limit);
+  const add = (value: string, score: number, source: CaptureSuggestion["source"]) => { const v = value.trim(); if (!v || v.length > 30) return; const old = scores.get(v); if (!old || score > old.score) scores.set(v, { value: v, score, source }); };
+  for (const value of memory?.tags ?? []) add(value, 100, "customer");
+  const usage = new Map<string, number>();
+  for (const capture of captures) if (!['free_text','conversation_note'].includes(capture.kind)) for (const raw of capture.value.split(/[、,\n]/)) { const v = raw.trim(); if (v) usage.set(v, (usage.get(v) ?? 0) + (capture.customerId === customerId ? 5 : 1)); }
+  for (const [value, count] of usage) add(value, 30 + count * 5, customerId && captures.some((c) => c.customerId === customerId && c.value.includes(value)) ? "customer" : "recent");
+  defaults.forEach((value, index) => add(value, 10 - index * 0.1, "default"));
+  return [...scores.values()].sort((a,b) => b.score-a.score).slice(0, limit);
 }
 
-export async function createCapture(input: { ownerUserId: string; personId?: string; kind?: CaptureKind; value: string }): Promise<CaptureEntry | undefined> {
-  const value = input.value.trim();
-  if (!value) return undefined;
-  if (input.personId && !(await getPersonStore(input.personId, input.ownerUserId))) return undefined;
-  const entry: CaptureEntry = { id: makeId(), ownerUserId: input.ownerUserId, personId: input.personId, kind: input.kind ?? "free_text", value, createdAt: new Date().toISOString() };
-  if (getStorageMode() !== "postgres") entries.unshift(entry);
-  else await dbQuery(
-    `insert into velvet_captures (id, owner_user_id, person_id, raw_text, status, kind, created_at) values ($1,$2,$3,$4,'saved',$5,$6)`,
-    [entry.id, entry.ownerUserId, entry.personId ?? null, entry.value, entry.kind, entry.createdAt],
-  );
-
-  if (input.personId && entry.kind === "conversation_note") {
-    await addTimelineItemStore(input.personId, {
-      id: `timeline_${entry.id}`,
-      title: "会話メモ",
-      body: value,
-      eventType: "conversation_note",
-      sourceRef: entry.id,
-    }, input.ownerUserId);
-  } else if (input.personId && entry.kind !== "free_text") {
-    await addPersonKnowledgeStore(input.personId, value, input.ownerUserId);
-  }
+export async function createCapture(input: { workspaceId: string; userId: string; customerId?: string; kind?: CaptureKind; value: string }): Promise<CaptureEntry | undefined> {
+  const value = input.value.trim(); if (!value) return undefined;
+  const entry: CaptureEntry = { id: makeId(), workspaceId: input.workspaceId, userId: input.userId, customerId: input.customerId, kind: input.kind ?? "free_text", value, createdAt: new Date().toISOString() };
+  if (getStorageMode() !== "postgres") entries.unshift(entry); else await dbQuery(`insert into velvet_professional_captures (id, workspace_id, user_id, customer_id, kind, raw_text, created_at) values ($1,$2,$3,$4,$5,$6,$7)`, [entry.id, entry.workspaceId, entry.userId, entry.customerId ?? null, entry.kind, entry.value, entry.createdAt]);
+  if (entry.customerId && entry.kind === "conversation_note") await addProfessionalTimelineItem({ workspaceId: entry.workspaceId, userId: entry.userId, customerId: entry.customerId, eventType: "conversation", title: "会話メモ", body: value, sourceRef: entry.id });
+  else if (entry.customerId && entry.kind !== "free_text") { const memory = await getCustomerMemory(entry.workspaceId, entry.userId, entry.customerId); const tags = Array.from(new Set([...(memory?.tags ?? []), ...value.split(/[、,\n]/).map(v=>v.trim()).filter(Boolean)])); await upsertCustomerMemory(entry.workspaceId, entry.userId, entry.customerId, { tags }); }
   return entry;
 }
