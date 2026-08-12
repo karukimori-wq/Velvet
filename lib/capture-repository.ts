@@ -2,6 +2,7 @@ import { getStorageMode } from "@/lib/storage/config";
 import { dbQuery } from "@/lib/storage/postgres";
 import { getCustomerMemory, upsertCustomerMemory } from "@/lib/customer-memory-repository";
 import { addProfessionalTimelineItem } from "@/lib/professional-timeline-repository";
+import { listDictionaryEntries, recordDictionaryUse } from "@/lib/capture-dictionary-repository";
 
 export type CaptureKind = "knowledge" | "drink" | "work" | "hobby" | "appearance" | "accessory" | "marital_status" | "conversation_note" | "free_text";
 export type CaptureEntry = { id: string; workspaceId: string; userId: string; customerId?: string; kind: CaptureKind; value: string; createdAt: string };
@@ -26,7 +27,11 @@ export async function getCapture(id: string, workspaceId: string, userId: string
 }
 
 export async function getCaptureSuggestions(workspaceId: string, userId: string, customerId?: string, limit = 18): Promise<CaptureSuggestion[]> {
-  const [captures, memory] = await Promise.all([listCaptures(workspaceId, userId), customerId ? getCustomerMemory(workspaceId, userId, customerId) : Promise.resolve(undefined)]);
+  const [captures, memory, dictionary] = await Promise.all([
+    listCaptures(workspaceId, userId),
+    customerId ? getCustomerMemory(workspaceId, userId, customerId) : Promise.resolve(undefined),
+    listDictionaryEntries(workspaceId, userId, 80),
+  ]);
   const scores = new Map<string, CaptureSuggestion>();
   const add = (value: string, score: number, source: CaptureSuggestion["source"]) => {
     const v = value.trim();
@@ -36,6 +41,7 @@ export async function getCaptureSuggestions(workspaceId: string, userId: string,
   };
 
   for (const value of memory?.tags ?? []) add(value, 110, "customer");
+  for (const item of dictionary) add(item.displayValue, 35 + Math.min(35, item.useCount * 4), "recent");
 
   const usage = new Map<string, { count: number; customerCount: number; latestAt: number }>();
   const now = Date.now();
@@ -70,6 +76,9 @@ export async function createCapture(input: { workspaceId: string; userId: string
   const value = input.value.trim(); if (!value) return undefined;
   const entry: CaptureEntry = { id: makeId(), workspaceId: input.workspaceId, userId: input.userId, customerId: input.customerId, kind: input.kind ?? "free_text", value, createdAt: new Date().toISOString() };
   if (getStorageMode() !== "postgres") entries.unshift(entry); else await dbQuery(`insert into velvet_professional_captures (id, workspace_id, user_id, customer_id, kind, raw_text, created_at) values ($1,$2,$3,$4,$5,$6,$7)`, [entry.id, entry.workspaceId, entry.userId, entry.customerId ?? null, entry.kind, entry.value, entry.createdAt]);
+  if (!['free_text','conversation_note'].includes(entry.kind)) {
+    for (const part of value.split(/[、,\n]/).map((item) => item.trim()).filter(Boolean)) await recordDictionaryUse(entry.workspaceId, entry.userId, part, entry.kind);
+  }
   if (entry.customerId && entry.kind === "conversation_note") await addProfessionalTimelineItem({ workspaceId: entry.workspaceId, userId: entry.userId, customerId: entry.customerId, eventType: "conversation", title: "会話メモ", body: value, sourceRef: entry.id });
   else if (entry.customerId && entry.kind !== "free_text") { const memory = await getCustomerMemory(entry.workspaceId, entry.userId, entry.customerId); const tags = Array.from(new Set([...(memory?.tags ?? []), ...value.split(/[、,\n]/).map(v=>v.trim()).filter(Boolean)])); await upsertCustomerMemory(entry.workspaceId, entry.userId, entry.customerId, { tags }); }
   return entry;
