@@ -1,26 +1,24 @@
 import Link from "next/link";
-import { createPersonAction } from "../actions";
 
-export default async function NewPersonPage({ searchParams }: { searchParams: Promise<{ error?: string }> }) {
-  const { error } = await searchParams;
+export default function NewPersonPage() {
   return (
     <main className="shell">
       <header className="header">
         <Link className="subtle" href="/people">‹ People</Link>
-        <span className="subtle">新規登録</span>
+        <span className="subtle">Customer参照</span>
       </header>
 
       <section className="hero">
-        <h1>名前だけで登録</h1>
-        <p>分かることは、あとから少しずつ追加できます。</p>
+        <h1>顧客はGrowth Engineで管理します</h1>
+        <p>VelvetではCustomer masterを新規作成しません。Growth Engineから顧客を開くと、そのcustomerIdにVelvetの接客メモや専門タイムラインを紐づけます。</p>
       </section>
 
-      <form action={createPersonAction} className="stack">
-        <label className="fieldLabel" htmlFor="name">名前</label>
-        <input id="name" name="name" className="searchBox" placeholder="山田さん" autoFocus autoComplete="off" />
-        {error === "name" && <div className="formError">名前を入力してください</div>}
-        <button className="primaryButton" type="submit">登録</button>
-      </form>
+      <div className="card">
+        <div className="timelineTitle">Velvetで追加できるもの</div>
+        <div className="timelineBody">好み・注意点・会話メモ・前回対応・次回話題・接客タイムライン</div>
+      </div>
+
+      <Link className="primaryButton actionLink" href="/people">Peopleへ戻る</Link>
     </main>
   );
 }
