@@ -3,23 +3,21 @@ import { createGift, listGifts, type GiftDirection } from "@/lib/gift-repository
 import { getRequestIdentity } from "@/lib/auth/request-identity";
 
 export async function GET(request: Request) {
-  const { ownerUserId } = await getRequestIdentity();
+  const { workspaceId, userId } = await getRequestIdentity();
   const { searchParams } = new URL(request.url);
-  const personId = searchParams.get("personId") || undefined;
-  return NextResponse.json({ status: "success", gifts: await listGifts(ownerUserId, personId) });
+  const customerId = searchParams.get("customerId") || undefined;
+  return NextResponse.json({ status: "success", gifts: await listGifts(workspaceId, userId, customerId) });
 }
 
 export async function POST(request: Request) {
-  const { ownerUserId } = await getRequestIdentity();
+  const { workspaceId, userId } = await getRequestIdentity();
   const body = await request.json().catch(() => ({}));
-  const personId = typeof body.personId === "string" ? body.personId : "";
+  const customerId = typeof body.customerId === "string" ? body.customerId : "";
   const item = typeof body.item === "string" ? body.item : "";
   const direction = (body.direction === "given" ? "given" : "received") as GiftDirection;
-  const estimatedValue = typeof body.estimatedValue === "number" ? body.estimatedValue : undefined;
   const occasion = typeof body.occasion === "string" ? body.occasion : undefined;
   const note = typeof body.note === "string" ? body.note : undefined;
-
-  const gift = await createGift({ ownerUserId, personId, direction, item, estimatedValue, occasion, note });
+  const gift = await createGift({ workspaceId, userId, customerId, direction, item, occasion, note });
   if (!gift) return NextResponse.json({ status: "error", error: { code: "INVALID_GIFT", message: "Gift could not be created." } }, { status: 400 });
   return NextResponse.json({ status: "success", gift }, { status: 201 });
 }
