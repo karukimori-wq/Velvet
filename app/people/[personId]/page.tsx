@@ -40,6 +40,9 @@ export default async function PersonDetailPage({
   ].filter(Boolean) as string[];
   const latestVisit = person.timeline.find((item) => item.eventType === "visit");
   const latestConversation = person.timeline.find((item) => item.eventType === "conversation");
+  const latestReceivedGift = person.timeline.find((item) => item.eventType === "gift" && item.title.startsWith("もらった"));
+  const latestGivenGift = person.timeline.find((item) => item.eventType === "gift" && item.title.startsWith("あげた"));
+  const recallItems = [latestVisit, latestConversation, latestReceivedGift, latestGivenGift].filter(Boolean).slice(0, 4);
 
   return (
     <main className="shell">
@@ -52,11 +55,12 @@ export default async function PersonDetailPage({
         {person.nextVisit && <p>{person.nextVisit} 来店予定</p>}
       </section>
 
-      {(latestVisit || latestConversation) && (
+      {recallItems.length > 0 && (
         <section className="card noticeCard">
           <div className="timelineTitle">前回を思い出す</div>
-          {latestVisit && <div className="timelineBody">{latestVisit.date} · {latestVisit.title}{latestVisit.body ? ` · ${latestVisit.body}` : ""}</div>}
-          {latestConversation && latestConversation.id !== latestVisit?.id && <div className="formHint">会話 · {latestConversation.body ?? latestConversation.title}</div>}
+          {recallItems.map((item) => item && <div className="timelineBody" key={item.id}>
+            {item.eventType && eventLabels[item.eventType] ? `${eventLabels[item.eventType]} · ` : ""}{item.date} · {item.title}{item.body ? ` · ${item.body}` : ""}
+          </div>)}
         </section>
       )}
 
@@ -94,11 +98,13 @@ export default async function PersonDetailPage({
         <div className="sectionTitle">タイムライン</div>
         <div className="timeline">
           {person.timeline.map((item) => (
-            <article className="timelineItem" key={item.id}>
-              <div className="timelineDate">{item.date}{item.eventType && eventLabels[item.eventType] ? ` · ${eventLabels[item.eventType]}` : ""}</div>
-              <div className="timelineTitle">{item.title}</div>
+            <details className="timelineItem" key={item.id}>
+              <summary>
+                <span className="timelineDate">{item.date}{item.eventType && eventLabels[item.eventType] ? ` · ${eventLabels[item.eventType]}` : ""}</span>
+                <span className="timelineTitle">{item.title}</span>
+              </summary>
               {item.body && <div className="timelineBody">{item.body}</div>}
-            </article>
+            </details>
           ))}
         </div>
       </> : <div className="sectionTitle">履歴はまだありません</div>}
