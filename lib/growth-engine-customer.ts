@@ -17,16 +17,11 @@ export function getGrowthEngineBaseUrl() {
   return process.env.GROWTH_ENGINE_BASE_URL?.trim() || undefined;
 }
 
-export async function getGrowthCustomerDisplay(context: GrowthEngineContext): Promise<GrowthCustomerDisplay> {
-  const baseUrl = getGrowthEngineBaseUrl();
-  if (!baseUrl) return { customerId: context.customerId };
-  const url = new URL(`/api/customers/${encodeURIComponent(context.customerId)}`, baseUrl);
-  url.searchParams.set("workspaceId", context.workspaceId);
-  const response = await fetch(url, { headers: { "X-Source-App": "velvet", "X-User-Id": context.userId }, cache: "no-store" });
-  if (!response.ok) return { customerId: context.customerId };
-  const raw = await response.json() as Record<string, unknown>;
+function mapCustomer(raw: Record<string, unknown>): GrowthCustomerDisplay | undefined {
+  const customerId = typeof raw.customerId === "string" ? raw.customerId : typeof raw.id === "string" ? raw.id : undefined;
+  if (!customerId) return undefined;
   return {
-    customerId: context.customerId,
+    customerId,
     displayName: typeof raw.name === "string" ? raw.name : typeof raw.displayName === "string" ? raw.displayName : undefined,
     contacts: Array.isArray(raw.contacts) ? raw.contacts.flatMap((item) => {
       if (!item || typeof item !== "object") return [];
@@ -37,6 +32,29 @@ export async function getGrowthCustomerDisplay(context: GrowthEngineContext): Pr
   };
 }
 
+export async function getGrowthCustomerDisplay(context: GrowthEngineContext): Promise<GrowthCustomerDisplay> {
+  const baseUrl = getGrowthEngineBaseUrl();
+  if (!baseUrl) return { customerId: context.customerId };
+  const url = new URL(`/api/customers/${encodeURIComponent(context.customerId)}`, baseUrl);
+  url.searchParams.set("workspaceId", context.workspaceId);
+  const response = await fetch(url, { headers: { "X-Source-App": "velvet", "X-User-Id": context.userId }, cache: "no-store" });
+  if (!response.ok) return { customerId: context.customerId };
+  const raw = await response.json() as Record<string, unknown>;
+  return mapCustomer({ ...raw, customerId: context.customerId }) ?? { customerId: context.customerId };
+}
+
 export async function getGrowthCustomer(workspaceId: string, userId: string, customerId: string) {
   return getGrowthCustomerDisplay({ workspaceId, userId, customerId });
+}
+
+export async function listGrowthCustomers(workspaceId: string, userId: string): Promise<GrowthCustomerDisplay[]> {
+  const baseUrl = getGrowthEngineBaseUrl();
+  if (!baseUrl) return [];
+  const url = new URL("/api/customers", baseUrl);
+  url.searchParams.set("workspaceId", workspaceId);
+  const response = await fetch(url, { headers: { "X-Source-App": "velvet", "X-User-Id": userId }, cache: "no-store" });
+  if (!response.ok) return [];
+  const raw = await response.json() as unknown;
+  const items = Array.isArray(raw) ? raw : raw && typeof raw === "object" && Array.isArray((raw as Record<string, unknown>).customers) ? (raw as Record<string, unknown>).customers as unknown[] : [];
+  return items.flatMap((item) => item && typeof item === "object" ? (mapCustomer(item as Record<string, unknown>) ? [mapCustomer(item as Record<string, unknown>)!] : []) : []);
 }
