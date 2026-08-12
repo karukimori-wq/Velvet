@@ -13,8 +13,17 @@ const paymentLabels: Record<string, string> = {
   receivable: "売掛",
   other: "その他",
 };
+const contextLabels: Record<string, string> = {
+  solo: "個人",
+  group: "複数人",
+  entertainment: "接待",
+  business: "仕事",
+  accompaniment: "同伴",
+  other: "その他",
+};
 
 const seatingChoices = ["新規", "指名", "場内指名", "ヘルプ", "同伴"];
+const contextChoices = [["solo", "個人"], ["group", "複数人"], ["entertainment", "接待"], ["business", "仕事"], ["accompaniment", "同伴"], ["other", "その他"]] as const;
 const paymentChoices = [["cash", "現金"], ["card", "カード"], ["qr", "QR"], ["receivable", "売掛"], ["other", "その他"]] as const;
 
 export default async function ActiveVisitPage({ params }: { params: Promise<{ visitId: string }> }) {
@@ -42,10 +51,11 @@ export default async function ActiveVisitPage({ params }: { params: Promise<{ vi
         <p>{start.toLocaleTimeString("ja-JP", { hour: "2-digit", minute: "2-digit" })}〜 · {elapsedMinutes}分</p>
       </section>
 
-      {(visit.seatingReason || visit.paymentMethod || typeof visit.salesAmount === "number") && <>
+      {(visit.seatingReason || visit.visitContext || visit.paymentMethod || typeof visit.salesAmount === "number") && <>
         <div className="sectionTitle">入力済み</div>
         <div className="chips">
           {visit.seatingReason && <span className="chip">{visit.seatingReason}</span>}
+          {visit.visitContext && <span className="chip">{contextLabels[visit.visitContext]}</span>}
           {visit.paymentMethod && <span className="chip">{paymentLabels[visit.paymentMethod]}</span>}
           {typeof visit.salesAmount === "number" && <span className="chip">¥{visit.salesAmount.toLocaleString("ja-JP")}</span>}
         </div>
@@ -53,7 +63,7 @@ export default async function ActiveVisitPage({ params }: { params: Promise<{ vi
 
       {!visit.endedAt && (
         <>
-          <div className="sectionTitle">着席理由 · 1タップで保存</div>
+          <div className="sectionTitle">着席理由 · 1タップ</div>
           <div className="chips choiceRow">
             {seatingChoices.map((value) => (
               <form action={quickUpdateVisitAction.bind(null, visit.id, "seatingReason", value)} key={value}>
@@ -62,7 +72,16 @@ export default async function ActiveVisitPage({ params }: { params: Promise<{ vi
             ))}
           </div>
 
-          <div className="sectionTitle">支払方法 · 1タップで保存</div>
+          <div className="sectionTitle">利用形態 · 1タップ</div>
+          <div className="chips choiceRow">
+            {contextChoices.map(([value, label]) => (
+              <form action={quickUpdateVisitAction.bind(null, visit.id, "visitContext", value)} key={value}>
+                <button className={`choiceChip ${visit.visitContext === value ? "activeAction" : ""}`} type="submit">{label}</button>
+              </form>
+            ))}
+          </div>
+
+          <div className="sectionTitle">支払方法 · 1タップ</div>
           <div className="chips choiceRow">
             {paymentChoices.map(([value, label]) => (
               <form action={quickUpdateVisitAction.bind(null, visit.id, "paymentMethod", value)} key={value}>
@@ -71,12 +90,14 @@ export default async function ActiveVisitPage({ params }: { params: Promise<{ vi
             ))}
           </div>
 
-          <div className="sectionTitle">売上 · 必要な時だけ</div>
-          <form action={updateVisitAction} className="inlineForm">
-            <input type="hidden" name="visitId" value={visit.id} />
-            <input className="searchBox" name="salesAmount" inputMode="numeric" placeholder="金額" defaultValue={visit.salesAmount ?? ""} />
-            <button className="secondaryButton" type="submit">保存</button>
-          </form>
+          <details className="detailsCard">
+            <summary>売上を入力</summary>
+            <form action={updateVisitAction} className="inlineForm detailsBody">
+              <input type="hidden" name="visitId" value={visit.id} />
+              <input className="searchBox" name="salesAmount" inputMode="numeric" placeholder="金額" defaultValue={visit.salesAmount ?? ""} />
+              <button className="secondaryButton" type="submit">保存</button>
+            </form>
+          </details>
 
           {availablePeople.length > 0 && (
             <details className="detailsCard">
