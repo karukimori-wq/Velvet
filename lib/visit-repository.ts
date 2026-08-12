@@ -3,6 +3,8 @@ import { getStorageMode } from "@/lib/storage/config";
 import { dbQuery, withTransaction } from "@/lib/storage/postgres";
 import { addTimelineItemStore, getPersonStore } from "@/lib/person-store";
 
+export type VisitContext = "solo" | "group" | "entertainment" | "business" | "accompaniment" | "other";
+
 export type Visit = {
   id: string;
   ownerUserId: string;
@@ -13,6 +15,7 @@ export type Visit = {
   salesAmount?: number;
   paymentMethod?: "cash" | "card" | "qr" | "receivable" | "other";
   seatingReason?: string;
+  visitContext?: VisitContext;
 };
 
 type ReadOptions = { includeArchived?: boolean };
@@ -27,6 +30,11 @@ function formatPayment(method?: Visit["paymentMethod"]) {
   return { cash: "現金", card: "カード", qr: "QR", receivable: "売掛", other: "その他" }[method];
 }
 
+function formatContext(context?: VisitContext) {
+  if (!context) return undefined;
+  return { solo: "個人", group: "複数人", entertainment: "接待", business: "仕事", accompaniment: "同伴", other: "その他" }[context];
+}
+
 type VisitRow = {
   id: string;
   owner_user_id: string;
@@ -36,6 +44,7 @@ type VisitRow = {
   sales_amount: number | null;
   payment_method: Visit["paymentMethod"] | null;
   seating_reason: string | null;
+  visit_context: VisitContext | null;
 };
 
 type ParticipantRow = { visit_id: string; person_id: string };
@@ -51,8 +60,11 @@ function mapVisit(row: VisitRow, participantIds: string[]): Visit {
     salesAmount: row.sales_amount ?? undefined,
     paymentMethod: row.payment_method ?? undefined,
     seatingReason: row.seating_reason ?? undefined,
+    visitContext: row.visit_context ?? undefined,
   };
 }
+
+const visitSelect = "id, owner_user_id, started_at::text, ended_at::text, duration_minutes, sales_amount, payment_method, seating_reason, visit_context";
 
 export async function listVisits(ownerUserId: string, options: ReadOptions = {}): Promise<Visit[]> {
   const access = await getPlanAccess(ownerUserId);
@@ -61,7 +73,7 @@ export async function listVisits(ownerUserId: string, options: ReadOptions = {})
   }
   const cutoff = options.includeArchived || access.fullHistory ? null : access.historyCutoff?.toISOString() ?? null;
   const [visitRows, participantRows] = await Promise.all([
-    dbQuery<VisitRow>(`select id, owner_user_id, started_at::text, ended_at::text, duration_minutes, sales_amount, payment_method, seating_reason from velvet_visits where owner_user_id = $1 and ($2::timestamptz is null or started_at >= $2) order by started_at desc`, [ownerUserId, cutoff]),
+    dbQuery<VisitRow>(`select ${visitSelect} from velvet_visits where owner_user_id = $1 and ($2::timestamptz is null or started_at >= $2) order by started_at desc`, [ownerUserId, cutoff]),
     dbQuery<ParticipantRow>(`select vp.visit_id, vp.person_id from velvet_visit_participants vp join velvet_visits v on v.id = vp.visit_id and v.owner_user_id = vp.owner_user_id where vp.owner_user_id = $1 and ($2::timestamptz is null or v.started_at >= $2)`, [ownerUserId, cutoff]),
   ]);
   const participants = new Map<string, string[]>();
@@ -81,7 +93,7 @@ export async function getVisit(id: string, ownerUserId: string, options: ReadOpt
   }
   const cutoff = options.includeArchived || access.fullHistory ? null : access.historyCutoff?.toISOString() ?? null;
   const [visitRows, participantRows] = await Promise.all([
-    dbQuery<VisitRow>(`select id, owner_user_id, started_at::text, ended_at::text, duration_minutes, sales_amount, payment_method, seating_reason from velvet_visits where id = $1 and owner_user_id = $2 and ($3::timestamptz is null or started_at >= $3) limit 1`, [id, ownerUserId, cutoff]),
+    dbQuery<VisitRow>(`select ${visitSelect} from velvet_visits where id = $1 and owner_user_id = $2 and ($3::timestamptz is null or started_at >= $3) limit 1`, [id, ownerUserId, cutoff]),
     dbQuery<ParticipantRow>(`select visit_id, person_id from velvet_visit_participants where visit_id = $1 and owner_user_id = $2`, [id, ownerUserId]),
   ]);
   const row = visitRows.rows[0];
@@ -93,7 +105,7 @@ export async function getActiveVisitForPerson(personId: string, ownerUserId: str
     return visits.find((visit) => visit.ownerUserId === ownerUserId && !visit.endedAt && visit.participantIds.includes(personId));
   }
   const rows = await dbQuery<VisitRow & { participant_ids: string[] }>(
-    `select v.id, v.owner_user_id, v.started_at::text, v.ended_at::text, v.duration_minutes, v.sales_amount, v.payment_method, v.seating_reason,
+    `select v.id, v.owner_user_id, v.started_at::text, v.ended_at::text, v.duration_minutes, v.sales_amount, v.payment_method, v.seating_reason, v.visit_context,
       array_agg(vp2.person_id order by vp2.person_id) as participant_ids
      from velvet_visits v
      join velvet_visit_participants vp on vp.visit_id = v.id and vp.owner_user_id = v.owner_user_id and vp.person_id = $1
@@ -136,16 +148,31 @@ export async function addParticipant(visitId: string, personId: string, ownerUse
   return getVisit(visitId, ownerUserId);
 }
 
-export async function updateVisit(visitId: string, patch: Partial<Pick<Visit, "salesAmount" | "paymentMethod" | "seatingReason">>, ownerUserId: string): Promise<Visit | undefined> {
+export async function updateVisit(
+  visitId: string,
+  patch: Partial<Pick<Visit, "salesAmount" | "paymentMethod" | "seatingReason" | "visitContext">>,
+  ownerUserId: string,
+): Promise<Visit | undefined> {
   const visit = await getVisit(visitId, ownerUserId);
   if (!visit || visit.endedAt) return undefined;
+
+  const next: Visit = {
+    ...visit,
+    salesAmount: patch.salesAmount ?? visit.salesAmount,
+    paymentMethod: patch.paymentMethod ?? visit.paymentMethod,
+    seatingReason: patch.seatingReason ?? visit.seatingReason,
+    visitContext: patch.visitContext ?? visit.visitContext,
+  };
+
   if (getStorageMode() !== "postgres") {
-    Object.assign(visit, patch);
+    Object.assign(visit, next);
     return visit;
   }
   await dbQuery(
-    `update velvet_visits set sales_amount = $3, payment_method = $4, seating_reason = $5 where id = $1 and owner_user_id = $2 and ended_at is null`,
-    [visitId, ownerUserId, patch.salesAmount ?? null, patch.paymentMethod ?? null, patch.seatingReason ?? null],
+    `update velvet_visits
+     set sales_amount = $3, payment_method = $4, seating_reason = $5, visit_context = $6
+     where id = $1 and owner_user_id = $2 and ended_at is null`,
+    [visitId, ownerUserId, next.salesAmount ?? null, next.paymentMethod ?? null, next.seatingReason ?? null, next.visitContext ?? null],
   );
   return getVisit(visitId, ownerUserId);
 }
@@ -165,7 +192,7 @@ export async function endVisit(visitId: string, ownerUserId: string): Promise<Vi
   }
 
   const date = visit.startedAt.slice(0, 10);
-  const titleParts = [visit.seatingReason, formatPayment(visit.paymentMethod), typeof visit.salesAmount === "number" ? `¥${visit.salesAmount.toLocaleString("ja-JP")}` : undefined].filter(Boolean);
+  const titleParts = [visit.seatingReason, formatContext(visit.visitContext), formatPayment(visit.paymentMethod), typeof visit.salesAmount === "number" ? `¥${visit.salesAmount.toLocaleString("ja-JP")}` : undefined].filter(Boolean);
   const title = titleParts.length > 0 ? titleParts.join(" · ") : "来店";
   const body = `滞在 ${durationMinutes}分`;
 
