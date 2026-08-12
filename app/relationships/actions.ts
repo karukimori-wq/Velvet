@@ -5,12 +5,12 @@ import { getRequestIdentity } from "@/lib/auth/request-identity";
 import { createRelationship, type RelationshipType } from "@/lib/relationship-repository";
 
 export async function createRelationshipAction(formData: FormData) {
-  const { ownerUserId } = await getRequestIdentity();
-  const personAId = String(formData.get("personAId") ?? "").trim();
-  const personBId = String(formData.get("personBId") ?? "").trim();
+  const { workspaceId, userId } = await getRequestIdentity();
+  const customerAId = String(formData.get("customerAId") ?? "").trim();
+  const customerBId = String(formData.get("customerBId") ?? "").trim();
   const type = String(formData.get("type") ?? "other") as RelationshipType;
   const note = String(formData.get("note") ?? "").trim() || undefined;
-  if (!personAId || !personBId) return;
-  const result = await createRelationship({ personAId, personBId, type, note }, ownerUserId);
-  redirect(result ? `/people/${personAId}` : "/people");
+  if (!customerAId || !customerBId) return;
+  const result = await createRelationship({ workspaceId, userId, customerAId, customerBId, type, note });
+  redirect(result ? `/people/${customerAId}` : "/people");
 }
