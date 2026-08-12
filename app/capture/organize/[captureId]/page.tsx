@@ -5,7 +5,7 @@ import { getRequestIdentity } from "@/lib/auth/request-identity";
 import { structureCapture } from "@/lib/ai-platform-core";
 import { confirmKnowledgeCandidatesAction } from "./actions";
 
-const labels = { knowledge: "パーソナリティ", schedule: "予定候補", gift: "Gift候補", unknown: "その他" };
+const labels = { knowledge: "Memory", schedule: "予定", gift: "Gift", unknown: "その他" };
 
 export default async function OrganizeCapturePage({ params }: { params: Promise<{ captureId: string }> }) {
   const { captureId } = await params;
@@ -17,40 +17,44 @@ export default async function OrganizeCapturePage({ params }: { params: Promise<
   const schedules = structured.candidates.filter((candidate) => candidate.type === "schedule");
   const gifts = structured.candidates.filter((candidate) => candidate.type === "gift");
   const deferred = structured.candidates.filter((candidate) => !["knowledge", "schedule", "gift"].includes(candidate.type));
+  const candidateCount = knowledge.length + schedules.length + gifts.length + deferred.length;
 
   return <main className="shell">
     <header className="header"><Link className="subtle" href={capture.customerId ? `/capture?customerId=${capture.customerId}` : "/capture"}>‹ 戻る</Link><span className="subtle">整理</span></header>
-    <section className="hero"><h1>追加内容を確認</h1><p>元のメモはすでに保存済みです。確実なものだけ追加してください。</p></section>
-    <div className="card">{capture.value}</div>
-    <div className="formHint" style={{ marginTop: 10 }}>{structured.mode === "ai" ? "AIで整理しました" : "ローカル整理を使用しました"} · trace {structured.trace.traceId.slice(0, 18)}…{structured.activityId ? ` · activity ${structured.activityId}` : ""}</div>
+    <section className="hero"><h1>{candidateCount ? `${candidateCount}件だけ確認` : "確認する候補はありません"}</h1><p>元メモは保存済み。不要なものは触らず、そのまま確定できます。</p></section>
+    <details className="detailsCard"><summary>元メモを見る</summary><div className="detailsBody timelineBody">{capture.value}</div></details>
+
     <form action={confirmKnowledgeCandidatesAction.bind(null, capture.id)} className="stack compactForm">
-      {knowledge.length > 0 && <div className="sectionTitle">パーソナリティ候補</div>}
-      {knowledge.map((candidate, index) => <label className="card row" key={`${candidate.value}-${index}`}><span>{candidate.value}</span><input type="checkbox" name="knowledge" value={candidate.value} defaultChecked /></label>)}
+      {knowledge.length > 0 && <>
+        <div className="sectionTitle">覚えておく</div>
+        <div className="chips reviewChips">{knowledge.map((candidate, index) => <label className="choiceChip reviewChoice" key={`${candidate.value}-${index}`}><input type="checkbox" name="knowledge" value={candidate.value} defaultChecked /><span>{candidate.value}</span></label>)}</div>
+      </>}
 
-      {schedules.length > 0 && <div className="sectionTitle">予定候補</div>}
-      {schedules.map((candidate, index) => <section className="card stack" key={`${candidate.value}-${index}`}>
-        <div><div className="formHint">予定候補</div><div className="timelineTitle">{candidate.value}</div></div>
-        <input type="hidden" name="scheduleValue" value={candidate.value} />
-        <label className="fieldLabel" htmlFor={`schedule-${index}`}>登録する場合だけ日時を入力</label>
-        <input className="searchBox" id={`schedule-${index}`} type="datetime-local" name="scheduleStartsAt" />
-        <div className="formHint">日時が空欄なら登録しません。Velvetが勝手に予定化することはありません。</div>
-      </section>)}
+      {schedules.length > 0 && <>
+        <div className="sectionTitle">予定にするなら日時だけ</div>
+        {schedules.map((candidate, index) => <div className="reviewRow" key={`${candidate.value}-${index}`}>
+          <input type="hidden" name="scheduleValue" value={candidate.value} />
+          <div className="reviewLabel">{candidate.value}</div>
+          <input className="compactDateInput" aria-label={`${candidate.value}の日時`} type="datetime-local" name="scheduleStartsAt" />
+        </div>)}
+      </>}
 
-      {gifts.length > 0 && <div className="sectionTitle">Gift候補</div>}
-      {gifts.map((candidate, index) => <section className="card stack" key={`${candidate.value}-${index}`}>
-        <div><div className="formHint">Gift候補</div><div className="timelineTitle">{candidate.value}</div></div>
-        <input type="hidden" name="giftValue" value={candidate.value} />
-        {capture.customerId ? <div className="choiceRow row">
-          <label className="choiceChip"><input type="radio" name="giftDirection" value="received" />もらった</label>
-          <label className="choiceChip"><input type="radio" name="giftDirection" value="given" />あげた</label>
-          <label className="choiceChip"><input type="radio" name="giftDirection" value="skip" defaultChecked />登録しない</label>
-        </div> : <div className="formHint">顧客が選ばれていないためGiftには登録できません。</div>}
-        <div className="formHint">方向はAIに決めさせません。ユーザーが選んだ場合だけ登録します。</div>
-      </section>)}
+      {gifts.length > 0 && <>
+        <div className="sectionTitle">Gift</div>
+        <input type="hidden" name="giftCount" value={gifts.length} />
+        {gifts.map((candidate, index) => <div className="reviewRow reviewGiftRow" key={`${candidate.value}-${index}`}>
+          <input type="hidden" name={`giftValue-${index}`} value={candidate.value} />
+          <div className="reviewLabel">{candidate.value}</div>
+          {capture.customerId ? <div className="miniChoices">
+            <label className="choiceChip"><input type="radio" name={`giftDirection-${index}`} value="received" /><span>もらった</span></label>
+            <label className="choiceChip"><input type="radio" name={`giftDirection-${index}`} value="given" /><span>あげた</span></label>
+            <label className="choiceChip"><input type="radio" name={`giftDirection-${index}`} value="skip" defaultChecked /><span>なし</span></label>
+          </div> : <div className="formHint">顧客未選択のため登録しません</div>}
+        </div>)}
+      </>}
 
-      {deferred.length > 0 && <div className="sectionTitle">確認が必要な候補</div>}
-      {deferred.map((candidate, index) => <div className="card" key={`${candidate.type}-${candidate.value}-${index}`}><div className="formHint">{labels[candidate.type]}</div><div>{candidate.value}</div></div>)}
-      <button className="primaryButton" type="submit">確認した内容を追加</button>
+      {deferred.length > 0 && <details className="detailsCard"><summary>その他 {deferred.length}件</summary><div className="stack detailsBody">{deferred.map((candidate, index) => <div className="row" key={`${candidate.type}-${candidate.value}-${index}`}><span>{candidate.value}</span><span className="formHint">{labels[candidate.type]}</span></div>)}</div></details>}
+      <button className="primaryButton stickyConfirm" type="submit">この内容で確定</button>
     </form>
   </main>;
 }
