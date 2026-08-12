@@ -1,17 +1,20 @@
 import { NextResponse } from "next/server";
-import { getRequestIdentity } from "@/lib/auth/request-identity";
-import { createPersonStore, listPeopleStore } from "@/lib/person-store";
 
 export async function GET() {
-  const { ownerUserId } = await getRequestIdentity();
-  return NextResponse.json({ status: "success", people: await listPeopleStore(ownerUserId) });
+  return NextResponse.json({
+    status: "warning",
+    supported: false,
+    sourceOfTruth: "growth-engine",
+    message: "Customer list is owned by Growth Engine. Velvet does not expose an independent Customer master.",
+  }, { status: 410 });
 }
 
-export async function POST(request: Request) {
-  const { ownerUserId } = await getRequestIdentity();
-  const body = await request.json().catch(() => ({}));
-  const name = typeof body.name === "string" ? body.name.trim() : "";
-  if (!name) return NextResponse.json({ status: "error", error: { code: "INVALID_NAME", message: "name is required" } }, { status: 400 });
-  const person = await createPersonStore(name, ownerUserId);
-  return NextResponse.json({ status: "success", person }, { status: 201 });
+export async function POST() {
+  return NextResponse.json({
+    status: "error",
+    error: {
+      code: "CUSTOMER_CREATION_NOT_OWNED",
+      message: "Create Customer in Growth Engine, then open Velvet with customerId.",
+    },
+  }, { status: 409 });
 }
