@@ -21,22 +21,28 @@ export async function endVisitAction(formData: FormData) {
   redirect(primaryPersonId ? `/people/${primaryPersonId}` : "/people");
 }
 
+export async function quickUpdateVisitAction(visitId: string, field: "seatingReason" | "paymentMethod", value: string) {
+  const { ownerUserId } = await getRequestIdentity();
+  if (field === "seatingReason") {
+    await updateVisit(visitId, { seatingReason: value || undefined }, ownerUserId);
+  } else {
+    const allowed = ["cash", "card", "qr", "receivable", "other"] as const;
+    const paymentMethod = allowed.includes(value as (typeof allowed)[number]) ? value as (typeof allowed)[number] : undefined;
+    if (paymentMethod) await updateVisit(visitId, { paymentMethod }, ownerUserId);
+  }
+  redirect(`/visits/${visitId}`);
+}
+
 export async function updateVisitAction(formData: FormData) {
   const { ownerUserId } = await getRequestIdentity();
   const visitId = String(formData.get("visitId") || "");
   const salesRaw = String(formData.get("salesAmount") || "").trim();
-  const paymentRaw = String(formData.get("paymentMethod") || "").trim();
-  const seatingReason = String(formData.get("seatingReason") || "").trim();
-
-  const paymentMethod = ["cash", "card", "qr", "receivable", "other"].includes(paymentRaw)
-    ? (paymentRaw as "cash" | "card" | "qr" | "receivable" | "other")
-    : undefined;
-
-  await updateVisit(visitId, {
-    salesAmount: salesRaw ? Number(salesRaw) : undefined,
-    paymentMethod,
-    seatingReason: seatingReason || undefined,
-  }, ownerUserId);
+  const patch: { salesAmount?: number } = {};
+  if (salesRaw) {
+    const value = Number(salesRaw);
+    if (Number.isFinite(value) && value >= 0) patch.salesAmount = value;
+  }
+  await updateVisit(visitId, patch, ownerUserId);
   redirect(`/visits/${visitId}`);
 }
 
