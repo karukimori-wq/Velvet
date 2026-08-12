@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { getRequestIdentity } from "@/lib/auth/request-identity";
-import { endVisit, getVisit, updateVisit } from "@/lib/visit-repository";
+import { endVisit, getVisit, updateVisit, type VisitContext } from "@/lib/visit-repository";
 
 export async function GET(_request: Request, { params }: { params: Promise<{ visitId: string }> }) {
   const { ownerUserId } = await getRequestIdentity();
@@ -14,10 +14,12 @@ export async function PATCH(request: Request, { params }: { params: Promise<{ vi
   const { ownerUserId } = await getRequestIdentity();
   const { visitId } = await params;
   const body = await request.json().catch(() => ({}));
+  const allowedContexts: VisitContext[] = ["solo", "group", "entertainment", "business", "accompaniment", "other"];
   const patch = {
     salesAmount: typeof body.salesAmount === "number" ? body.salesAmount : undefined,
     paymentMethod: ["cash", "card", "qr", "receivable", "other"].includes(body.paymentMethod) ? body.paymentMethod : undefined,
     seatingReason: typeof body.seatingReason === "string" && body.seatingReason.trim() ? body.seatingReason.trim() : undefined,
+    visitContext: allowedContexts.includes(body.visitContext as VisitContext) ? body.visitContext as VisitContext : undefined,
   } as const;
   const visit = await updateVisit(visitId, patch, ownerUserId);
   if (!visit) return NextResponse.json({ status: "error", error: { code: "VISIT_NOT_EDITABLE", message: "visit not found or already ended" } }, { status: 409 });
