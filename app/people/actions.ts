@@ -4,6 +4,7 @@ import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { getRequestIdentity } from "@/lib/auth/request-identity";
 import { createPersonContact, deletePersonContact, type ContactType } from "@/lib/contact-repository";
+import { upsertPersonProfile, type MaritalStatus } from "@/lib/person-profile-repository";
 import {
   addPersonKnowledgeStore,
   createPersonStore,
@@ -27,6 +28,24 @@ export async function updatePersonAction(personId: string, formData: FormData) {
   await updatePersonBasicsStore(personId, { name, rank }, ownerUserId);
   revalidatePath("/people");
   revalidatePath(`/people/${personId}`);
+  redirect(`/people/${personId}`);
+}
+
+export async function updatePersonProfileAction(personId: string, formData: FormData) {
+  const { ownerUserId } = await getRequestIdentity();
+  const maritalRaw = String(formData.get("maritalStatus") ?? "").trim();
+  const maritalStatus = ["unmarried", "married", "unknown"].includes(maritalRaw)
+    ? (maritalRaw as MaritalStatus)
+    : undefined;
+  await upsertPersonProfile(personId, {
+    birthDate: String(formData.get("birthDate") ?? "").trim() || undefined,
+    occupation: String(formData.get("occupation") ?? "").trim() || undefined,
+    company: String(formData.get("company") ?? "").trim() || undefined,
+    area: String(formData.get("area") ?? "").trim() || undefined,
+    maritalStatus,
+  }, ownerUserId);
+  revalidatePath(`/people/${personId}`);
+  revalidatePath(`/people/${personId}/edit`);
   redirect(`/people/${personId}`);
 }
 
