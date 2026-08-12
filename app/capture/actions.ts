@@ -4,30 +4,29 @@ import { redirect } from "next/navigation";
 import { createCapture, type CaptureKind } from "@/lib/capture-repository";
 import { getRequestIdentity } from "@/lib/auth/request-identity";
 
-export async function captureAction(personId: string | undefined, kind: CaptureKind, formData: FormData) {
-  const { ownerUserId } = await getRequestIdentity();
+export async function captureAction(customerId: string | undefined, kind: CaptureKind, formData: FormData) {
+  const { workspaceId, userId } = await getRequestIdentity();
   const value = String(formData.get("value") ?? "").trim();
-  if (!value) redirect(personId ? `/capture?personId=${personId}&error=empty` : "/capture?error=empty");
-
-  const created = await createCapture({ ownerUserId, personId, kind, value });
-  if (!created) redirect(personId ? `/capture?personId=${personId}&error=invalid` : "/capture?error=invalid");
-  redirect(personId ? `/people/${personId}` : "/capture?saved=1");
+  if (!value) redirect(customerId ? `/capture?customerId=${customerId}&error=empty` : "/capture?error=empty");
+  const created = await createCapture({ workspaceId, userId, customerId, kind, value });
+  if (!created) redirect(customerId ? `/capture?customerId=${customerId}&error=invalid` : "/capture?error=invalid");
+  redirect(customerId ? `/people/${customerId}` : "/capture?saved=1");
 }
 
-export async function conversationMemoAction(personId: string, visitId: string | undefined, formData: FormData) {
-  const { ownerUserId } = await getRequestIdentity();
+export async function conversationMemoAction(customerId: string, visitId: string | undefined, formData: FormData) {
+  const { workspaceId, userId } = await getRequestIdentity();
   const value = String(formData.get("value") ?? "").trim();
   const mode = String(formData.get("mode") ?? "save");
-  if (!value) redirect(`/capture?personId=${personId}${visitId ? `&fromVisit=${encodeURIComponent(visitId)}` : ""}&error=empty`);
-  const created = await createCapture({ ownerUserId, personId, kind: "conversation_note", value });
-  if (!created) redirect(`/capture?personId=${personId}&error=invalid`);
+  if (!value) redirect(`/capture?customerId=${customerId}${visitId ? `&fromVisit=${encodeURIComponent(visitId)}` : ""}&error=empty`);
+  const created = await createCapture({ workspaceId, userId, customerId, kind: "conversation_note", value });
+  if (!created) redirect(`/capture?customerId=${customerId}&error=invalid`);
   if (mode === "organize") redirect(`/capture/organize/${created.id}`);
-  redirect(`/people/${personId}`);
+  redirect(`/people/${customerId}`);
 }
 
-export async function quickCaptureAction(personId: string | undefined, kind: CaptureKind, value: string, fromVisit?: string) {
-  const { ownerUserId } = await getRequestIdentity();
-  await createCapture({ ownerUserId, personId, kind, value });
+export async function quickCaptureAction(customerId: string | undefined, kind: CaptureKind, value: string, fromVisit?: string) {
+  const { workspaceId, userId } = await getRequestIdentity();
+  await createCapture({ workspaceId, userId, customerId, kind, value });
   const visitQuery = fromVisit ? `&fromVisit=${encodeURIComponent(fromVisit)}` : "";
-  redirect(personId ? `/capture?personId=${personId}&saved=1${visitQuery}` : "/capture?saved=1");
+  redirect(customerId ? `/capture?customerId=${customerId}&saved=1${visitQuery}` : "/capture?saved=1");
 }
