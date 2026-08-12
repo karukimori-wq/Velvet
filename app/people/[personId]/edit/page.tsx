@@ -2,8 +2,9 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { getRequestIdentity } from "@/lib/auth/request-identity";
 import { listPersonContacts } from "@/lib/contact-repository";
+import { getPersonProfile } from "@/lib/person-profile-repository";
 import { getPersonStore } from "@/lib/person-store";
-import { addContactAction, addKnowledgeAction, deleteContactAction, updatePersonAction } from "../../actions";
+import { addContactAction, addKnowledgeAction, deleteContactAction, updatePersonAction, updatePersonProfileAction } from "../../actions";
 
 const contactLabels: Record<string, string> = {
   phone: "電話", email: "メール", line: "LINE", instagram: "Instagram", x: "X", tiktok: "TikTok", other: "その他",
@@ -14,12 +15,15 @@ export default async function EditPersonPage({ params }: { params: Promise<{ per
   const { ownerUserId } = await getRequestIdentity();
   const person = await getPersonStore(personId, ownerUserId);
   if (!person) notFound();
-  const contacts = await listPersonContacts(personId, ownerUserId);
+  const [contacts, profile] = await Promise.all([
+    listPersonContacts(personId, ownerUserId),
+    getPersonProfile(personId, ownerUserId),
+  ]);
 
   return (
     <main className="shell">
       <header className="header"><Link className="subtle" href={`/people/${person.id}`}>‹ 戻る</Link><span className="subtle">編集</span></header>
-      <section className="hero"><h1>{person.name}</h1><p>空の項目は並べません。必要な情報だけ追加します。</p></section>
+      <section className="hero"><h1>{person.name}</h1><p>確認画面には入力済みだけ表示します。追加したい時だけ開きます。</p></section>
       <form action={updatePersonAction.bind(null, person.id)} className="stack">
         <label className="fieldLabel" htmlFor="name">名前</label>
         <input id="name" name="name" className="searchBox" defaultValue={person.name} autoComplete="off" />
@@ -28,10 +32,28 @@ export default async function EditPersonPage({ params }: { params: Promise<{ per
         <button className="secondaryButton" type="submit">基本情報を更新</button>
       </form>
 
+      <details className="detailsCard" open={Boolean(profile)}>
+        <summary>{profile ? "基本プロフィールを編集" : "基本プロフィールを追加"}</summary>
+        <form action={updatePersonProfileAction.bind(null, person.id)} className="stack detailsBody">
+          <input className="searchBox" name="occupation" defaultValue={profile?.occupation ?? ""} placeholder="職業（任意）" autoComplete="off" />
+          <input className="searchBox" name="company" defaultValue={profile?.company ?? ""} placeholder="会社・勤務先（任意）" autoComplete="off" />
+          <input className="searchBox" name="area" defaultValue={profile?.area ?? ""} placeholder="住んでいる/活動エリア（任意）" autoComplete="off" />
+          <label className="fieldLabel" htmlFor="birthDate">生年月日（任意）</label>
+          <input id="birthDate" className="searchBox" type="date" name="birthDate" defaultValue={profile?.birthDate ?? ""} />
+          <select className="selectBox" name="maritalStatus" defaultValue={profile?.maritalStatus ?? ""}>
+            <option value="">婚姻状況は登録しない</option>
+            <option value="unmarried">未婚</option>
+            <option value="married">既婚</option>
+            <option value="unknown">不明</option>
+          </select>
+          <button className="secondaryButton" type="submit">プロフィールを保存</button>
+        </form>
+      </details>
+
       {person.personality.length > 0 && <><div className="sectionTitle">パーソナリティ</div><div className="chips">{person.personality.map((value) => <span className="chip" key={value}>{value}</span>)}</div></>}
       <form action={addKnowledgeAction.bind(null, person.id)} className="stack compactForm">
         <label className="fieldLabel" htmlFor="value">記憶を追加</label>
-        <input id="value" name="value" className="searchBox" placeholder="例：黒髪、ロレックス、ゴルフ、既婚" autoComplete="off" />
+        <input id="value" name="value" className="searchBox" placeholder="例：黒髪、ロレックス、ゴルフ" autoComplete="off" />
         <div className="formHint">「、」区切りでまとめて追加できます。</div>
         <button className="primaryButton" type="submit">追加</button>
       </form>
