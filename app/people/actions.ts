@@ -3,47 +3,22 @@
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { getRequestIdentity } from "@/lib/auth/request-identity";
-import { createPersonContact, deletePersonContact, type ContactType } from "@/lib/contact-repository";
-import { upsertPersonProfile, type MaritalStatus } from "@/lib/person-profile-repository";
 import {
   addPersonKnowledgeStore,
-  createPersonStore,
   removePersonKnowledgeStore,
-  updatePersonBasicsStore,
 } from "@/lib/person-store";
 
-export async function createPersonAction(formData: FormData) {
-  const { ownerUserId } = await getRequestIdentity();
-  const name = String(formData.get("name") ?? "").trim();
-  if (!name) redirect("/people/new?error=name");
-  const person = await createPersonStore(name, ownerUserId);
-  revalidatePath("/people");
-  redirect(`/people/${person.id}`);
+export async function createPersonAction() {
+  throw new Error("VELVET_CUSTOMER_CREATION_DISABLED: Customer master is owned by Growth Engine.");
 }
 
-export async function updatePersonAction(personId: string, formData: FormData) {
-  const { ownerUserId } = await getRequestIdentity();
-  const name = String(formData.get("name") ?? "").trim();
-  const rank = String(formData.get("rank") ?? "").trim();
-  await updatePersonBasicsStore(personId, { name, rank }, ownerUserId);
+export async function updatePersonAction(personId: string) {
   revalidatePath("/people");
   revalidatePath(`/people/${personId}`);
   redirect(`/people/${personId}`);
 }
 
-export async function updatePersonProfileAction(personId: string, formData: FormData) {
-  const { ownerUserId } = await getRequestIdentity();
-  const maritalRaw = String(formData.get("maritalStatus") ?? "").trim();
-  const maritalStatus = ["unmarried", "married", "unknown"].includes(maritalRaw)
-    ? (maritalRaw as MaritalStatus)
-    : undefined;
-  await upsertPersonProfile(personId, {
-    birthDate: String(formData.get("birthDate") ?? "").trim() || undefined,
-    occupation: String(formData.get("occupation") ?? "").trim() || undefined,
-    company: String(formData.get("company") ?? "").trim() || undefined,
-    area: String(formData.get("area") ?? "").trim() || undefined,
-    maritalStatus,
-  }, ownerUserId);
+export async function updatePersonProfileAction(personId: string) {
   revalidatePath(`/people/${personId}`);
   revalidatePath(`/people/${personId}/edit`);
   redirect(`/people/${personId}`);
@@ -65,23 +40,13 @@ export async function removeKnowledgeAction(personId: string, value: string) {
   revalidatePath(`/people/${personId}`);
 }
 
-export async function addContactAction(personId: string, formData: FormData) {
-  const { ownerUserId } = await getRequestIdentity();
-  const rawType = String(formData.get("type") ?? "other");
-  const allowed: ContactType[] = ["phone", "email", "line", "instagram", "x", "tiktok", "other"];
-  const type = allowed.includes(rawType as ContactType) ? (rawType as ContactType) : "other";
-  const value = String(formData.get("value") ?? "").trim();
-  const label = String(formData.get("label") ?? "").trim();
-  const isPrimary = formData.get("isPrimary") === "on";
-  if (value) await createPersonContact({ personId, type, value, label, isPrimary }, ownerUserId);
+export async function addContactAction(personId: string) {
   revalidatePath(`/people/${personId}`);
   revalidatePath(`/people/${personId}/edit`);
   redirect(`/people/${personId}/edit`);
 }
 
-export async function deleteContactAction(personId: string, contactId: string) {
-  const { ownerUserId } = await getRequestIdentity();
-  await deletePersonContact(contactId, ownerUserId);
+export async function deleteContactAction(personId: string) {
   revalidatePath(`/people/${personId}`);
   revalidatePath(`/people/${personId}/edit`);
 }
