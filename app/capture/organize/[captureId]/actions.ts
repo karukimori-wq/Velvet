@@ -7,6 +7,7 @@ import { getRequestIdentity } from "@/lib/auth/request-identity";
 import { getCustomerMemory, upsertCustomerMemory } from "@/lib/customer-memory-repository";
 import { recordDictionaryUse } from "@/lib/capture-dictionary-repository";
 import { createScheduleEntry } from "@/lib/schedule-repository";
+import { createGift, type GiftDirection } from "@/lib/gift-repository";
 
 export async function confirmKnowledgeCandidatesAction(captureId: string, formData: FormData) {
   const { workspaceId, userId } = await getRequestIdentity();
@@ -39,6 +40,19 @@ export async function confirmKnowledgeCandidatesAction(captureId: string, formDa
       startsAt: startsAt.toISOString(),
       note: "Captureから確認して追加",
     });
+  }
+
+  if (capture.customerId) {
+    const giftValues = formData.getAll("giftValue").map(String);
+    const giftDirections = formData.getAll("giftDirection").map(String);
+    for (let index = 0; index < giftValues.length; index += 1) {
+      const item = giftValues[index]?.trim();
+      const rawDirection = giftDirections[index]?.trim();
+      if (!item || !["received", "given"].includes(rawDirection)) continue;
+      const direction = rawDirection as GiftDirection;
+      await createGift({ workspaceId, userId, customerId: capture.customerId, direction, item, note: "Captureから確認して追加" });
+      await recordDictionaryUse(workspaceId, userId, item, "gift");
+    }
   }
 
   if (capture.customerId) {
