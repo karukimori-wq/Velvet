@@ -3,6 +3,7 @@ import { notFound } from "next/navigation";
 import { BottomNav } from "@/components/bottom-nav";
 import { getRequestIdentity } from "@/lib/auth/request-identity";
 import { listPersonContacts } from "@/lib/contact-repository";
+import { getPersonProfile } from "@/lib/person-profile-repository";
 import { getPersonStore } from "@/lib/person-store";
 import { getActiveVisitForPerson } from "@/lib/visit-repository";
 import { startVisitAction } from "@/app/visits/actions";
@@ -10,16 +11,25 @@ import { startVisitAction } from "@/app/visits/actions";
 const contactLabels: Record<string, string> = {
   phone: "電話", email: "メール", line: "LINE", instagram: "Instagram", x: "X", tiktok: "TikTok", other: "連絡先",
 };
+const maritalLabels: Record<string, string> = { unmarried: "未婚", married: "既婚", unknown: "婚姻状況不明" };
 
 export default async function PersonDetailPage({ params }: { params: Promise<{ personId: string }> }) {
   const { personId } = await params;
   const identity = await getRequestIdentity();
   const person = await getPersonStore(personId, identity.ownerUserId);
   if (!person) notFound();
-  const [activeVisit, contacts] = await Promise.all([
+  const [activeVisit, contacts, profile] = await Promise.all([
     getActiveVisitForPerson(person.id, identity.ownerUserId),
     listPersonContacts(person.id, identity.ownerUserId),
+    getPersonProfile(person.id, identity.ownerUserId),
   ]);
+  const profileValues = [
+    profile?.occupation,
+    profile?.company,
+    profile?.area,
+    profile?.birthDate ? `誕生日 ${profile.birthDate}` : undefined,
+    profile?.maritalStatus ? maritalLabels[profile.maritalStatus] : undefined,
+  ].filter(Boolean) as string[];
 
   return (
     <main className="shell">
@@ -32,7 +42,13 @@ export default async function PersonDetailPage({ params }: { params: Promise<{ p
         {person.nextVisit && <p>{person.nextVisit} 来店予定</p>}
       </section>
 
-      {person.personality.length > 0 && <><div className="sectionTitle">パーソナリティ</div><div className="chips">{person.personality.map((value) => <span className="chip" key={value}>{value}</span>)}</div></>}
+      {(person.personality.length > 0 || profileValues.length > 0) && <>
+        <div className="sectionTitle">パーソナリティ</div>
+        <div className="chips">
+          {profileValues.map((value) => <span className="chip" key={value}>{value}</span>)}
+          {person.personality.map((value) => <span className="chip" key={value}>{value}</span>)}
+        </div>
+      </>}
 
       {contacts.length > 0 && <>
         <div className="sectionTitle">連絡先</div>
