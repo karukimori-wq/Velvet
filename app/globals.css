@@ -70,4 +70,10 @@ button { cursor: pointer; }
 .detailsCard summary { cursor: pointer; color: #c9c2cc; }
 .detailsBody { margin-top: 12px; }
 .importArea { min-height: 320px; resize: vertical; line-height: 1.5; }
+.captureVoiceInput { display: grid; gap: 8px; }
+.captureTextArea { min-height: 92px; resize: vertical; line-height: 1.5; }
+.voiceButton { width: 100%; min-height: 46px; border-radius: 16px; border: 1px solid #3a343e; background: #211e24; color: #fff; font-weight: 700; display: flex; align-items: center; justify-content: center; gap: 8px; }
+.voiceButton span { font-size: 12px; color: #c9c2cc; }
+.voiceButton.recording { border-color: #6a4a52; background: #2c2024; }
+.voiceButton.recording span { color: #ffb6bf; }
 @media (min-width: 700px) { .shell { padding-top: 32px; } }
