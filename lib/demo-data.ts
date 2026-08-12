@@ -5,6 +5,8 @@ export type TimelineItem = {
   date: string;
   title: string;
   body?: string;
+  eventType?: string;
+  sourceRef?: string;
 };
 
 export type Person = {
@@ -30,9 +32,9 @@ export const people: Person[] = [
     nextVisit: "今日 21:00",
     personality: ["会社経営", "既婚", "ゴルフ", "犬", "響", "ロレックス", "黒縁メガネ"],
     timeline: [
-      { id: "t1", date: "2026-08-02", title: "指名 · カード · ¥85,000", body: "大阪出張の話。犬を飼った。" },
-      { id: "t2", date: "2026-07-18", title: "田中さんのヘルプ", body: "お土産をもらった。" },
-      { id: "t3", date: "2026-07-03", title: "指名 · 響" },
+      { id: "t1", date: "2026-08-02", title: "指名 · カード · ¥85,000", body: "大阪出張の話。犬を飼った。", eventType: "visit" },
+      { id: "t2", date: "2026-07-18", title: "田中さんのヘルプ", body: "お土産をもらった。", eventType: "visit" },
+      { id: "t3", date: "2026-07-03", title: "指名 · 響", eventType: "visit" },
     ],
   },
   {
@@ -42,7 +44,7 @@ export const people: Person[] = [
     lastVisit: "2026-07-29",
     personality: ["IT", "未婚", "サウナ", "白州"],
     timeline: [
-      { id: "s1", date: "2026-07-29", title: "新規 · 現金 · ¥42,000", body: "サウナと旅行の話。" },
+      { id: "s1", date: "2026-07-29", title: "新規 · 現金 · ¥42,000", body: "サウナと旅行の話。", eventType: "visit" },
     ],
   },
   {
