@@ -43,11 +43,10 @@ export async function confirmKnowledgeCandidatesAction(captureId: string, formDa
   }
 
   if (capture.customerId) {
-    const giftValues = formData.getAll("giftValue").map(String);
-    const giftDirections = formData.getAll("giftDirection").map(String);
-    for (let index = 0; index < giftValues.length; index += 1) {
-      const item = giftValues[index]?.trim();
-      const rawDirection = giftDirections[index]?.trim();
+    const giftCount = Number(formData.get("giftCount") ?? 0);
+    for (let index = 0; index < giftCount; index += 1) {
+      const item = String(formData.get(`giftValue-${index}`) ?? "").trim();
+      const rawDirection = String(formData.get(`giftDirection-${index}`) ?? "skip").trim();
       if (!item || !["received", "given"].includes(rawDirection)) continue;
       const direction = rawDirection as GiftDirection;
       await createGift({ workspaceId, userId, customerId: capture.customerId, direction, item, note: "Captureから確認して追加" });
