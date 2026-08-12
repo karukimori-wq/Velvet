@@ -1,7 +1,7 @@
 "use server";
 
 import { redirect } from "next/navigation";
-import { addParticipant, endVisit, startVisit, updateVisit } from "@/lib/visit-repository";
+import { addParticipant, endVisit, startVisit, updateVisit, type VisitContext } from "@/lib/visit-repository";
 import { getRequestIdentity } from "@/lib/auth/request-identity";
 
 export async function startVisitAction(formData: FormData) {
@@ -21,10 +21,14 @@ export async function endVisitAction(formData: FormData) {
   redirect(primaryPersonId ? `/people/${primaryPersonId}` : "/people");
 }
 
-export async function quickUpdateVisitAction(visitId: string, field: "seatingReason" | "paymentMethod", value: string) {
+export async function quickUpdateVisitAction(visitId: string, field: "seatingReason" | "paymentMethod" | "visitContext", value: string) {
   const { ownerUserId } = await getRequestIdentity();
   if (field === "seatingReason") {
     await updateVisit(visitId, { seatingReason: value || undefined }, ownerUserId);
+  } else if (field === "visitContext") {
+    const allowed: VisitContext[] = ["solo", "group", "entertainment", "business", "accompaniment", "other"];
+    const visitContext = allowed.includes(value as VisitContext) ? value as VisitContext : undefined;
+    if (visitContext) await updateVisit(visitId, { visitContext }, ownerUserId);
   } else {
     const allowed = ["cash", "card", "qr", "receivable", "other"] as const;
     const paymentMethod = allowed.includes(value as (typeof allowed)[number]) ? value as (typeof allowed)[number] : undefined;
