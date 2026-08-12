@@ -1,37 +1,78 @@
-# Velvet Integration Boundaries v0.1
+# Velvet Integration Boundaries v1.0
 
-Provisional until Velvet is added to `professional-platform-contracts`.
+Velvet is a Professional App connected to Growth Engine.
 
-## Existing constraint
-Current platform contracts declare Growth Engine canonical owner of shared Customer management/profile, Reservation, Payment and Sales. Velvet requires a distinct individual personal-sales domain and must not silently create a second entity also called the shared platform `Customer`.
+## Canonical ownership
 
-## Proposed Velvet-owned domain
-- Guest/Person identity within Velvet
-- Visit
-- GuestKnowledge
-- GuestRelationship
-- Gift
-- personal ScheduleEntry
-- SelfInvestmentEntry
-- input dictionary/suggestion state
-- raw/structured Capture records
+Growth Engine owns:
+- Customer
+- Reservation / Visit Schedule
+- Payment
+- Sales
+- paymentStatus
+- salesAmount
+- customer-level revenue
+- repeat / referral / business analysis state
 
-Canonical names must be approved in `professional-platform-contracts` before production cross-app integration.
+Velvet owns:
+- Velvet Customer Memory / Professional Profile keyed by `customerId`
+- Professional Visit record
+- service/seat context
+- conversation memo
+- preference memo
+- caution memo
+- last interaction summary
+- next topic / next action memo
+- professional timeline
+- Recall UI
 
-## Growth Engine
-Do not assume Velvet Guest equals Growth Engine Customer. Future mapping must be explicit, reference-based and opt-in (for example `growthCustomerRef`) with documented ownership/synchronization rules. Velvet must not overwrite Growth Engine canonical Customer, Payment or Sales state merely because similar information exists in a personal Visit record.
+Velvet must not create or edit a competing Customer master.
+
+## Growth Engine -> Velvet
+
+Allowed reference/context fields:
+- `workspaceId`
+- `userId`
+- `customerId`
+- `reservationId` OR `visitScheduleId`
+- `intent`
+
+Do not send unless a separately approved contract explicitly requires it:
+- `paymentStatus`
+- `salesAmount`
+- Payment records
+- Stripe secrets or Stripe payment details
+
+Customer display fields such as name/contact are fetched from Growth Engine for display. Velvet may retain a non-canonical `displayNameSnapshot` only when needed for resilient UI; it must never be edited or presented as the Customer source of truth.
+
+## Velvet -> Growth Engine
+
+Return references only as needed:
+- `visitId`
+- `noteId`
+- `lastVisitAt`
+- `nextActionRef`
+- `summaryRef`
+
+Do not return private memo bodies by default. Do not return `paymentStatus`, `salesAmount` or Stripe information.
 
 ## AI Platform Core
-AI Platform Core owns common AI runtime, capabilities and AI usage accounting. Velvet sends minimum context necessary for a user-triggered capability, preferring scoped references/structured input. Do not send unrelated contacts, payment data, full customer datasets or image libraries. Candidate capabilities include Capture structuring, natural-language retrieval and optional ranking assistance. AI usage/points accounting remains canonical in AI Platform Core.
+
+AI Platform Core owns AI execution and AI usage. Velvet may send only the minimum user-triggered memo/search content needed for a capability. Customer/Payment/Sales canonical data is not copied into AI Platform Core.
 
 ## SNS Planner
-Velvet may hand off user-selected posting intent/context. Do not automatically send private guest records, contacts, visit/gift histories or raw personal notes. SNS Planner owns PostDraft/post schedule internals.
+
+Velvet may hand off explicit user-selected communication intent. Private customer notes and timeline bodies are not automatically sent. Growth Engine remains responsible for business targeting/intent; SNS Planner owns draft wording.
 
 ## Platform Admin
-May observe health/version/contract compliance/operational events, but does not own Velvet business data.
+
+Platform Admin may observe health/version/contracts/operational status only. It must not receive private memo bodies, Customer contact data, Sales/Payment data or professional timeline content.
 
 ## Identity
-Until contracts say otherwise, follow the platform MVP identity pattern where applicable: `workspaceId`, `userId`, `ownerUserId`. Do not require `professionalId` in MVP without a contract change.
 
-## Required contract work
-Before production cross-app integration, `professional-platform-contracts` must define Velvet responsibility, Velvet-owned terminology, Growth Engine Customer vs Velvet personal Guest/Person boundary, permitted reference mapping, API/event additions, and privacy/denylist rules for Velvet -> AI Platform Core and Velvet -> SNS Planner.
+Use:
+- `workspaceId` for business scope
+- `userId` for acting user
+- `customerId` as the Growth Engine Customer reference
+
+Do not require `professionalId` for MVP.
