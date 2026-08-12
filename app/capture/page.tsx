@@ -58,8 +58,11 @@ export default async function CapturePage({ searchParams }: { searchParams: Prom
         <div className="sectionTitle">会話メモ · タイムラインに残す</div>
         <form action={conversationMemoAction.bind(null, person.id, fromVisit)} className="stack">
           <input className="searchBox" name="value" placeholder="例：来月大阪出張。娘の受験の話。" autoComplete="off" />
-          <div className="formHint">その日の会話として残します。パーソナリティには混ぜません。</div>
-          <button className="primaryButton" type="submit">会話メモを保存して終了</button>
+          <div className="formHint">原文は先にタイムラインへ保存。必要なら、その後にAI整理候補を確認できます。</div>
+          <div className="searchActions">
+            <button className="secondaryButton" type="submit" name="mode" value="save">メモだけ保存</button>
+            <button className="primaryButton" type="submit" name="mode" value="organize">保存して整理</button>
+          </div>
         </form>
       </>}
 
