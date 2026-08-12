@@ -1,59 +1,24 @@
-import { getPlanAccess, isWithinHistoryWindow } from "@/lib/plan-access";
 import { getStorageMode } from "@/lib/storage/config";
 import { dbQuery } from "@/lib/storage/postgres";
-import { addTimelineItemStore, getPersonStore } from "@/lib/person-store";
+import { addProfessionalTimelineItem } from "@/lib/professional-timeline-repository";
 
 export type GiftDirection = "received" | "given";
-export type Gift = {
-  id: string;
-  ownerUserId: string;
-  personId: string;
-  direction: GiftDirection;
-  item: string;
-  estimatedValue?: number;
-  occasion?: string;
-  note?: string;
-  occurredAt: string;
-};
-
-type ReadOptions = { includeArchived?: boolean };
+export type Gift = { id: string; workspaceId: string; userId: string; customerId: string; direction: GiftDirection; item: string; occasion?: string; note?: string; occurredAt: string };
 const gifts: Gift[] = [];
 const makeId = () => `gift_${Date.now().toString(36)}_${Math.random().toString(36).slice(2, 7)}`;
+type GiftRow = { id:string; workspace_id:string; user_id:string; customer_id:string; direction:GiftDirection; item:string; occasion:string|null; memo:string|null; occurred_at:string };
+const mapRow=(r:GiftRow):Gift=>({id:r.id,workspaceId:r.workspace_id,userId:r.user_id,customerId:r.customer_id,direction:r.direction,item:r.item,occasion:r.occasion??undefined,note:r.memo??undefined,occurredAt:new Date(r.occurred_at).toISOString()});
 
-type GiftRow = { id: string; owner_user_id: string; person_id: string; direction: GiftDirection; item: string; estimated_value: number | null; occasion: string | null; memo: string | null; occurred_at: string };
-const mapGift = (row: GiftRow): Gift => ({
-  id: row.id, ownerUserId: row.owner_user_id, personId: row.person_id, direction: row.direction, item: row.item,
-  estimatedValue: row.estimated_value ?? undefined, occasion: row.occasion ?? undefined, note: row.memo ?? undefined,
-  occurredAt: new Date(row.occurred_at).toISOString(),
-});
-
-export async function listGifts(ownerUserId: string, personId?: string, options: ReadOptions = {}): Promise<Gift[]> {
-  const access = await getPlanAccess(ownerUserId);
-  if (getStorageMode() !== "postgres") {
-    return gifts.filter((gift) => gift.ownerUserId === ownerUserId && (!personId || gift.personId === personId) && (options.includeArchived || isWithinHistoryWindow(gift.occurredAt, access)));
-  }
-  const cutoff = options.includeArchived || access.fullHistory ? null : access.historyCutoff?.toISOString() ?? null;
-  const rows = await dbQuery<GiftRow>(
-    `select id, owner_user_id, person_id, direction, item, estimated_value, occasion, memo, occurred_at::text
-     from velvet_gifts
-     where owner_user_id = $1 and ($2::text is null or person_id = $2) and ($3::timestamptz is null or occurred_at >= $3)
-     order by occurred_at desc`,
-    [ownerUserId, personId ?? null, cutoff],
-  );
-  return rows.rows.map(mapGift);
+export async function listGifts(workspaceId:string,userId:string,customerId?:string):Promise<Gift[]> {
+  if(getStorageMode()!=="postgres") return gifts.filter(g=>g.workspaceId===workspaceId&&g.userId===userId&&(!customerId||g.customerId===customerId));
+  const rows=await dbQuery<GiftRow>(`select id,workspace_id,user_id,customer_id,direction,item,occasion,memo,occurred_at::text from velvet_professional_gifts where workspace_id=$1 and user_id=$2 and ($3::text is null or customer_id=$3) order by occurred_at desc`,[workspaceId,userId,customerId??null]);
+  return rows.rows.map(mapRow);
 }
 
-export async function createGift(input: { ownerUserId: string; personId: string; direction: GiftDirection; item: string; estimatedValue?: number; occasion?: string; note?: string }): Promise<Gift | undefined> {
-  const person = await getPersonStore(input.personId, input.ownerUserId);
-  const item = input.item.trim();
-  if (!person || !item) return undefined;
-  const gift: Gift = { id: makeId(), ownerUserId: input.ownerUserId, personId: input.personId, direction: input.direction, item, estimatedValue: input.estimatedValue, occasion: input.occasion?.trim() || undefined, note: input.note?.trim() || undefined, occurredAt: new Date().toISOString() };
-  if (getStorageMode() !== "postgres") gifts.unshift(gift);
-  else await dbQuery(
-    `insert into velvet_gifts (id, owner_user_id, person_id, direction, item, estimated_value, occasion, memo, occurred_at) values ($1,$2,$3,$4,$5,$6,$7,$8,$9)`,
-    [gift.id, gift.ownerUserId, gift.personId, gift.direction, gift.item, gift.estimatedValue ?? null, gift.occasion ?? null, gift.note ?? null, gift.occurredAt],
-  );
-  const directionLabel = gift.direction === "received" ? "もらった" : "あげた";
-  await addTimelineItemStore(input.personId, { id: gift.id, date: gift.occurredAt.slice(0, 10), title: `${directionLabel} · ${gift.item}`, body: [gift.occasion, gift.note].filter(Boolean).join(" · ") || undefined, eventType: "gift", sourceRef: gift.id }, input.ownerUserId);
+export async function createGift(input:{workspaceId:string;userId:string;customerId:string;direction:GiftDirection;item:string;occasion?:string;note?:string}):Promise<Gift|undefined>{
+  const item=input.item.trim(); if(!item) return undefined;
+  const gift:Gift={id:makeId(),workspaceId:input.workspaceId,userId:input.userId,customerId:input.customerId,direction:input.direction,item,occasion:input.occasion?.trim()||undefined,note:input.note?.trim()||undefined,occurredAt:new Date().toISOString()};
+  if(getStorageMode()!=="postgres") gifts.unshift(gift); else await dbQuery(`insert into velvet_professional_gifts (id,workspace_id,user_id,customer_id,direction,item,occasion,memo,occurred_at) values ($1,$2,$3,$4,$5,$6,$7,$8,$9)`,[gift.id,gift.workspaceId,gift.userId,gift.customerId,gift.direction,gift.item,gift.occasion??null,gift.note??null,gift.occurredAt]);
+  await addProfessionalTimelineItem({workspaceId:gift.workspaceId,userId:gift.userId,customerId:gift.customerId,eventType:"gift",title:`${gift.direction==="received"?"もらった":"あげた"} · ${gift.item}`,body:[gift.occasion,gift.note].filter(Boolean).join(" · ")||undefined,sourceRef:gift.id});
   return gift;
 }
