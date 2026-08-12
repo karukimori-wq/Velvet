@@ -4,7 +4,7 @@ import { BottomNav } from "@/components/bottom-nav";
 import { getRequestIdentity } from "@/lib/auth/request-identity";
 import { getPersonStore, listPeopleStore } from "@/lib/person-store";
 import { getVisit } from "@/lib/visit-repository";
-import { addParticipantAction, endVisitAction, updateVisitAction } from "../actions";
+import { addParticipantAction, endVisitAction, quickUpdateVisitAction, updateVisitAction } from "../actions";
 
 const paymentLabels: Record<string, string> = {
   cash: "現金",
@@ -13,6 +13,9 @@ const paymentLabels: Record<string, string> = {
   receivable: "売掛",
   other: "その他",
 };
+
+const seatingChoices = ["新規", "指名", "場内指名", "ヘルプ", "同伴"];
+const paymentChoices = [["cash", "現金"], ["card", "カード"], ["qr", "QR"], ["receivable", "売掛"], ["other", "その他"]] as const;
 
 export default async function ActiveVisitPage({ params }: { params: Promise<{ visitId: string }> }) {
   const { visitId } = await params;
@@ -39,37 +42,46 @@ export default async function ActiveVisitPage({ params }: { params: Promise<{ vi
         <p>{start.toLocaleTimeString("ja-JP", { hour: "2-digit", minute: "2-digit" })}〜 · {elapsedMinutes}分</p>
       </section>
 
-      <div className="sectionTitle">入力済み</div>
-      <div className="chips">
-        {visit.seatingReason && <span className="chip">{visit.seatingReason}</span>}
-        {visit.paymentMethod && <span className="chip">{paymentLabels[visit.paymentMethod]}</span>}
-        {typeof visit.salesAmount === "number" && <span className="chip">¥{visit.salesAmount.toLocaleString("ja-JP")}</span>}
-        {!visit.seatingReason && !visit.paymentMethod && typeof visit.salesAmount !== "number" && <span className="subtle">まだありません</span>}
-      </div>
+      {(visit.seatingReason || visit.paymentMethod || typeof visit.salesAmount === "number") && <>
+        <div className="sectionTitle">入力済み</div>
+        <div className="chips">
+          {visit.seatingReason && <span className="chip">{visit.seatingReason}</span>}
+          {visit.paymentMethod && <span className="chip">{paymentLabels[visit.paymentMethod]}</span>}
+          {typeof visit.salesAmount === "number" && <span className="chip">¥{visit.salesAmount.toLocaleString("ja-JP")}</span>}
+        </div>
+      </>}
 
       {!visit.endedAt && (
         <>
-          <div className="sectionTitle">クイック入力</div>
-          <form action={updateVisitAction} className="stack">
+          <div className="sectionTitle">着席理由 · 1タップで保存</div>
+          <div className="chips choiceRow">
+            {seatingChoices.map((value) => (
+              <form action={quickUpdateVisitAction.bind(null, visit.id, "seatingReason", value)} key={value}>
+                <button className={`choiceChip ${visit.seatingReason === value ? "activeAction" : ""}`} type="submit">{value}</button>
+              </form>
+            ))}
+          </div>
+
+          <div className="sectionTitle">支払方法 · 1タップで保存</div>
+          <div className="chips choiceRow">
+            {paymentChoices.map(([value, label]) => (
+              <form action={quickUpdateVisitAction.bind(null, visit.id, "paymentMethod", value)} key={value}>
+                <button className={`choiceChip ${visit.paymentMethod === value ? "activeAction" : ""}`} type="submit">{label}</button>
+              </form>
+            ))}
+          </div>
+
+          <div className="sectionTitle">売上 · 必要な時だけ</div>
+          <form action={updateVisitAction} className="inlineForm">
             <input type="hidden" name="visitId" value={visit.id} />
-            <div className="chips choiceRow">
-              {[["新規", "新規"], ["指名", "指名"], ["場内指名", "場内指名"], ["ヘルプ", "ヘルプ"], ["同伴", "同伴"]].map(([value, label]) => (
-                <label className="choiceChip" key={value}><input type="radio" name="seatingReason" value={value} defaultChecked={visit.seatingReason === value} />{label}</label>
-              ))}
-            </div>
-            <div className="chips choiceRow">
-              {[["cash", "現金"], ["card", "カード"], ["qr", "QR"], ["receivable", "売掛"], ["other", "その他"]].map(([value, label]) => (
-                <label className="choiceChip" key={value}><input type="radio" name="paymentMethod" value={value} defaultChecked={visit.paymentMethod === value} />{label}</label>
-              ))}
-            </div>
-            <input className="searchBox" name="salesAmount" inputMode="numeric" placeholder="売上（任意）" defaultValue={visit.salesAmount ?? ""} />
-            <button className="primaryButton" type="submit">反映</button>
+            <input className="searchBox" name="salesAmount" inputMode="numeric" placeholder="金額" defaultValue={visit.salesAmount ?? ""} />
+            <button className="secondaryButton" type="submit">保存</button>
           </form>
 
           {availablePeople.length > 0 && (
-            <>
-              <div className="sectionTitle">一緒に来た人を追加</div>
-              <form action={addParticipantAction} className="inlineForm">
+            <details className="detailsCard">
+              <summary>一緒に来た人を追加</summary>
+              <form action={addParticipantAction} className="inlineForm detailsBody">
                 <input type="hidden" name="visitId" value={visit.id} />
                 <select className="selectBox" name="personId" defaultValue="">
                   <option value="" disabled>選択</option>
@@ -77,7 +89,7 @@ export default async function ActiveVisitPage({ params }: { params: Promise<{ vi
                 </select>
                 <button className="secondaryButton" type="submit">追加</button>
               </form>
-            </>
+            </details>
           )}
 
           <div className="sectionTitle">終了</div>
