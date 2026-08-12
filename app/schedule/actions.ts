@@ -7,11 +7,12 @@ import { createScheduleEntry, type ScheduleKind } from "@/lib/schedule-repositor
 export async function createScheduleAction(formData: FormData) {
   const title = String(formData.get("title") ?? "").trim();
   if (!title) return;
-  const { ownerUserId } = await getRequestIdentity();
+  const { workspaceId, userId } = await getRequestIdentity();
   const kind = String(formData.get("kind") ?? "other") as ScheduleKind;
-  const personId = String(formData.get("personId") ?? "").trim() || undefined;
+  const customerId = String(formData.get("customerId") ?? "").trim() || undefined;
+  const visitScheduleId = String(formData.get("visitScheduleId") ?? "").trim() || undefined;
   const startsAt = String(formData.get("startsAt") ?? "").trim() || undefined;
   const note = String(formData.get("note") ?? "").trim() || undefined;
-  await createScheduleEntry({ kind, title, personId, startsAt, note }, ownerUserId);
+  await createScheduleEntry({ workspaceId, userId, kind, title, customerId, visitScheduleId, startsAt, note });
   redirect("/schedule");
 }
