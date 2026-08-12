@@ -1,59 +1,24 @@
 import { getStorageMode } from "@/lib/storage/config";
 import { dbQuery } from "@/lib/storage/postgres";
-import { addTimelineItemStore, getPersonStore } from "@/lib/person-store";
+import { addProfessionalTimelineItem } from "@/lib/professional-timeline-repository";
 
 export type ScheduleKind = "shift" | "visit" | "birthday" | "unavailable" | "self_investment" | "other";
-export type ScheduleEntry = {
-  id: string;
-  ownerUserId: string;
-  personId?: string;
-  kind: ScheduleKind;
-  title: string;
-  startsAt?: string;
-  note?: string;
-  createdAt: string;
-};
+export type ScheduleEntry = { id:string; workspaceId:string; userId:string; customerId?:string; visitScheduleId?:string; kind:ScheduleKind; title:string; startsAt:string; note?:string; createdAt:string };
+const entries:ScheduleEntry[]=[];
+const makeId=()=>`schedule_${Date.now().toString(36)}_${Math.random().toString(36).slice(2,7)}`;
+type ScheduleRow={id:string;workspace_id:string;user_id:string;customer_id:string|null;visit_schedule_id:string|null;entry_type:ScheduleKind;title:string;starts_at:string;note:string|null;created_at:string};
+const mapRow=(r:ScheduleRow):ScheduleEntry=>({id:r.id,workspaceId:r.workspace_id,userId:r.user_id,customerId:r.customer_id??undefined,visitScheduleId:r.visit_schedule_id??undefined,kind:r.entry_type,title:r.title,startsAt:new Date(r.starts_at).toISOString(),note:r.note??undefined,createdAt:new Date(r.created_at).toISOString()});
 
-const entries: ScheduleEntry[] = [];
-const makeId = () => `schedule_${Date.now().toString(36)}_${Math.random().toString(36).slice(2, 7)}`;
-
-type ScheduleRow = { id: string; owner_user_id: string; person_id: string | null; entry_type: ScheduleKind; title: string; starts_at: string; note: string | null; created_at: string };
-const mapRow = (row: ScheduleRow): ScheduleEntry => ({
-  id: row.id,
-  ownerUserId: row.owner_user_id,
-  personId: row.person_id ?? undefined,
-  kind: row.entry_type,
-  title: row.title,
-  startsAt: new Date(row.starts_at).toISOString(),
-  note: row.note ?? undefined,
-  createdAt: new Date(row.created_at).toISOString(),
-});
-
-export async function listScheduleEntries(ownerUserId: string) {
-  if (getStorageMode() !== "postgres") {
-    return entries.filter((entry) => entry.ownerUserId === ownerUserId).sort((a, b) => (a.startsAt ?? a.createdAt).localeCompare(b.startsAt ?? b.createdAt));
-  }
-  const result = await dbQuery<ScheduleRow>(
-    "select id, owner_user_id, person_id, entry_type, title, starts_at::text, note, created_at::text from velvet_schedule_entries where owner_user_id = $1 order by starts_at",
-    [ownerUserId],
-  );
-  return result.rows.map(mapRow);
+export async function listScheduleEntries(workspaceId:string,userId:string){
+  if(getStorageMode()!=="postgres") return entries.filter(e=>e.workspaceId===workspaceId&&e.userId===userId).sort((a,b)=>a.startsAt.localeCompare(b.startsAt));
+  const rows=await dbQuery<ScheduleRow>(`select id,workspace_id,user_id,customer_id,visit_schedule_id,entry_type,title,starts_at::text,note,created_at::text from velvet_professional_schedule_entries where workspace_id=$1 and user_id=$2 order by starts_at`,[workspaceId,userId]);
+  return rows.rows.map(mapRow);
 }
 
-export async function createScheduleEntry(values: Pick<ScheduleEntry, "kind" | "title"> & Partial<Pick<ScheduleEntry, "personId" | "startsAt" | "note">>, ownerUserId: string) {
-  if (values.personId && !(await getPersonStore(values.personId, ownerUserId))) return undefined;
-  const entry: ScheduleEntry = {
-    id: makeId(), ownerUserId, kind: values.kind, title: values.title.trim(), personId: values.personId,
-    startsAt: values.startsAt, note: values.note?.trim() || undefined, createdAt: new Date().toISOString(),
-  };
-  if (!entry.title) return undefined;
-  if (getStorageMode() !== "postgres") entries.push(entry);
-  else await dbQuery(
-    "insert into velvet_schedule_entries (id, owner_user_id, person_id, entry_type, title, starts_at, note, created_at) values ($1,$2,$3,$4,$5,$6,$7,$8)",
-    [entry.id, entry.ownerUserId, entry.personId ?? null, entry.kind, entry.title, entry.startsAt ?? entry.createdAt, entry.note ?? null, entry.createdAt],
-  );
-  if (entry.personId) {
-    await addTimelineItemStore(entry.personId, { id: entry.id, date: (entry.startsAt ?? entry.createdAt).slice(0, 10), title: `予定 · ${entry.title}`, body: entry.note, eventType: "schedule", sourceRef: entry.id }, ownerUserId);
-  }
+export async function createScheduleEntry(values:{workspaceId:string;userId:string;customerId?:string;visitScheduleId?:string;kind:ScheduleKind;title:string;startsAt?:string;note?:string}){
+  const title=values.title.trim(); if(!title) return undefined;
+  const entry:ScheduleEntry={id:makeId(),workspaceId:values.workspaceId,userId:values.userId,customerId:values.customerId,visitScheduleId:values.visitScheduleId,kind:values.kind,title,startsAt:values.startsAt??new Date().toISOString(),note:values.note?.trim()||undefined,createdAt:new Date().toISOString()};
+  if(getStorageMode()!=="postgres") entries.push(entry); else await dbQuery(`insert into velvet_professional_schedule_entries (id,workspace_id,user_id,customer_id,visit_schedule_id,entry_type,title,starts_at,note,created_at) values ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10)`,[entry.id,entry.workspaceId,entry.userId,entry.customerId??null,entry.visitScheduleId??null,entry.kind,entry.title,entry.startsAt,entry.note??null,entry.createdAt]);
+  if(entry.customerId) await addProfessionalTimelineItem({workspaceId:entry.workspaceId,userId:entry.userId,customerId:entry.customerId,eventType:"schedule",title:`予定 · ${entry.title}`,body:entry.note,sourceRef:entry.visitScheduleId??entry.id});
   return entry;
 }
