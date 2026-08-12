@@ -17,9 +17,11 @@ export async function captureAction(personId: string | undefined, kind: CaptureK
 export async function conversationMemoAction(personId: string, visitId: string | undefined, formData: FormData) {
   const { ownerUserId } = await getRequestIdentity();
   const value = String(formData.get("value") ?? "").trim();
+  const mode = String(formData.get("mode") ?? "save");
   if (!value) redirect(`/capture?personId=${personId}${visitId ? `&fromVisit=${encodeURIComponent(visitId)}` : ""}&error=empty`);
   const created = await createCapture({ ownerUserId, personId, kind: "conversation_note", value });
   if (!created) redirect(`/capture?personId=${personId}&error=invalid`);
+  if (mode === "organize") redirect(`/capture/organize/${created.id}`);
   redirect(`/people/${personId}`);
 }
 
