@@ -12,6 +12,7 @@ const contactLabels: Record<string, string> = {
   phone: "電話", email: "メール", line: "LINE", instagram: "Instagram", x: "X", tiktok: "TikTok", other: "連絡先",
 };
 const maritalLabels: Record<string, string> = { unmarried: "未婚", married: "既婚", unknown: "婚姻状況不明" };
+const eventLabels: Record<string, string> = { visit: "来店", conversation: "会話", gift: "Gift", schedule: "予定", relationship: "関係" };
 
 export default async function PersonDetailPage({
   params,
@@ -37,6 +38,8 @@ export default async function PersonDetailPage({
     profile?.birthDate ? `誕生日 ${profile.birthDate}` : undefined,
     profile?.maritalStatus ? maritalLabels[profile.maritalStatus] : undefined,
   ].filter(Boolean) as string[];
+  const latestVisit = person.timeline.find((item) => item.eventType === "visit");
+  const latestConversation = person.timeline.find((item) => item.eventType === "conversation");
 
   return (
     <main className="shell">
@@ -48,6 +51,14 @@ export default async function PersonDetailPage({
         <h1>{person.name}{person.rank ? ` · ${person.rank}` : ""}</h1>
         {person.nextVisit && <p>{person.nextVisit} 来店予定</p>}
       </section>
+
+      {(latestVisit || latestConversation) && (
+        <section className="card noticeCard">
+          <div className="timelineTitle">前回を思い出す</div>
+          {latestVisit && <div className="timelineBody">{latestVisit.date} · {latestVisit.title}{latestVisit.body ? ` · ${latestVisit.body}` : ""}</div>}
+          {latestConversation && latestConversation.id !== latestVisit?.id && <div className="formHint">会話 · {latestConversation.body ?? latestConversation.title}</div>}
+        </section>
+      )}
 
       {justEnded && !activeVisit && (
         <Link className="card actionLink noticeCard" href={`/capture?personId=${person.id}&fromVisit=${encodeURIComponent(justEnded)}`}>
@@ -78,7 +89,19 @@ export default async function PersonDetailPage({
         <Link className="action actionLink" href={`/people/${person.id}/gift`}>Gift</Link>
         <Link className="action actionLink" href={`/relationships/new?personId=${person.id}`}>関係</Link>
       </div>
-      {person.timeline.length > 0 ? <><div className="sectionTitle">タイムライン</div><div className="timeline">{person.timeline.map((item) => <article className="timelineItem" key={item.id}><div className="timelineDate">{item.date}</div><div className="timelineTitle">{item.title}</div>{item.body && <div className="timelineBody">{item.body}</div>}</article>)}</div></> : <div className="sectionTitle">履歴はまだありません</div>}
+
+      {person.timeline.length > 0 ? <>
+        <div className="sectionTitle">タイムライン</div>
+        <div className="timeline">
+          {person.timeline.map((item) => (
+            <article className="timelineItem" key={item.id}>
+              <div className="timelineDate">{item.date}{item.eventType && eventLabels[item.eventType] ? ` · ${eventLabels[item.eventType]}` : ""}</div>
+              <div className="timelineTitle">{item.title}</div>
+              {item.body && <div className="timelineBody">{item.body}</div>}
+            </article>
+          ))}
+        </div>
+      </> : <div className="sectionTitle">履歴はまだありません</div>}
       <BottomNav />
     </main>
   );
