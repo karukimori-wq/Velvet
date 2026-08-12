@@ -23,8 +23,9 @@ export async function conversationMemoAction(personId: string, visitId: string |
   redirect(`/people/${personId}`);
 }
 
-export async function quickCaptureAction(personId: string | undefined, kind: CaptureKind, value: string) {
+export async function quickCaptureAction(personId: string | undefined, kind: CaptureKind, value: string, fromVisit?: string) {
   const { ownerUserId } = await getRequestIdentity();
   await createCapture({ ownerUserId, personId, kind, value });
-  redirect(personId ? `/capture?personId=${personId}&saved=1` : "/capture?saved=1");
+  const visitQuery = fromVisit ? `&fromVisit=${encodeURIComponent(fromVisit)}` : "";
+  redirect(personId ? `/capture?personId=${personId}&saved=1${visitQuery}` : "/capture?saved=1");
 }
