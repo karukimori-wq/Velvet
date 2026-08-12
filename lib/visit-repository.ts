@@ -18,6 +18,14 @@ export type Visit = {
   visitContext?: VisitContext;
 };
 
+export type PersonVisitStats = {
+  visitCount: number;
+  totalSales: number;
+  averageStayMinutes?: number;
+  lastVisitAt?: string;
+  commonPaymentMethod?: Visit["paymentMethod"];
+};
+
 type ReadOptions = { includeArchived?: boolean };
 const visits: Visit[] = [];
 
@@ -83,6 +91,64 @@ export async function listVisits(ownerUserId: string, options: ReadOptions = {})
     participants.set(row.visit_id, list);
   }
   return visitRows.rows.map((row) => mapVisit(row, participants.get(row.id) ?? []));
+}
+
+export async function getPersonVisitStats(personId: string, ownerUserId: string): Promise<PersonVisitStats> {
+  const access = await getPlanAccess(ownerUserId);
+  if (getStorageMode() !== "postgres") {
+    const visible = visits.filter((visit) =>
+      visit.ownerUserId === ownerUserId &&
+      visit.participantIds.includes(personId) &&
+      isWithinHistoryWindow(visit.startedAt, access),
+    );
+    const completed = visible.filter((visit) => visit.endedAt);
+    const totalSales = visible.reduce((sum, visit) => sum + (visit.salesAmount ?? 0), 0);
+    const durations = completed.map((visit) => visit.durationMinutes).filter((value): value is number => typeof value === "number");
+    const paymentCounts = new Map<NonNullable<Visit["paymentMethod"]>, number>();
+    for (const visit of visible) if (visit.paymentMethod) paymentCounts.set(visit.paymentMethod, (paymentCounts.get(visit.paymentMethod) ?? 0) + 1);
+    const commonPaymentMethod = [...paymentCounts.entries()].sort((a, b) => b[1] - a[1])[0]?.[0];
+    return {
+      visitCount: visible.length,
+      totalSales,
+      averageStayMinutes: durations.length > 0 ? Math.round(durations.reduce((sum, value) => sum + value, 0) / durations.length) : undefined,
+      lastVisitAt: visible[0]?.startedAt,
+      commonPaymentMethod,
+    };
+  }
+
+  const cutoff = access.fullHistory ? null : access.historyCutoff?.toISOString() ?? null;
+  type StatsRow = { visit_count: string; total_sales: string | null; average_stay: string | null; last_visit_at: string | null };
+  type PaymentRow = { payment_method: NonNullable<Visit["paymentMethod"]>; usage_count: string };
+  const [statsRows, paymentRows] = await Promise.all([
+    dbQuery<StatsRow>(
+      `select count(*)::text as visit_count,
+              coalesce(sum(v.sales_amount), 0)::text as total_sales,
+              round(avg(v.duration_minutes))::text as average_stay,
+              max(v.started_at)::text as last_visit_at
+       from velvet_visits v
+       join velvet_visit_participants vp on vp.visit_id = v.id and vp.owner_user_id = v.owner_user_id
+       where v.owner_user_id = $1 and vp.person_id = $2 and ($3::timestamptz is null or v.started_at >= $3)`,
+      [ownerUserId, personId, cutoff],
+    ),
+    dbQuery<PaymentRow>(
+      `select v.payment_method, count(*)::text as usage_count
+       from velvet_visits v
+       join velvet_visit_participants vp on vp.visit_id = v.id and vp.owner_user_id = v.owner_user_id
+       where v.owner_user_id = $1 and vp.person_id = $2 and v.payment_method is not null and ($3::timestamptz is null or v.started_at >= $3)
+       group by v.payment_method
+       order by count(*) desc, max(v.started_at) desc
+       limit 1`,
+      [ownerUserId, personId, cutoff],
+    ),
+  ]);
+  const stats = statsRows.rows[0];
+  return {
+    visitCount: Number(stats?.visit_count ?? 0),
+    totalSales: Number(stats?.total_sales ?? 0),
+    averageStayMinutes: stats?.average_stay ? Number(stats.average_stay) : undefined,
+    lastVisitAt: stats?.last_visit_at ? new Date(stats.last_visit_at).toISOString() : undefined,
+    commonPaymentMethod: paymentRows.rows[0]?.payment_method,
+  };
 }
 
 export async function getVisit(id: string, ownerUserId: string, options: ReadOptions = {}): Promise<Visit | undefined> {
