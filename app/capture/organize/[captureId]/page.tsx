@@ -15,7 +15,8 @@ export default async function OrganizeCapturePage({ params }: { params: Promise<
   const structured = await structureCapture(capture.value, ownerUserId);
   const knowledge = structured.candidates.filter((candidate) => candidate.type === "knowledge");
   const schedules = structured.candidates.filter((candidate) => candidate.type === "schedule");
-  const deferred = structured.candidates.filter((candidate) => candidate.type !== "knowledge" && candidate.type !== "schedule");
+  const gifts = structured.candidates.filter((candidate) => candidate.type === "gift");
+  const deferred = structured.candidates.filter((candidate) => !["knowledge", "schedule", "gift"].includes(candidate.type));
 
   return <main className="shell">
     <header className="header"><Link className="subtle" href={capture.customerId ? `/capture?customerId=${capture.customerId}` : "/capture"}>‹ 戻る</Link><span className="subtle">整理</span></header>
@@ -35,8 +36,20 @@ export default async function OrganizeCapturePage({ params }: { params: Promise<
         <div className="formHint">日時が空欄なら登録しません。Velvetが勝手に予定化することはありません。</div>
       </section>)}
 
+      {gifts.length > 0 && <div className="sectionTitle">Gift候補</div>}
+      {gifts.map((candidate, index) => <section className="card stack" key={`${candidate.value}-${index}`}>
+        <div><div className="formHint">Gift候補</div><div className="timelineTitle">{candidate.value}</div></div>
+        <input type="hidden" name="giftValue" value={candidate.value} />
+        {capture.customerId ? <div className="choiceRow row">
+          <label className="choiceChip"><input type="radio" name="giftDirection" value="received" />もらった</label>
+          <label className="choiceChip"><input type="radio" name="giftDirection" value="given" />あげた</label>
+          <label className="choiceChip"><input type="radio" name="giftDirection" value="skip" defaultChecked />登録しない</label>
+        </div> : <div className="formHint">顧客が選ばれていないためGiftには登録できません。</div>}
+        <div className="formHint">方向はAIに決めさせません。ユーザーが選んだ場合だけ登録します。</div>
+      </section>)}
+
       {deferred.length > 0 && <div className="sectionTitle">確認が必要な候補</div>}
-      {deferred.map((candidate, index) => <div className="card" key={`${candidate.type}-${candidate.value}-${index}`}><div className="formHint">{labels[candidate.type]}</div><div>{candidate.value}</div><div className="formHint">現時点では勝手にGift等へ登録しません。</div></div>)}
+      {deferred.map((candidate, index) => <div className="card" key={`${candidate.type}-${candidate.value}-${index}`}><div className="formHint">{labels[candidate.type]}</div><div>{candidate.value}</div></div>)}
       <button className="primaryButton" type="submit">確認した内容を追加</button>
     </form>
   </main>;
