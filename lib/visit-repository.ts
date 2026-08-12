@@ -140,11 +140,20 @@ export async function startVisit(personId: string, ownerUserId: string): Promise
 export async function addParticipant(visitId: string, personId: string, ownerUserId: string): Promise<Visit | undefined> {
   const [visit, person] = await Promise.all([getVisit(visitId, ownerUserId), getPersonStore(personId, ownerUserId)]);
   if (!visit || !person || visit.endedAt) return undefined;
+  if (visit.participantIds.includes(personId)) return visit;
+
   if (getStorageMode() !== "postgres") {
-    if (!visit.participantIds.includes(personId)) visit.participantIds.push(personId);
+    visit.participantIds.push(personId);
+    if (!visit.visitContext || visit.visitContext === "solo") visit.visitContext = "group";
     return visit;
   }
-  await dbQuery(`insert into velvet_visit_participants (visit_id, owner_user_id, person_id) values ($1,$2,$3) on conflict do nothing`, [visitId, ownerUserId, personId]);
+
+  await withTransaction(async (client) => {
+    await client.query(`insert into velvet_visit_participants (visit_id, owner_user_id, person_id) values ($1,$2,$3) on conflict do nothing`, [visitId, ownerUserId, personId]);
+    if (!visit.visitContext || visit.visitContext === "solo") {
+      await client.query(`update velvet_visits set visit_context = 'group' where id = $1 and owner_user_id = $2 and ended_at is null`, [visitId, ownerUserId]);
+    }
+  });
   return getVisit(visitId, ownerUserId);
 }
 
