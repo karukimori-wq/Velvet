@@ -1,0 +1,7 @@
+@media (max-width: 699px) {
+  .shell { padding-bottom: 200px; }
+  .bottomNav { z-index: 100; bottom: 84px; width: calc(100% - 24px); border: 1px solid #35303a; border-radius: 24px; }
+  .navItem { min-height: 56px; display: grid; place-items: center; align-content: center; touch-action: manipulation; }
+  .captureNav strong { width: 54px; height: 54px; margin-top: -24px; font-size: 28px; }
+  .scheduleShell { padding-bottom: 220px; }
+}
