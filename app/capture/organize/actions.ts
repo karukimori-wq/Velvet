@@ -4,11 +4,26 @@ import { redirect } from "next/navigation";
 import { getRequestIdentity } from "@/lib/auth/request-identity";
 import { createCapture } from "@/lib/capture-repository";
 
-export async function organizeCaptureAction(customerId: string | undefined, formData: FormData) {
+export async function organizeCaptureAction(customerId: string | undefined, fromVisit: string | undefined, formData: FormData) {
   const { workspaceId, userId } = await getRequestIdentity();
   const value = String(formData.get("value") ?? "").trim();
-  if (!value) redirect(customerId ? `/capture?customerId=${customerId}&error=empty` : "/capture?error=empty");
+  const captureParams = new URLSearchParams();
+  if (customerId) captureParams.set("customerId", customerId);
+  if (fromVisit) captureParams.set("fromVisit", fromVisit);
+
+  if (!value) {
+    captureParams.set("error", "empty");
+    redirect(`/capture?${captureParams.toString()}`);
+  }
+
   const raw = await createCapture({ workspaceId, userId, customerId, kind: "free_text", value });
-  if (!raw) redirect(customerId ? `/capture?customerId=${customerId}&error=invalid` : "/capture?error=invalid");
-  redirect(`/capture/organize/${raw.id}`);
+  if (!raw) {
+    captureParams.set("error", "invalid");
+    redirect(`/capture?${captureParams.toString()}`);
+  }
+
+  const organizeParams = new URLSearchParams();
+  if (fromVisit) organizeParams.set("fromVisit", fromVisit);
+  const query = organizeParams.toString();
+  redirect(`/capture/organize/${raw.id}${query ? `?${query}` : ""}`);
 }
