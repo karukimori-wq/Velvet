@@ -4,57 +4,10 @@ export type GrowthCustomerDisplay = {
   contacts?: Array<{ type: string; value: string; label?: string }>;
 };
 
-export type GrowthEngineContext = {
-  workspaceId: string;
-  userId: string;
-  customerId: string;
-  reservationId?: string;
-  visitScheduleId?: string;
-  intent?: string;
-};
-
-export function getGrowthEngineBaseUrl() {
-  return process.env.GROWTH_ENGINE_BASE_URL?.trim() || undefined;
-}
-
-function mapCustomer(raw: Record<string, unknown>): GrowthCustomerDisplay | undefined {
-  const customerId = typeof raw.customerId === "string" ? raw.customerId : typeof raw.id === "string" ? raw.id : undefined;
-  if (!customerId) return undefined;
-  return {
-    customerId,
-    displayName: typeof raw.name === "string" ? raw.name : typeof raw.displayName === "string" ? raw.displayName : undefined,
-    contacts: Array.isArray(raw.contacts) ? raw.contacts.flatMap((item) => {
-      if (!item || typeof item !== "object") return [];
-      const row = item as Record<string, unknown>;
-      if (typeof row.type !== "string" || typeof row.value !== "string") return [];
-      return [{ type: row.type, value: row.value, label: typeof row.label === "string" ? row.label : undefined }];
-    }) : undefined,
-  };
-}
-
-export async function getGrowthCustomerDisplay(context: GrowthEngineContext): Promise<GrowthCustomerDisplay> {
-  const baseUrl = getGrowthEngineBaseUrl();
-  if (!baseUrl) return { customerId: context.customerId };
-  const url = new URL(`/api/customers/${encodeURIComponent(context.customerId)}`, baseUrl);
-  url.searchParams.set("workspaceId", context.workspaceId);
-  const response = await fetch(url, { headers: { "X-Source-App": "velvet", "X-User-Id": context.userId }, cache: "no-store" });
-  if (!response.ok) return { customerId: context.customerId };
-  const raw = await response.json() as Record<string, unknown>;
-  return mapCustomer({ ...raw, customerId: context.customerId }) ?? { customerId: context.customerId };
-}
-
-export async function getGrowthCustomer(workspaceId: string, userId: string, customerId: string) {
-  return getGrowthCustomerDisplay({ workspaceId, userId, customerId });
-}
-
-export async function listGrowthCustomers(workspaceId: string, userId: string): Promise<GrowthCustomerDisplay[]> {
-  const baseUrl = getGrowthEngineBaseUrl();
-  if (!baseUrl) return [];
-  const url = new URL("/api/customers", baseUrl);
-  url.searchParams.set("workspaceId", workspaceId);
-  const response = await fetch(url, { headers: { "X-Source-App": "velvet", "X-User-Id": userId }, cache: "no-store" });
-  if (!response.ok) return [];
-  const raw = await response.json() as unknown;
-  const items = Array.isArray(raw) ? raw : raw && typeof raw === "object" && Array.isArray((raw as Record<string, unknown>).customers) ? (raw as Record<string, unknown>).customers as unknown[] : [];
-  return items.flatMap((item) => item && typeof item === "object" ? (mapCustomer(item as Record<string, unknown>) ? [mapCustomer(item as Record<string, unknown>)!] : []) : []);
-}
+export type GrowthEngineContext = { workspaceId:string; userId:string; customerId:string; reservationId?:string; visitScheduleId?:string; intent?:string };
+export function getGrowthEngineBaseUrl(){ return process.env.GROWTH_ENGINE_BASE_URL?.trim() || undefined; }
+function mapCustomer(raw:Record<string,unknown>):GrowthCustomerDisplay|undefined { const customerId=typeof raw.customerId==="string"?raw.customerId:typeof raw.id==="string"?raw.id:undefined; if(!customerId)return undefined; return {customerId,displayName:typeof raw.name==="string"?raw.name:typeof raw.displayName==="string"?raw.displayName:undefined,contacts:Array.isArray(raw.contacts)?raw.contacts.flatMap(item=>{if(!item||typeof item!=="object")return[];const row=item as Record<string,unknown>;if(typeof row.type!=="string"||typeof row.value!=="string")return[];return[{type:row.type,value:row.value,label:typeof row.label==="string"?row.label:undefined}]}):undefined}; }
+export async function getGrowthCustomerDisplay(context:GrowthEngineContext):Promise<GrowthCustomerDisplay>{const baseUrl=getGrowthEngineBaseUrl();if(!baseUrl)return{customerId:context.customerId};const url=new URL(`/api/customers/${encodeURIComponent(context.customerId)}`,baseUrl);url.searchParams.set("workspaceId",context.workspaceId);const response=await fetch(url,{headers:{"X-Source-App":"velvet","X-User-Id":context.userId},cache:"no-store"});if(!response.ok)return{customerId:context.customerId};const raw=await response.json() as Record<string,unknown>;return mapCustomer({...raw,customerId:context.customerId})??{customerId:context.customerId};}
+export async function getGrowthCustomer(workspaceId:string,userId:string,customerId:string){return getGrowthCustomerDisplay({workspaceId,userId,customerId});}
+export async function listGrowthCustomers(workspaceId:string,userId:string):Promise<GrowthCustomerDisplay[]>{const baseUrl=getGrowthEngineBaseUrl();if(!baseUrl)return[];const url=new URL("/api/customers",baseUrl);url.searchParams.set("workspaceId",workspaceId);const response=await fetch(url,{headers:{"X-Source-App":"velvet","X-User-Id":userId},cache:"no-store"});if(!response.ok)return[];const raw=await response.json() as unknown;const items=Array.isArray(raw)?raw:raw&&typeof raw==="object"&&Array.isArray((raw as Record<string,unknown>).customers)?(raw as Record<string,unknown>).customers as unknown[]:[];return items.flatMap(item=>item&&typeof item==="object"?(mapCustomer(item as Record<string,unknown>)?[mapCustomer(item as Record<string,unknown>)!]:[]):[]);}
+export async function createGrowthCustomer(workspaceId:string,userId:string,displayName:string):Promise<GrowthCustomerDisplay|undefined>{const baseUrl=getGrowthEngineBaseUrl();if(!baseUrl)return undefined;const response=await fetch(new URL("/api/customers",baseUrl),{method:"POST",headers:{"Content-Type":"application/json","X-Source-App":"velvet","X-User-Id":userId},body:JSON.stringify({workspaceId,displayName}),cache:"no-store"});if(!response.ok)return undefined;const raw=await response.json() as Record<string,unknown>;const customer=raw.customer&&typeof raw.customer==="object"?raw.customer as Record<string,unknown>:raw;return mapCustomer(customer);}
