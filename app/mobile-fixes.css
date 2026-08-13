@@ -7,3 +7,14 @@
 .stickyConfirm { bottom: calc(170px + env(safe-area-inset-bottom)); }
 .scheduleShell { padding-bottom: 250px; }
 .scheduleForm { padding-bottom: 36px; }
+.registerChoice { display:grid; grid-template-columns:48px 1fr auto; gap:14px; align-items:center; min-height:96px; }
+.registerChoice strong { font-size:18px; }
+.registerChoice p { margin:6px 0 0; color:#a9a2ad; font-size:13px; line-height:1.45; }
+.registerIcon { width:48px; height:48px; border-radius:16px; display:grid; place-items:center; background:#2b2630; font-weight:700; }
+.quickRegisterGrid { display:grid; grid-template-columns:1fr 1fr; gap:10px; }
+.quickRegister { text-align:center; font-weight:700; }
+.profileFields { display:grid; gap:10px; }
+.profileField { display:grid; gap:7px; }
+.profileField label { font-size:13px; color:#c9c2cc; }
+.profileInputRow { display:grid; grid-template-columns:minmax(0,1fr) auto; gap:8px; align-items:center; }
+.profileInputRow .compactButton { min-width:64px; }
