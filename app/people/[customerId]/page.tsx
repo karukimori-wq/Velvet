@@ -9,9 +9,9 @@ import { startVisitAction } from "@/app/visits/actions";
 
 const eventLabels: Record<string, string> = { visit: "来店", conversation: "会話", note: "メモ", gift: "Gift", schedule: "予定", relationship: "関係" };
 
-export default async function CustomerDetailPage({ params, searchParams }: { params: Promise<{ customerId: string }>; searchParams: Promise<{ justEnded?: string }> }) {
+export default async function CustomerDetailPage({ params, searchParams }: { params: Promise<{ customerId: string }>; searchParams: Promise<{ justEnded?: string; captureSaved?: string }> }) {
   const { customerId } = await params;
-  const { justEnded } = await searchParams;
+  const { justEnded, captureSaved } = await searchParams;
   const identity = await getRequestIdentity();
   const [customer, memory, timeline, activeVisit] = await Promise.all([
     getGrowthCustomerDisplay({ workspaceId: identity.workspaceId, userId: identity.userId, customerId }),
@@ -24,6 +24,7 @@ export default async function CustomerDetailPage({ params, searchParams }: { par
   return <main className="shell">
     <header className="header"><Link className="subtle" href="/people">‹ People</Link><Link className="subtle" href={`/people/${customerId}/edit`}>メモ編集</Link></header>
     <section className="hero"><h1>{customer.displayName || memory?.displayNameSnapshot || "Customer"}</h1></section>
+    {captureSaved && <div className="card successCard">記録しました</div>}
     {recall.length > 0 && <section className="card noticeCard"><div className="timelineTitle">前回を思い出す</div>{recall.map((value) => <div className="timelineBody" key={value}>{value}</div>)}</section>}
     {justEnded && !activeVisit && <Link className="card actionLink noticeCard" href={`/capture?customerId=${customerId}&fromVisit=${encodeURIComponent(justEnded)}`}><div className="timelineTitle">30秒メモ</div><div className="timelineBody">覚えているうちに、タップ中心で残す</div></Link>}
     {chips.length > 0 && <><div className="sectionTitle">パーソナリティ・好み</div><div className="chips">{chips.map((value) => <span className="chip" key={value}>{value}</span>)}</div></>}
