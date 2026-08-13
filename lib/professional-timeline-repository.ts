@@ -52,6 +52,30 @@ export async function listProfessionalTimeline(workspaceId: string, userId: stri
   return result.rows.map(mapRow);
 }
 
+export async function listLatestConversationsByCustomer(workspaceId: string, userId: string, customerIds: string[]): Promise<Map<string, ProfessionalTimelineItem>> {
+  if (customerIds.length === 0) return new Map();
+  const allowed = new Set(customerIds);
+  if (getStorageMode() !== "postgres") {
+    const latest = new Map<string, ProfessionalTimelineItem>();
+    rows
+      .filter((row) => row.workspaceId === workspaceId && row.userId === userId && row.eventType === "conversation" && allowed.has(row.customerId))
+      .sort((a, b) => b.occurredAt.localeCompare(a.occurredAt))
+      .forEach((row) => { if (!latest.has(row.customerId)) latest.set(row.customerId, row); });
+    return latest;
+  }
+  const result = await dbQuery<TimelineRow>(
+    `select distinct on (customer_id) id, workspace_id, user_id, customer_id, occurred_at::text, event_type, title, body, source_ref
+     from velvet_professional_timeline
+     where workspace_id=$1 and user_id=$2 and event_type='conversation' and customer_id = any($3::text[])
+     order by customer_id, occurred_at desc`,
+    [workspaceId, userId, customerIds],
+  );
+  return new Map(result.rows.map((row) => {
+    const item = mapRow(row);
+    return [item.customerId, item] as const;
+  }));
+}
+
 export async function addProfessionalTimelineItem(input: {
   workspaceId: string;
   userId: string;
