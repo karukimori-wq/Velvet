@@ -20,8 +20,8 @@ export default async function SelfInvestmentPage({ searchParams }: { searchParam
 
   return (
     <main className="shell">
-      <header className="header"><Link className="subtle" href="/settings">‹ Settings</Link><span className="subtle">自己投資</span></header>
-      <section className="hero"><h1>使った分だけ、軽く残す。</h1><p>美容や衣装などの自己投資を記録します。税務判断や確定申告は扱いません。</p></section>
+      <header className="header"><Link className="subtle" href="/">‹ ホーム</Link><span className="subtle">自分の記録</span></header>
+      <section className="hero"><h1>自分に使ったお金を残す</h1><p>美容、衣装、撮影、学びなど。必要な時だけ簡単に記録できます。</p></section>
       {saved && <div className="card successCard">保存しました</div>}
       {error && <div className="formError">金額を確認してください。</div>}
 
@@ -31,8 +31,8 @@ export default async function SelfInvestmentPage({ searchParams }: { searchParam
         </div>
         <input className="searchBox" name="amount" inputMode="numeric" placeholder="金額" />
         <input className="searchBox" name="occurredAt" type="date" />
-        <input className="searchBox" name="memo" placeholder="メモは必要な時だけ" autoComplete="off" />
-        <button className="primaryButton" type="submit">保存</button>
+        <input className="searchBox" name="memo" placeholder="メモ（必要な時だけ）" autoComplete="off" />
+        <button className="primaryButton" type="submit">保存する</button>
       </form>
 
       <div className="sectionTitle">最近の記録</div>
