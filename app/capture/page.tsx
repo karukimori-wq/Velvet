@@ -45,7 +45,7 @@ export default async function CapturePage({ searchParams }: { searchParams: Prom
     {recentSuggestions.length > 0 && <><div className="sectionTitle">最近よく使う</div>{stampGroup(recentSuggestions)}</>}
     {defaultGroups.length > 0 && <div className="sectionTitle">スタンプ</div>}
     {defaultGroups.map((group) => <div key={group.category}><div className="formHint" style={{ marginTop: 10 }}>{group.category}</div>{stampGroup(group.items)}</div>)}
-    <div className="sectionTitle">一言でまとめる</div><form action={organizeCaptureAction.bind(null, customerId)} className="stack"><CaptureVoiceInput placeholder="例：黒髪、ロレックス、来月大阪、犬飼った" /><button className="primaryButton" type="submit">保存して整理</button></form>
+    <div className="sectionTitle">一言でまとめる</div><form action={organizeCaptureAction.bind(null, customerId, fromVisit)} className="stack"><CaptureVoiceInput placeholder="例：黒髪、ロレックス、来月大阪、犬飼った" /><button className="primaryButton" type="submit">保存して整理</button></form>
     <details className="detailsCard"><summary>確実な内容を直接追加</summary><form action={captureAction.bind(null, customerId, "knowledge")} className="stack detailsBody"><input className="searchBox" name="value" placeholder="例：黒髪、ロレックス、ゴルフ" autoComplete="off" /><button className="secondaryButton" type="submit">記憶へ追加</button></form></details>
     <details className="detailsCard"><summary>自由メモだけ残す</summary><form action={captureAction.bind(null, customerId, "free_text")} className="stack detailsBody"><CaptureVoiceInput placeholder="あとで整理したい内容" /><button className="secondaryButton" type="submit">そのまま保存</button></form></details>
     <BottomNav />
