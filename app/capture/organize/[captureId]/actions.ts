@@ -9,7 +9,7 @@ import { recordDictionaryUse } from "@/lib/capture-dictionary-repository";
 import { createScheduleEntry } from "@/lib/schedule-repository";
 import { createGift, type GiftDirection } from "@/lib/gift-repository";
 
-export async function confirmKnowledgeCandidatesAction(captureId: string, formData: FormData) {
+export async function confirmKnowledgeCandidatesAction(captureId: string, fromVisit: string | undefined, formData: FormData) {
   const { workspaceId, userId } = await getRequestIdentity();
   const capture = await getCapture(captureId, workspaceId, userId);
   if (!capture) redirect("/capture?error=missing");
@@ -62,6 +62,7 @@ export async function confirmKnowledgeCandidatesAction(captureId: string, formDa
   if (submitIntent === "continue") {
     const params = new URLSearchParams({ saved: "1" });
     if (capture.customerId) params.set("customerId", capture.customerId);
+    if (fromVisit) params.set("fromVisit", fromVisit);
     redirect(`/capture?${params.toString()}`);
   }
 
