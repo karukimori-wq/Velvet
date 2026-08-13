@@ -7,8 +7,9 @@ import { confirmKnowledgeCandidatesAction } from "./actions";
 
 const labels = { knowledge: "Memory", schedule: "予定", gift: "Gift", unknown: "その他" };
 
-export default async function OrganizeCapturePage({ params }: { params: Promise<{ captureId: string }> }) {
+export default async function OrganizeCapturePage({ params, searchParams }: { params: Promise<{ captureId: string }>; searchParams: Promise<{ fromVisit?: string }> }) {
   const { captureId } = await params;
+  const { fromVisit } = await searchParams;
   const { workspaceId, userId, ownerUserId } = await getRequestIdentity();
   const capture = await getCapture(captureId, workspaceId, userId);
   if (!capture) notFound();
@@ -18,13 +19,17 @@ export default async function OrganizeCapturePage({ params }: { params: Promise<
   const gifts = structured.candidates.filter((candidate) => candidate.type === "gift");
   const deferred = structured.candidates.filter((candidate) => !["knowledge", "schedule", "gift"].includes(candidate.type));
   const candidateCount = knowledge.length + schedules.length + gifts.length + deferred.length;
+  const backParams = new URLSearchParams();
+  if (capture.customerId) backParams.set("customerId", capture.customerId);
+  if (fromVisit) backParams.set("fromVisit", fromVisit);
+  const backHref = backParams.size ? `/capture?${backParams.toString()}` : "/capture";
 
   return <main className="shell">
-    <header className="header"><Link className="subtle" href={capture.customerId ? `/capture?customerId=${capture.customerId}` : "/capture"}>‹ 戻る</Link><span className="subtle">整理</span></header>
+    <header className="header"><Link className="subtle" href={backHref}>‹ 戻る</Link><span className="subtle">整理</span></header>
     <section className="hero"><h1>{candidateCount ? `${candidateCount}件だけ確認` : "確認する候補はありません"}</h1><p>元メモは保存済み。不要なものは触らず、そのまま確定できます。</p></section>
     <details className="detailsCard"><summary>元メモを見る</summary><div className="detailsBody timelineBody">{capture.value}</div></details>
 
-    <form action={confirmKnowledgeCandidatesAction.bind(null, capture.id)} className="stack compactForm">
+    <form action={confirmKnowledgeCandidatesAction.bind(null, capture.id, fromVisit)} className="stack compactForm">
       {knowledge.length > 0 && <>
         <div className="sectionTitle">覚えておく</div>
         <div className="chips reviewChips">{knowledge.map((candidate, index) => <label className="choiceChip reviewChoice" key={`${candidate.value}-${index}`}><input type="checkbox" name="knowledge" value={candidate.value} defaultChecked /><span>{candidate.value}</span></label>)}</div>
