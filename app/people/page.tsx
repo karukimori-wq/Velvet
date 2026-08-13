@@ -3,6 +3,7 @@ import { BottomNav } from "@/components/bottom-nav";
 import { getRequestIdentity } from "@/lib/auth/request-identity";
 import { listCustomerMemories } from "@/lib/customer-memory-repository";
 import { listGrowthCustomers } from "@/lib/growth-engine-customer";
+import { listLatestConversationsByCustomer } from "@/lib/professional-timeline-repository";
 
 export default async function PeoplePage({ searchParams }: { searchParams: Promise<{ q?: string }> }) {
   const { q = "" } = await searchParams;
@@ -11,9 +12,11 @@ export default async function PeoplePage({ searchParams }: { searchParams: Promi
   const [customers, memories] = await Promise.all([listGrowthCustomers(workspaceId, userId), listCustomerMemories(workspaceId, userId)]);
   const memoryByCustomer = new Map(memories.map((memory) => [memory.customerId, memory]));
   const ids = new Set([...customers.map((customer) => customer.customerId), ...memories.map((memory) => memory.customerId)]);
+  const latestConversations = await listLatestConversationsByCustomer(workspaceId, userId, [...ids]);
   const rows = [...ids].map((customerId) => {
     const customer = customers.find((item) => item.customerId === customerId);
     const memory = memoryByCustomer.get(customerId);
+    const latestConversation = latestConversations.get(customerId);
     return {
       customerId,
       displayName: customer?.displayName ?? memory?.displayNameSnapshot ?? `Customer ${customerId}`,
@@ -24,7 +27,8 @@ export default async function PeoplePage({ searchParams }: { searchParams: Promi
       cautionNote: memory?.cautionNote,
       lastInteractionSummary: memory?.lastInteractionSummary,
       nextTopicHint: memory?.nextTopicHint,
-      memoryText: [memory?.personalityNote, memory?.preferenceNote, memory?.cautionNote, memory?.conversationSummary, memory?.lastInteractionSummary, memory?.nextTopicHint].filter(Boolean).join(" "),
+      latestConversation: latestConversation?.body ?? latestConversation?.title,
+      memoryText: [memory?.personalityNote, memory?.preferenceNote, memory?.cautionNote, memory?.conversationSummary, memory?.lastInteractionSummary, memory?.nextTopicHint, latestConversation?.body, latestConversation?.title].filter(Boolean).join(" "),
     };
   }).sort((a, b) => Number(b.pinned) - Number(a.pinned) || a.displayName.localeCompare(b.displayName, "ja"));
   const filtered = query ? rows.filter((row) => [row.displayName, row.customerId, ...row.tags, row.memoryText].join(" ").toLowerCase().includes(query)) : rows;
@@ -38,6 +42,7 @@ export default async function PeoplePage({ searchParams }: { searchParams: Promi
         const quickItems = [
           row.cautionNote ? `注意 · ${row.cautionNote}` : undefined,
           row.lastInteractionSummary ? `前回 · ${row.lastInteractionSummary}` : undefined,
+          row.latestConversation ? `最後の会話 · ${row.latestConversation}` : undefined,
           row.nextTopicHint ? `次回 · ${row.nextTopicHint}` : undefined,
           row.preferenceNote ? `好み · ${row.preferenceNote}` : undefined,
           row.personalityNote ? `人柄 · ${row.personalityNote}` : undefined,
