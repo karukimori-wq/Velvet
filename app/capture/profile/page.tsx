@@ -2,8 +2,8 @@ import Link from "next/link";
 import { BottomNav } from "@/components/bottom-nav";
 import { getRequestIdentity } from "@/lib/auth/request-identity";
 import { listGrowthCustomers } from "@/lib/growth-engine-customer";
-import { captureAction } from "../actions";
 import type { CaptureKind } from "@/lib/capture-repository";
+import { saveField } from "./save-field";
 
 const groups: Array<{ title:string; fields:Array<{label:string; kind:CaptureKind; examples:string}> }> = [
   { title:"外見", fields:[{label:"髪",kind:"appearance",examples:"黒髪、白髪、金髪"},{label:"メガネ",kind:"appearance",examples:"あり、なし、赤フレーム"},{label:"顔の特徴",kind:"appearance",examples:"ヒゲ、色白、えくぼ"}] },
@@ -12,11 +12,11 @@ const groups: Array<{ title:string; fields:Array<{label:string; kind:CaptureKind
   { title:"接客で覚えること", fields:[{label:"着席理由",kind:"knowledge",examples:"新規、指名、場内、ヘルプ"},{label:"注意点",kind:"knowledge",examples:"苦手な話題、避けたいこと"}] },
 ];
 
-export default async function ProfileCapturePage({ searchParams }: { searchParams: Promise<{ customerId?:string }> }) {
-  const { customerId } = await searchParams;
+export default async function ProfileCapturePage({ searchParams }: { searchParams: Promise<{ customerId?:string; saved?:string }> }) {
+  const { customerId, saved } = await searchParams;
   const { workspaceId, userId } = await getRequestIdentity();
   const customers = await listGrowthCustomers(workspaceId,userId);
   if (!customerId) return <main className="shell"><header className="header"><Link className="subtle" href="/add">‹ 戻る</Link><div className="brand">お客様を覚える</div></header><section className="hero"><h1>誰について残しますか？</h1><p>お客様を選んで、分かったところだけ登録します。</p></section><div className="stack">{customers.map(c=><Link className="card personRow" href={`/capture/profile?customerId=${encodeURIComponent(c.customerId)}`} key={c.customerId}><div className="avatar">{c.displayName.slice(0,1)}</div><div className="personMain"><div className="personName">{c.displayName}</div></div><span>›</span></Link>)}{customers.length===0&&<div className="card empty">登録済みのお客様がいません</div>}</div><BottomNav /></main>;
   const customer=customers.find(c=>c.customerId===customerId);
-  return <main className="shell"><header className="header"><Link className="subtle" href="/capture/profile">‹ お客様を選ぶ</Link><span className="subtle">{customer?.displayName??"お客様"}</span></header><section className="hero"><h1>分かったところだけ。</h1><p>全部埋める必要はありません。入力した項目だけ記憶に残ります。</p></section>{groups.map(group=><section key={group.title}><div className="sectionTitle">{group.title}</div><div className="profileFields">{group.fields.map(field=><form action={captureAction.bind(null,customerId,field.kind)} className="profileField" key={field.label}><label>{field.label}</label><div className="profileInputRow"><input className="searchBox" name="value" placeholder={field.examples} autoComplete="off"/><button className="secondaryButton compactButton" type="submit">追加</button></div></form>)}</div></section>)}<BottomNav /></main>;
+  return <main className="shell"><header className="header"><Link className="subtle" href="/capture/profile">‹ お客様を選ぶ</Link><span className="subtle">{customer?.displayName??"お客様"}</span></header><section className="hero"><h1>分かったところだけ。</h1><p>全部埋める必要はありません。</p></section>{saved&&<div className="card successCard"><span className="subtle">登録した内容</span><div className="personName">{saved}</div></div>}{groups.map(group=><section key={group.title}><div className="sectionTitle">{group.title}</div><div className="profileFields">{group.fields.map(field=><form action={saveField.bind(null,customerId,field.kind)} className="profileField" key={field.label}><label>{field.label}</label><div className="profileInputRow"><input className="searchBox" name="value" placeholder={field.examples} autoComplete="off"/><button className="secondaryButton compactButton" type="submit">追加</button></div></form>)}</div></section>)}<BottomNav /></main>;
 }
