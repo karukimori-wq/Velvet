@@ -1,5 +1,7 @@
 import Link from "next/link";
+import { MessageDraftCtaInput } from "@/components/message-draft-cta-input";
 import { getRequestIdentity } from "@/lib/auth/request-identity";
+import { getCustomerMemory } from "@/lib/customer-memory-repository";
 import { getGrowthCustomerDisplay } from "@/lib/growth-engine-customer";
 import { getMessageDraftStatus } from "@/lib/message-draft";
 import { requestMessageDraftAction } from "./actions";
@@ -14,7 +16,10 @@ export default async function MessageDraftPage({
   const { customerId } = await params;
   const query = await searchParams;
   const identity = await getRequestIdentity();
-  const customer = await getGrowthCustomerDisplay({ workspaceId: identity.workspaceId, userId: identity.userId, customerId });
+  const [customer, memory] = await Promise.all([
+    getGrowthCustomerDisplay({ workspaceId: identity.workspaceId, userId: identity.userId, customerId }),
+    getCustomerMemory(identity.workspaceId, identity.userId, customerId),
+  ]);
   const integration = getMessageDraftStatus();
   const value = (key: string) => typeof query[key] === "string" ? query[key] as string : undefined;
   const resultStatus = value("status");
@@ -61,9 +66,8 @@ export default async function MessageDraftPage({
         <option value="warm">親しみ</option>
       </select>
 
-      <label className="fieldLabel" htmlFor="cta">伝えたい行動（任意）</label>
-      <input className="searchBox" id="cta" name="cta" placeholder="例：また時間ある時に連絡して" autoComplete="off" />
-      <div className="formHint">会話メモ全文・売上・支払情報は送信しません。送るのは参照IDとこの画面で選んだ条件だけです。</div>
+      <MessageDraftCtaInput suggestion={memory?.nextTopicHint} />
+      <div className="formHint">次回話題候補は「使う」を押すまで送信対象になりません。会話メモ全文・売上・支払情報は送信しません。送るのは参照IDとこの画面で選んだ条件だけです。</div>
       <button className="primaryButton" type="submit">文案を作る</button>
     </form>
 
