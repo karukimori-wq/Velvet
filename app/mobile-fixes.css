@@ -1,8 +1,9 @@
 .shell { padding-bottom: 210px; }
-.bottomNav { z-index: 100; bottom: 80px; grid-template-columns: repeat(5, 1fr); padding: 8px; border-radius: 24px; width: calc(100% - 24px); }
-.navItem { min-height: 58px; display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 7px 3px; border-radius: 14px; touch-action: manipulation; }
+.bottomNav { z-index: 100; bottom: calc(82px + env(safe-area-inset-bottom)); grid-template-columns: repeat(5, 1fr); padding: 8px; border-radius: 24px; width: calc(100% - 24px); pointer-events: auto; }
+.navItem { min-height: 60px; display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 7px 3px; border-radius: 14px; touch-action: manipulation; -webkit-tap-highlight-color: transparent; position: relative; z-index: 1; }
 .navItem:active { background: #242027; color: #fff; }
-.captureNav strong { width: 54px; height: 54px; margin-top: -25px; font-size: 28px; }
-.stickyConfirm { bottom: 160px; }
-.scheduleShell { padding-bottom: 230px; }
-.scheduleForm { padding-bottom: 24px; }
+.captureNav { z-index: 2; }
+.captureNav strong { width: 58px; height: 58px; margin-top: -28px; font-size: 30px; box-shadow: 0 8px 24px rgba(0,0,0,.28); }
+.stickyConfirm { bottom: calc(170px + env(safe-area-inset-bottom)); }
+.scheduleShell { padding-bottom: 250px; }
+.scheduleForm { padding-bottom: 36px; }
