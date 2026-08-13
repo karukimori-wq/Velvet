@@ -1,9 +1,7 @@
 import type { Metadata } from "next";
 import "./globals.css";
+import "./mobile-fixes.css";
 
-// Velvet is an authenticated, owner-scoped application. User-facing pages must
-// resolve request identity at runtime and must not be statically prerendered
-// during `next build` with a demo/fixed identity.
 export const dynamic = "force-dynamic";
 
 export const metadata: Metadata = {
