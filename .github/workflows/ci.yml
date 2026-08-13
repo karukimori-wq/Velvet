@@ -21,6 +21,8 @@ jobs:
         run: npm install --no-audit --no-fund
       - name: Responsibility boundary
         run: npm run check:responsibility
+      - name: MessageDraft contract
+        run: npm run check:message-draft
       - name: Typecheck
         run: npm run typecheck
       - name: Build
