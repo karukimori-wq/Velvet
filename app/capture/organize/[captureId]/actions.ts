@@ -54,12 +54,17 @@ export async function confirmKnowledgeCandidatesAction(captureId: string, formDa
     }
   }
 
-  if (capture.customerId) {
-    revalidatePath(`/people/${capture.customerId}`);
-    revalidatePath("/people");
-    revalidatePath("/schedule");
-    redirect(`/people/${capture.customerId}`);
-  }
+  revalidatePath("/people");
   revalidatePath("/schedule");
+  if (capture.customerId) revalidatePath(`/people/${capture.customerId}`);
+
+  const submitIntent = String(formData.get("submitIntent") ?? "done");
+  if (submitIntent === "continue") {
+    const params = new URLSearchParams({ saved: "1" });
+    if (capture.customerId) params.set("customerId", capture.customerId);
+    redirect(`/capture?${params.toString()}`);
+  }
+
+  if (capture.customerId) redirect(`/people/${capture.customerId}?captureSaved=1`);
   redirect("/capture?saved=1");
 }
