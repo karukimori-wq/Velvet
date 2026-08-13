@@ -6,6 +6,7 @@ import { getGrowthCustomerDisplay } from "@/lib/growth-engine-customer";
 import { getActiveProfessionalVisit } from "@/lib/professional-visit-repository";
 import { listProfessionalTimeline } from "@/lib/professional-timeline-repository";
 import { startVisitAction } from "@/app/visits/actions";
+import { toggleCustomerPinAction } from "./actions";
 
 const eventLabels: Record<string, string> = { visit: "来店", conversation: "会話", note: "メモ", gift: "Gift", schedule: "予定", relationship: "関係" };
 
@@ -22,7 +23,7 @@ export default async function CustomerDetailPage({ params, searchParams }: { par
   const recall = [memory?.lastInteractionSummary, memory?.conversationSummary, memory?.nextTopicHint ? `次回話題 · ${memory.nextTopicHint}` : undefined, memory?.cautionNote ? `注意 · ${memory.cautionNote}` : undefined].filter(Boolean) as string[];
   const chips = [memory?.personalityNote, memory?.preferenceNote, ...(memory?.tags ?? [])].filter(Boolean) as string[];
   return <main className="shell">
-    <header className="header"><Link className="subtle" href="/people">‹ People</Link><Link className="subtle" href={`/people/${customerId}/edit`}>メモ編集</Link></header>
+    <header className="header"><Link className="subtle" href="/people">‹ People</Link><div className="searchActions"><form action={toggleCustomerPinAction.bind(null, customerId)}><button className="subtle" type="submit" aria-label={memory?.pinned ? "重要顧客のピンを外す" : "重要顧客としてピン留めする"}>{memory?.pinned ? "★" : "☆"}</button></form><Link className="subtle" href={`/people/${customerId}/edit`}>メモ編集</Link></div></header>
     <section className="hero"><h1>{customer.displayName || memory?.displayNameSnapshot || "Customer"}</h1></section>
     {captureSaved && <div className="card successCard">記録しました</div>}
     {recall.length > 0 && <section className="card noticeCard"><div className="timelineTitle">前回を思い出す</div>{recall.map((value) => <div className="timelineBody" key={value}>{value}</div>)}</section>}
