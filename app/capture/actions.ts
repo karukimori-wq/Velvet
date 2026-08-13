@@ -10,7 +10,7 @@ export async function captureAction(customerId: string | undefined, kind: Captur
   if (!value) redirect(customerId ? `/capture?customerId=${customerId}&error=empty` : "/capture?error=empty");
   const created = await createCapture({ workspaceId, userId, customerId, kind, value });
   if (!created) redirect(customerId ? `/capture?customerId=${customerId}&error=invalid` : "/capture?error=invalid");
-  redirect(customerId ? `/people/${customerId}` : "/capture?saved=1");
+  redirect(customerId ? `/people/${customerId}` : `/capture?saved=${encodeURIComponent(value)}`);
 }
 
 export async function conversationMemoAction(customerId: string, visitId: string | undefined, formData: FormData) {
@@ -28,5 +28,6 @@ export async function quickCaptureAction(customerId: string | undefined, kind: C
   const { workspaceId, userId } = await getRequestIdentity();
   await createCapture({ workspaceId, userId, customerId, kind, value });
   const visitQuery = fromVisit ? `&fromVisit=${encodeURIComponent(fromVisit)}` : "";
-  redirect(customerId ? `/capture?customerId=${customerId}&saved=1${visitQuery}` : "/capture?saved=1");
+  const savedQuery = `saved=${encodeURIComponent(value)}`;
+  redirect(customerId ? `/capture?customerId=${customerId}&${savedQuery}${visitQuery}` : `/capture?${savedQuery}`);
 }
