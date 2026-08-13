@@ -33,14 +33,14 @@ export default async function CapturePage({ searchParams }: { searchParams: Prom
     </form>
   ))}</div>;
 
-  const displayName = customer?.displayName ?? (customerId ? `Customer ${customerId}` : undefined);
+  const displayName = customer?.displayName ?? (customerId ? "お客様" : undefined);
   return <main className="shell">
-    <header className="header"><div className="brand">Capture</div>{customerId && <Link className="subtle" href={`/people/${customerId}`}>{displayName}</Link>}</header>
-    <section className="hero"><h1>{fromVisit && customerId ? `${displayName}の退店後メモ` : customerId ? `${displayName}を思い出す材料を残す` : "一言でも、すぐ残す。"}</h1><p>{fromVisit ? "覚えているうちに、スタンプ・音声・一言だけ。" : "まずタップ。足りない時だけ文字か音声で追加。"}</p></section>
-    {saved && <div className="card successCard">保存しました。続けてタップできます。</div>}
+    <header className="header"><div className="brand">記録</div>{customerId && <Link className="subtle" href={`/people/${customerId}`}>{displayName}</Link>}</header>
+    <section className="hero"><h1>{fromVisit && customerId ? `${displayName}の退店後メモ` : customerId ? `${displayName}のことを残す` : "一言でも、すぐ残す。"}</h1><p>{fromVisit ? "覚えているうちに、スタンプ・音声・一言だけ。" : "まずタップ。足りない時だけ文字か音声で追加。"}</p></section>
+    {saved && <div className="card successCard"><div className="formHint">登録した内容</div><strong>{saved}</strong></div>}
     {error && <div className="formError">入力内容を確認してください。</div>}
 
-    {fromVisit && customerId && <><div className="sectionTitle">会話メモ · タイムラインに残す</div><form action={conversationMemoAction.bind(null, customerId, fromVisit)} className="stack"><CaptureVoiceInput placeholder="例：来月大阪出張。娘の受験の話。" /><div className="searchActions"><button className="secondaryButton" type="submit" name="mode" value="save">メモだけ保存</button><button className="primaryButton" type="submit" name="mode" value="organize">保存して整理</button></div></form></>}
+    {fromVisit && customerId && <><div className="sectionTitle">会話メモ</div><form action={conversationMemoAction.bind(null, customerId, fromVisit)} className="stack"><CaptureVoiceInput placeholder="例：来月大阪出張。娘の受験の話。" /><div className="searchActions"><button className="secondaryButton" type="submit" name="mode" value="save">メモだけ保存</button><button className="primaryButton" type="submit" name="mode" value="organize">保存して整理</button></div></form></>}
     {customerSuggestions.length > 0 && <><div className="sectionTitle">この人で使いそう</div>{stampGroup(customerSuggestions)}</>}
     {recentSuggestions.length > 0 && <><div className="sectionTitle">最近よく使う</div>{stampGroup(recentSuggestions)}</>}
     {defaultGroups.length > 0 && <div className="sectionTitle">スタンプ</div>}
