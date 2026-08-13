@@ -54,7 +54,10 @@ export default async function OrganizeCapturePage({ params }: { params: Promise<
       </>}
 
       {deferred.length > 0 && <details className="detailsCard"><summary>その他 {deferred.length}件</summary><div className="stack detailsBody">{deferred.map((candidate, index) => <div className="row" key={`${candidate.type}-${candidate.value}-${index}`}><span>{candidate.value}</span><span className="formHint">{labels[candidate.type]}</span></div>)}</div></details>}
-      <button className="primaryButton stickyConfirm" type="submit">この内容で確定</button>
+      <div className="stickyConfirm stack">
+        <button className="primaryButton" type="submit" name="submitIntent" value="done">完了</button>
+        <button className="secondaryButton" type="submit" name="submitIntent" value="continue">続けて記録</button>
+      </div>
     </form>
   </main>;
 }
