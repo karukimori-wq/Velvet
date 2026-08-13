@@ -2,52 +2,20 @@ import Link from "next/link";
 import { BottomNav } from "@/components/bottom-nav";
 import { CaptureVoiceInput } from "@/components/capture-voice-input";
 import { getRequestIdentity } from "@/lib/auth/request-identity";
-import { getGrowthCustomer } from "@/lib/growth-engine-customer";
+import { getGrowthCustomer, listGrowthCustomers } from "@/lib/growth-engine-customer";
 import { getCaptureSuggestions } from "@/lib/capture-repository";
-import { captureAction, conversationMemoAction, quickCaptureAction } from "./actions";
+import { quickCaptureAction } from "./actions";
 import { organizeCaptureAction } from "./organize/actions";
-
-function stampCategory(value: string) {
-  if (/(髪|メガネ|服|顔|時計|財布|ロレックス|アクセサリー)/.test(value)) return "外見・持ち物";
-  if (/(響|白州|酒|ワイン|ビール|ゴルフ|犬|旅行|甘い|趣味|好き)/.test(value)) return "好み・趣味";
-  if (/(会社|仕事|経営|社長|職業)/.test(value)) return "仕事";
-  if (/(既婚|未婚|家族|子供|友人)/.test(value)) return "人となり";
-  return "その他";
-}
 
 export default async function CapturePage({ searchParams }: { searchParams: Promise<{ customerId?: string; saved?: string; error?: string; fromVisit?: string }> }) {
   const { customerId, saved, error, fromVisit } = await searchParams;
   const { workspaceId, userId } = await getRequestIdentity();
-  const [customer, suggestions] = await Promise.all([
-    customerId ? getGrowthCustomer(workspaceId, userId, customerId) : Promise.resolve(undefined),
-    getCaptureSuggestions(workspaceId, userId, customerId, 24),
-  ]);
-  const customerSuggestions = suggestions.filter((item) => item.source === "customer").slice(0, 8);
-  const recentSuggestions = suggestions.filter((item) => item.source === "recent").slice(0, 10);
-  const defaultSuggestions = suggestions.filter((item) => item.source === "default");
-  const defaultGroups = ["外見・持ち物", "好み・趣味", "仕事", "人となり", "その他"].map((category) => ({ category, items: defaultSuggestions.filter((item) => stampCategory(item.value) === category) })).filter((group) => group.items.length > 0);
-
-  const stampGroup = (items: typeof suggestions) => <div className="chips">{items.map((item) => (
-    <form action={quickCaptureAction.bind(null, customerId, "knowledge", item.value, fromVisit)} key={item.value}>
-      <button className="chip chipButton" type="submit">{item.value}</button>
-    </form>
-  ))}</div>;
-
-  const displayName = customer?.displayName ?? (customerId ? "お客様" : undefined);
-  return <main className="shell">
-    <header className="header"><div className="brand">記録</div>{customerId && <Link className="subtle" href={`/people/${customerId}`}>{displayName}</Link>}</header>
-    <section className="hero"><h1>{fromVisit && customerId ? `${displayName}の退店後メモ` : customerId ? `${displayName}のことを残す` : "一言でも、すぐ残す。"}</h1><p>{fromVisit ? "覚えているうちに、スタンプ・音声・一言だけ。" : "まずタップ。足りない時だけ文字か音声で追加。"}</p></section>
-    {saved && <div className="card successCard"><div className="formHint">登録した内容</div><strong>{saved}</strong></div>}
-    {error && <div className="formError">入力内容を確認してください。</div>}
-
-    {fromVisit && customerId && <><div className="sectionTitle">会話メモ</div><form action={conversationMemoAction.bind(null, customerId, fromVisit)} className="stack"><CaptureVoiceInput placeholder="例：来月大阪出張。娘の受験の話。" /><div className="searchActions"><button className="secondaryButton" type="submit" name="mode" value="save">メモだけ保存</button><button className="primaryButton" type="submit" name="mode" value="organize">保存して整理</button></div></form></>}
-    {customerSuggestions.length > 0 && <><div className="sectionTitle">この人で使いそう</div>{stampGroup(customerSuggestions)}</>}
-    {recentSuggestions.length > 0 && <><div className="sectionTitle">最近よく使う</div>{stampGroup(recentSuggestions)}</>}
-    {defaultGroups.length > 0 && <div className="sectionTitle">スタンプ</div>}
-    {defaultGroups.map((group) => <div key={group.category}><div className="formHint" style={{ marginTop: 10 }}>{group.category}</div>{stampGroup(group.items)}</div>)}
-    <div className="sectionTitle">一言でまとめる</div><form action={organizeCaptureAction.bind(null, customerId, fromVisit)} className="stack"><CaptureVoiceInput placeholder="例：黒髪、ロレックス、来月大阪、犬飼った" /><button className="primaryButton" type="submit">保存して整理</button></form>
-    <details className="detailsCard"><summary>確実な内容を直接追加</summary><form action={captureAction.bind(null, customerId, "knowledge")} className="stack detailsBody"><input className="searchBox" name="value" placeholder="例：黒髪、ロレックス、ゴルフ" autoComplete="off" /><button className="secondaryButton" type="submit">記憶へ追加</button></form></details>
-    <details className="detailsCard"><summary>自由メモだけ残す</summary><form action={captureAction.bind(null, customerId, "free_text")} className="stack detailsBody"><CaptureVoiceInput placeholder="あとで整理したい内容" /><button className="secondaryButton" type="submit">そのまま保存</button></form></details>
-    <BottomNav />
-  </main>;
+  if (!customerId) {
+    const customers=await listGrowthCustomers(workspaceId,userId);
+    return <main className="shell"><header className="header"><Link className="subtle" href="/add">‹ 戻る</Link><div className="brand">今日の接客</div></header><section className="hero"><h1>誰との話を残しますか？</h1><p>お客様を選ぶと、すぐメモできます。</p></section><div className="stack">{customers.map(c=><Link className="card personRow" href={`/capture?customerId=${encodeURIComponent(c.customerId)}`} key={c.customerId}><div className="avatar">{c.displayName.slice(0,1)}</div><div className="personMain"><div className="personName">{c.displayName}</div></div><span>›</span></Link>)}{customers.length===0&&<div className="card empty">登録済みのお客様がいません</div>}</div><BottomNav /></main>;
+  }
+  const [customer,suggestions]=await Promise.all([getGrowthCustomer(workspaceId,userId,customerId),getCaptureSuggestions(workspaceId,userId,customerId,18)]);
+  const displayName=customer?.displayName??"お客様";
+  const quick=suggestions.filter(i=>i.source!=="default").slice(0,8);
+  return <main className="shell"><header className="header"><Link className="subtle" href="/capture">‹ お客様を選ぶ</Link><span className="subtle">{displayName}</span></header><section className="hero"><h1>{fromVisit?"退店後に、覚えているうちに。":"今日、何を話しましたか？"}</h1><p>文章にしなくて大丈夫です。話したまま、一言でも残せます。</p></section>{saved&&<div className="card successCard"><div className="formHint">登録した内容</div><strong>{saved}</strong></div>}{error&&<div className="formError">入力内容を確認してください。</div>}<div className="sectionTitle">話したこと</div><form action={organizeCaptureAction.bind(null,customerId,fromVisit)} className="stack"><CaptureVoiceInput placeholder="例：娘が来月受験。大阪出張。最近は白州が好き。"/><button className="primaryButton" type="submit">整理して確認</button></form>{quick.length>0&&<><div className="sectionTitle">すぐ追加</div><div className="chips">{quick.map(item=><form action={quickCaptureAction.bind(null,customerId,"knowledge",item.value,fromVisit)} key={item.value}><button className="chip chipButton" type="submit">{item.value}</button></form>)}</div></>}<div className="sectionTitle">この人について追加する</div><Link className="secondaryButton actionLink" href={`/capture/profile?customerId=${encodeURIComponent(customerId)}`}>外見・好み・仕事などを追加</Link><BottomNav /></main>;
 }
