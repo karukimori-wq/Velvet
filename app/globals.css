@@ -44,10 +44,10 @@ button { cursor: pointer; }
 .timelineDate { font-size: 12px; color: #918997; margin-bottom: 4px; }
 .timelineTitle { font-weight: 700; }
 .timelineBody { color: #c7c1ca; margin-top: 4px; line-height: 1.55; }
-.bottomNav { position: fixed; left: 50%; transform: translateX(-50%); bottom: 0; width: min(720px, 100%); display: grid; grid-template-columns: repeat(5, 1fr); background: rgba(17,16,20,.94); backdrop-filter: blur(16px); border-top: 1px solid #2c2830; padding: 10px 12px max(10px, env(safe-area-inset-bottom)); }
-.navItem { text-align: center; font-size: 12px; color: #aaa2af; padding: 6px 2px; }
+.bottomNav { position: fixed; left: 50%; transform: translateX(-50%); bottom: 0; width: min(720px, 100%); display: grid; grid-template-columns: repeat(5, 1fr); background: rgba(17,16,20,.94); backdrop-filter: blur(16px); border-top: 1px solid #2c2830; padding: 8px 12px max(8px, env(safe-area-inset-bottom)); z-index: 20; }
+.navItem { text-align: center; font-size: 12px; color: #aaa2af; padding: 4px 2px; min-height: 48px; }
 .navItem strong { display: block; color: #fff; font-size: 18px; margin-bottom: 2px; }
-.captureNav strong { width: 42px; height: 42px; margin: -14px auto 2px; border-radius: 50%; display: grid; place-items: center; background: #efe8f2; color: #171319; }
+.captureNav strong { width: 48px; height: 48px; margin: -18px auto 0; border-radius: 50%; display: grid; place-items: center; background: #efe8f2; color: #171319; }
 .hero { margin: 8px 0 18px; }
 .hero h1 { margin: 0; font-size: 26px; letter-spacing: -0.03em; }
 .hero p { margin: 8px 0 0; color: #a9a2ad; line-height: 1.55; }
