@@ -6,8 +6,9 @@ import { getCustomerMemory } from "@/lib/customer-memory-repository";
 import type { CaptureKind } from "@/lib/capture-repository";
 import { saveRememberField } from "./remember-actions";
 
-const groups: Array<{ title:string; fields:Array<{label:string; kind:CaptureKind; examples:string[]}> }> = [
-  { title:"外見", fields:[
+type Field = { label:string; kind:CaptureKind; examples:string[] };
+const groups: Array<{ title:string; hint?:string; fields:Field[] }> = [
+  { title:"外見", hint:"初対面で見分けるための特徴", fields:[
     {label:"髪",kind:"appearance",examples:["黒髪","白髪","金髪","短髪"]},
     {label:"メガネ",kind:"appearance",examples:["あり","なし","黒フレーム"]},
     {label:"顔の特徴",kind:"appearance",examples:["ヒゲ","色白","えくぼ"]},
@@ -21,10 +22,15 @@ const groups: Array<{ title:string; fields:Array<{label:string; kind:CaptureKind
   { title:"人となり", fields:[
     {label:"仕事",kind:"work",examples:["会社経営","会社員","自営業"]},
     {label:"結婚",kind:"marital_status",examples:["既婚","未婚","不明"]},
+    {label:"出身",kind:"knowledge",examples:[]},
     {label:"趣味",kind:"hobby",examples:["ゴルフ","旅行","釣り"]},
-    {label:"好きなもの",kind:"hobby",examples:["白州","甘いもの"]},
     {label:"人柄",kind:"knowledge",examples:["話好き","静か","気さく"]},
     {label:"家族",kind:"knowledge",examples:["娘がいる","息子がいる"]},
+  ]},
+  { title:"好み", hint:"次の接客で使いやすい情報", fields:[
+    {label:"よく飲むもの",kind:"drink",examples:["ビール","ハイボール","白州","焼酎"]},
+    {label:"好きなもの",kind:"hobby",examples:["甘いもの","肉","旅行"]},
+    {label:"苦手なもの",kind:"knowledge",examples:["甘いもの","お酒","辛いもの"]},
   ]},
   { title:"接客で覚えること", fields:[
     {label:"着席理由",kind:"knowledge",examples:["新規","指名","場内指名","ヘルプ"]},
@@ -45,10 +51,10 @@ export default async function RememberPage({ searchParams }: { searchParams: Pro
 
   return <main className="shell">
     <header className="header"><Link className="subtle" href="/add">‹ 追加</Link><span className="subtle">{customer?.displayName??"お客様"}</span></header>
-    <section className="hero"><h1>この人を覚える</h1><p>分かったところだけで大丈夫です。候補を押すか、自由に入力できます。</p></section>
+    <section className="hero"><h1>この人を覚える</h1><p>全部埋めなくて大丈夫です。見たこと、聞いたことだけ残します。</p></section>
     {savedLabel&&savedValue&&<div className="card successCard"><div className="formHint">登録した内容</div><strong>{savedLabel}：{savedValue}</strong></div>}
     {error&&<div className="formError">入力内容を確認してください。</div>}
-    {groups.map(group=><section key={group.title}><div className="sectionTitle">{group.title}</div><div className="profileFields">{group.fields.map(field=>{const current=currentValue(field.label);return <div className="profileField card" key={field.label}><div className="row"><strong>{field.label}</strong>{current&&<span className="subtle">登録済み：{current}</span>}</div><div className="chips">{field.examples.map(example=><form action={saveRememberField.bind(null,customerId,field.label,field.kind,example)} key={example}><button className={`chip chipButton${current===example?" selectedChip":""}`} type="submit">{example}</button></form>)}</div><form action={saveRememberField.bind(null,customerId,field.label,field.kind,undefined)} className="profileInputRow"><input className="searchBox" name="value" placeholder={current?"変更する場合は入力":"自由に入力"} autoComplete="off"/><button className="secondaryButton compactButton" type="submit">{current?"変更":"追加"}</button></form></div>})}</div></section>)}
+    {groups.map(group=><section key={group.title}><div className="sectionTitle">{group.title}{group.hint&&<span className="formHint">　{group.hint}</span>}</div><div className="profileFields">{group.fields.map(field=>{const current=currentValue(field.label);return <div className="profileField card" key={field.label}><div className="row"><strong>{field.label}</strong>{current&&<span className="subtle">登録済み：{current}</span>}</div>{field.examples.length>0&&<div className="chips">{field.examples.map(example=><form action={saveRememberField.bind(null,customerId,field.label,field.kind,example)} key={example}><button className={`chip chipButton${current===example?" selectedChip":""}`} type="submit">{example}</button></form>)}</div>}<form action={saveRememberField.bind(null,customerId,field.label,field.kind,undefined)} className="profileInputRow"><input className="searchBox" name="value" placeholder={current?"変更する場合は入力":"自由に入力"} autoComplete="off"/><button className="secondaryButton compactButton" type="submit">{current?"変更":"追加"}</button></form></div>})}</div></section>)}
     <div className="sectionTitle">ここまででOK</div><div className="searchActions"><Link className="secondaryButton actionLink" href={`/people/${customerId}`}>この人を見る</Link><Link className="primaryButton actionLink" href={`/capture?customerId=${encodeURIComponent(customerId)}`}>今日話したことも残す</Link></div>
     <BottomNav />
   </main>;
