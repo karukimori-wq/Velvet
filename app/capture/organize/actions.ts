@@ -16,7 +16,13 @@ export async function organizeCaptureAction(customerId: string | undefined, from
     redirect(`/capture?${captureParams.toString()}`);
   }
 
-  const raw = await createCapture({ workspaceId, userId, customerId, kind: "free_text", value });
+  const raw = await createCapture({
+    workspaceId,
+    userId,
+    customerId,
+    kind: customerId ? "conversation_note" : "free_text",
+    value,
+  });
   if (!raw) {
     captureParams.set("error", "invalid");
     redirect(`/capture?${captureParams.toString()}`);
