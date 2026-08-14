@@ -24,19 +24,33 @@ export default async function HomePage() {
 
   return <main className="shell">
     <header className="header"><div className="brand">Velvet</div><span className="subtle">営業アシスタント</span></header>
-    <section className="hero"><h1>今日</h1><p>必要なことだけ、すぐ確認できます。</p></section>
+    <section className="hero"><h1>今日</h1><p>予定と、来るお客様だけ確認できます。</p></section>
 
     <div className="sectionTitle">今日来るお客様</div>
     <div className="stack">
       {todayVisitors.map((entry) => {
-        const customer = customerById.get(entry.customerId!);
-        const memory = memoryByCustomer.get(entry.customerId!);
+        const customerId = entry.customerId!;
+        const customer = customerById.get(customerId);
+        const memory = memoryByCustomer.get(customerId);
         const name = customer?.displayName ?? memory?.displayNameSnapshot ?? "お客様";
-        const recall = memory?.cautionNote ?? memory?.lastInteractionSummary ?? memory?.nextTopicHint;
-        return <Link className="card personRow" href={`/people/${entry.customerId}`} key={entry.id}>
-          <div className="avatar">{name.slice(0, 1)}</div>
-          <div className="personMain"><div className="personName">{name}</div><div className="personMeta">{tokyoTime(entry.startsAt)}{recall ? ` · ${recall}` : ""}</div></div><span>›</span>
-        </Link>;
+        const recallItems = [
+          memory?.cautionNote ? { label: "注意", value: memory.cautionNote } : undefined,
+          memory?.lastInteractionSummary ? { label: "前回", value: memory.lastInteractionSummary } : undefined,
+          memory?.nextTopicHint ? { label: "次に話すこと", value: memory.nextTopicHint } : undefined,
+          memory?.preferenceNote ? { label: "好み", value: memory.preferenceNote } : undefined,
+        ].filter(Boolean).slice(0, 2) as Array<{ label: string; value: string }>;
+
+        return <article className="card stack" key={entry.id}>
+          <div className="personRow">
+            <div className="avatar">{name.slice(0, 1)}</div>
+            <div className="personMain"><div className="personName">{name}</div><div className="personMeta">{tokyoTime(entry.startsAt)} 来店予定</div></div>
+          </div>
+          {recallItems.length > 0 && <div className="stack">{recallItems.map((item) => <div key={item.label}><div className="formHint">{item.label}</div><div className="timelineBody">{item.value}</div></div>)}</div>}
+          <div className="searchActions">
+            <Link className="secondaryButton actionLink" href={`/people/${customerId}`}>見る</Link>
+            <Link className="primaryButton actionLink" href={`/capture?customerId=${encodeURIComponent(customerId)}`}>接客メモ</Link>
+          </div>
+        </article>;
       })}
       {todayVisitors.length === 0 && <div className="card empty">今日の来店予定はありません</div>}
     </div>
@@ -47,8 +61,8 @@ export default async function HomePage() {
       {otherToday.length === 0 && <div className="card empty">ほかの予定はありません</div>}
     </div>
 
-    <div className="sectionTitle">すぐ探す</div>
-    <Link href="/people" aria-label="お客様を探す"><div className="searchBox">名前・趣味・前回の話などで探す</div></Link>
+    <div className="sectionTitle">お客様を探す</div>
+    <Link href="/people" aria-label="お客様を探す"><div className="searchBox">名前・特徴・趣味・前回の話など</div></Link>
     <BottomNav />
   </main>;
 }
