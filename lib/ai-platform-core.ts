@@ -9,7 +9,7 @@ export type AiPlatformStatus = {
 };
 
 export type CaptureCandidate = {
-  type: "knowledge" | "schedule" | "gift" | "unknown";
+  type: "knowledge" | "preference" | "next_topic" | "schedule" | "gift" | "unknown";
   value: string;
 };
 
@@ -63,12 +63,15 @@ function gatewayEndpoint() {
 
 export function organizeCaptureLocally(raw: string): CaptureCandidate[] {
   const values = raw
-    .split(/[、,\n]/)
+    .split(/[。\n]+/)
+    .flatMap((value) => value.split(/[、,]/))
     .map((value) => value.trim())
     .filter(Boolean);
 
   return values.map((value) => {
-    if (/誕生日|来週|来月|明日|予定|出張/.test(value)) return { type: "schedule", value };
+    if (/次回|今度|聞く|確認する|どうだった/.test(value)) return { type: "next_topic", value };
+    if (/好き|ハマって|好み|よく飲む|苦手|嫌い/.test(value)) return { type: "preference", value };
+    if (/誕生日|来週|来月|明日|予定|出張|旅行/.test(value)) return { type: "schedule", value };
     if (/もらった|貰った|あげた|プレゼント|お土産/.test(value)) return { type: "gift", value };
     return { type: "knowledge", value };
   });
@@ -150,9 +153,9 @@ export async function structureCapture(raw: string, ownerUserId: string, traceSe
       capability: "velvet.capture.structure",
       permission: "velvet.capture.structure",
       ownerUserId,
-      goal: "Structure one user-entered Velvet memory into candidate records without mutating Velvet data.",
+      goal: "Structure one user-entered Velvet contact note into candidate records without mutating Velvet data.",
       payload: { rawText: raw },
-      prompt: `Classify this Velvet memory into JSON: {"candidates":[{"type":"knowledge|schedule|gift|unknown","value":"..."}]}. Preserve meaning and do not invent facts. Memory: ${JSON.stringify(raw)}`,
+      prompt: `Classify this Velvet contact note into JSON: {"candidates":[{"type":"knowledge|preference|next_topic|schedule|gift|unknown","value":"..."}]}. knowledge=new facts about the customer, preference=likes/dislikes or habitual choices, next_topic=something useful to ask or continue next time, schedule=future dated plan, gift=given/received gift. Preserve meaning and do not invent facts. Note: ${JSON.stringify(raw)}`,
       trace,
     });
     const parsed = result?.parsed as { candidates?: unknown } | undefined;
@@ -160,7 +163,7 @@ export async function structureCapture(raw: string, ownerUserId: string, traceSe
       ? parsed.candidates.filter((item): item is CaptureCandidate => {
           if (!item || typeof item !== "object") return false;
           const record = item as Record<string, unknown>;
-          return ["knowledge", "schedule", "gift", "unknown"].includes(String(record.type)) && typeof record.value === "string";
+          return ["knowledge", "preference", "next_topic", "schedule", "gift", "unknown"].includes(String(record.type)) && typeof record.value === "string";
         })
       : [];
     if (!candidates.length) throw new Error("No candidates");
