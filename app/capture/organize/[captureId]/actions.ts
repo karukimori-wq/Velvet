@@ -24,9 +24,11 @@ export async function confirmKnowledgeCandidatesAction(captureId: string, fromVi
   if (capture.customerId) {
     const memory = await getCustomerMemory(workspaceId, userId, capture.customerId);
     const tags = Array.from(new Set([...(memory?.tags ?? []), ...selected, ...preferences]));
+    const existingPreferences = (memory?.preferenceNote ?? "").split("、").map((value) => value.trim()).filter(Boolean);
+    const mergedPreferences = Array.from(new Set([...existingPreferences, ...preferences]));
     await upsertCustomerMemory(workspaceId, userId, capture.customerId, {
       tags,
-      ...(preferences.length ? { preferenceNote: preferences.join("、") } : {}),
+      ...(mergedPreferences.length ? { preferenceNote: mergedPreferences.join("、") } : {}),
       ...(nextTopic ? { nextTopicHint: nextTopic } : {}),
       lastInteractionSummary: capture.value,
     });
@@ -55,6 +57,7 @@ export async function confirmKnowledgeCandidatesAction(captureId: string, fromVi
     }
   }
 
+  revalidatePath("/");
   revalidatePath("/people");
   revalidatePath("/schedule");
   if (capture.customerId) revalidatePath(`/people/${capture.customerId}`);
