@@ -4,7 +4,7 @@ import { getRequestIdentity } from "@/lib/auth/request-identity";
 import { getCustomerMemory } from "@/lib/customer-memory-repository";
 import { getGrowthCustomerDisplay } from "@/lib/growth-engine-customer";
 import { getActiveProfessionalVisit } from "@/lib/professional-visit-repository";
-import { listProfessionalTimeline } from "@/lib/professional-timeline-repository";
+import { listProfessionalTimeline, type ProfessionalTimelineItem } from "@/lib/professional-timeline-repository";
 import { startVisitAction } from "@/app/visits/actions";
 import { toggleCustomerPinAction } from "./actions";
 
@@ -16,6 +16,10 @@ const preferenceLabels = ["よく飲むもの", "好きなもの", "苦手なも
 function tagLabel(value: string) {
   const index = value.indexOf("：");
   return index >= 0 ? value.slice(0, index) : "";
+}
+
+function TimelineRows({ items }: { items: ProfessionalTimelineItem[] }) {
+  return <div className="timeline">{items.map((item) => <details className="timelineItem" key={item.id}><summary><span className="timelineDate">{item.occurredAt.slice(0,10)}{eventLabels[item.eventType] ? ` · ${eventLabels[item.eventType]}` : ""}</span><span className="timelineTitle">{item.title}</span></summary>{item.body && <div className="timelineBody">{item.body}</div>}</details>)}</div>;
 }
 
 export default async function CustomerDetailPage({ params, searchParams }: { params: Promise<{ customerId: string }>; searchParams: Promise<{ justEnded?: string; captureSaved?: string }> }) {
@@ -41,6 +45,8 @@ export default async function CustomerDetailPage({ params, searchParams }: { par
   const appearance = tags.filter((value) => appearanceLabels.includes(tagLabel(value)));
   const preferences = tags.filter((value) => preferenceLabels.includes(tagLabel(value)));
   const otherTags = tags.filter((value) => !appearanceLabels.includes(tagLabel(value)) && !personalityLabels.includes(tagLabel(value)) && !preferenceLabels.includes(tagLabel(value)));
+  const recentTimeline = timeline.slice(0, 5);
+  const olderTimeline = timeline.slice(5);
 
   return <main className="shell">
     <header className="header"><Link className="subtle" href="/people">‹ お客様</Link><div className="searchActions"><form action={toggleCustomerPinAction.bind(null, customerId)}><button className="subtle" type="submit" aria-label={memory?.pinned ? "ピンを外す" : "大切なお客様としてピン留めする"}>{memory?.pinned ? "★" : "☆"}</button></form><Link className="subtle" href={`/remember?customerId=${encodeURIComponent(customerId)}`}>編集</Link></div></header>
@@ -63,7 +69,7 @@ export default async function CustomerDetailPage({ params, searchParams }: { par
     </div>
     <div className="actions" style={{ marginTop: 8 }}><Link className="action actionLink" href={`/people/${customerId}/message`}>連絡文案</Link><Link className="action actionLink" href={`/people/${customerId}/gift`}>贈り物</Link><Link className="action actionLink" href={`/relationships/new?customerId=${customerId}`}>関係</Link></div>
 
-    {timeline.length > 0 ? <><div className="sectionTitle">これまで</div><div className="timeline">{timeline.map((item) => <details className="timelineItem" key={item.id}><summary><span className="timelineDate">{item.occurredAt.slice(0,10)}{eventLabels[item.eventType] ? ` · ${eventLabels[item.eventType]}` : ""}</span><span className="timelineTitle">{item.title}</span></summary>{item.body && <div className="timelineBody">{item.body}</div>}</details>)}</div></> : <div className="sectionTitle">履歴はまだありません</div>}
+    {recentTimeline.length > 0 ? <><div className="sectionTitle">最近の記録</div><TimelineRows items={recentTimeline} />{olderTimeline.length > 0 && <details className="detailsCard"><summary>以前の記録を見る（{olderTimeline.length}件）</summary><div className="detailsBody"><TimelineRows items={olderTimeline} /></div></details>}</> : <div className="sectionTitle">履歴はまだありません</div>}
 
     {customer.contacts && customer.contacts.length > 0 && <details className="detailsCard"><summary>連絡先</summary><div className="chips detailsBody">{customer.contacts.map((contact, index) => <span className="chip" key={`${contact.type}-${index}`}>{contact.label || contact.type} · {contact.value}</span>)}</div></details>}
     <BottomNav />
