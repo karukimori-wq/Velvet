@@ -15,12 +15,21 @@ export async function confirmKnowledgeCandidatesAction(captureId: string, fromVi
   if (!capture) redirect("/capture?error=missing");
 
   const selected = formData.getAll("knowledge").map(String).map((value) => value.trim()).filter(Boolean);
-  for (const value of selected) await recordDictionaryUse(workspaceId, userId, value, "knowledge");
+  const preferences = formData.getAll("preference").map(String).map((value) => value.trim()).filter(Boolean);
+  const nextTopic = String(formData.get("nextTopic") ?? "").trim();
 
-  if (capture.customerId && selected.length) {
+  for (const value of selected) await recordDictionaryUse(workspaceId, userId, value, "knowledge");
+  for (const value of preferences) await recordDictionaryUse(workspaceId, userId, value, "hobby");
+
+  if (capture.customerId) {
     const memory = await getCustomerMemory(workspaceId, userId, capture.customerId);
-    const tags = Array.from(new Set([...(memory?.tags ?? []), ...selected]));
-    await upsertCustomerMemory(workspaceId, userId, capture.customerId, { tags });
+    const tags = Array.from(new Set([...(memory?.tags ?? []), ...selected, ...preferences]));
+    await upsertCustomerMemory(workspaceId, userId, capture.customerId, {
+      tags,
+      ...(preferences.length ? { preferenceNote: preferences.join("、") } : {}),
+      ...(nextTopic ? { nextTopicHint: nextTopic } : {}),
+      lastInteractionSummary: capture.value,
+    });
   }
 
   const scheduleValues = formData.getAll("scheduleValue").map(String);
@@ -31,15 +40,7 @@ export async function confirmKnowledgeCandidatesAction(captureId: string, fromVi
     if (!title || !startsAtRaw) continue;
     const startsAt = new Date(startsAtRaw);
     if (Number.isNaN(startsAt.getTime())) continue;
-    await createScheduleEntry({
-      workspaceId,
-      userId,
-      customerId: capture.customerId,
-      kind: "other",
-      title,
-      startsAt: startsAt.toISOString(),
-      note: "Captureから確認して追加",
-    });
+    await createScheduleEntry({ workspaceId, userId, customerId: capture.customerId, kind: "other", title, startsAt: startsAt.toISOString(), note: "会話から追加" });
   }
 
   if (capture.customerId) {
@@ -49,7 +50,7 @@ export async function confirmKnowledgeCandidatesAction(captureId: string, fromVi
       const rawDirection = String(formData.get(`giftDirection-${index}`) ?? "skip").trim();
       if (!item || !["received", "given"].includes(rawDirection)) continue;
       const direction = rawDirection as GiftDirection;
-      await createGift({ workspaceId, userId, customerId: capture.customerId, direction, item, note: "Captureから確認して追加" });
+      await createGift({ workspaceId, userId, customerId: capture.customerId, direction, item, note: "会話から追加" });
       await recordDictionaryUse(workspaceId, userId, item, "gift");
     }
   }
@@ -60,12 +61,12 @@ export async function confirmKnowledgeCandidatesAction(captureId: string, fromVi
 
   const submitIntent = String(formData.get("submitIntent") ?? "done");
   if (submitIntent === "continue") {
-    const params = new URLSearchParams({ saved: "1" });
+    const params = new URLSearchParams();
     if (capture.customerId) params.set("customerId", capture.customerId);
     if (fromVisit) params.set("fromVisit", fromVisit);
     redirect(`/capture?${params.toString()}`);
   }
 
   if (capture.customerId) redirect(`/people/${capture.customerId}?captureSaved=1`);
-  redirect("/capture?saved=1");
+  redirect("/capture");
 }
