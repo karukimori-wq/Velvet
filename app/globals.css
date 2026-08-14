@@ -33,6 +33,7 @@ button { cursor: pointer; }
 .chip { border-radius: 999px; background: #252128; padding: 8px 11px; font-size: 13px; }
 .chipButton { border: 1px solid #342f38; color: #f6f2f7; }
 .chipButton:active { transform: translateY(1px); }
+.selectedChip { background: #efe8f2; color: #171319; border-color: #efe8f2; }
 .actions { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; }
 .action { border: 0; color: #fff; background: #26222a; border-radius: 16px; padding: 12px 8px; min-height: 48px; }
 .actionLink { display: grid; place-items: center; text-align: center; }
