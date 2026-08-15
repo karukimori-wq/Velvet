@@ -8,6 +8,7 @@ import { getCustomerMemory, upsertCustomerMemory } from "@/lib/customer-memory-r
 import { recordDictionaryUse } from "@/lib/capture-dictionary-repository";
 import { createScheduleEntry } from "@/lib/schedule-repository";
 import { createGift, type GiftDirection } from "@/lib/gift-repository";
+import { mergeNextTopics } from "@/lib/next-topic";
 
 export async function confirmKnowledgeCandidatesAction(captureId: string, fromVisit: string | undefined, formData: FormData) {
   const { workspaceId, userId } = await getRequestIdentity();
@@ -16,7 +17,7 @@ export async function confirmKnowledgeCandidatesAction(captureId: string, fromVi
 
   const selected = formData.getAll("knowledge").map(String).map((value) => value.trim()).filter(Boolean);
   const preferences = formData.getAll("preference").map(String).map((value) => value.trim()).filter(Boolean);
-  const nextTopic = String(formData.get("nextTopic") ?? "").trim();
+  const nextTopics = formData.getAll("nextTopic").map(String).map((value) => value.trim()).filter(Boolean);
 
   for (const value of selected) await recordDictionaryUse(workspaceId, userId, value, "knowledge");
   for (const value of preferences) await recordDictionaryUse(workspaceId, userId, value, "hobby");
@@ -26,10 +27,11 @@ export async function confirmKnowledgeCandidatesAction(captureId: string, fromVi
     const tags = Array.from(new Set([...(memory?.tags ?? []), ...selected, ...preferences]));
     const existingPreferences = (memory?.preferenceNote ?? "").split("、").map((value) => value.trim()).filter(Boolean);
     const mergedPreferences = Array.from(new Set([...existingPreferences, ...preferences]));
+    const mergedNextTopics = mergeNextTopics(memory?.nextTopicHint, nextTopics);
     await upsertCustomerMemory(workspaceId, userId, capture.customerId, {
       tags,
       ...(mergedPreferences.length ? { preferenceNote: mergedPreferences.join("、") } : {}),
-      ...(nextTopic ? { nextTopicHint: nextTopic } : {}),
+      ...(mergedNextTopics ? { nextTopicHint: mergedNextTopics } : {}),
       lastInteractionSummary: capture.value,
     });
   }
