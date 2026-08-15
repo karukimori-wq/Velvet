@@ -2,11 +2,7 @@
 
 import { redirect } from "next/navigation";
 import { getRequestIdentity } from "@/lib/auth/request-identity";
-import {
-  endProfessionalVisit,
-  startProfessionalVisit,
-  updateProfessionalVisit,
-} from "@/lib/professional-visit-repository";
+import { endProfessionalVisit, startProfessionalVisit, updateProfessionalVisit } from "@/lib/professional-visit-repository";
 
 export async function startVisitAction(formData: FormData) {
   const identity = await getRequestIdentity();
@@ -15,14 +11,7 @@ export async function startVisitAction(formData: FormData) {
   const reservationId = String(formData.get("reservationId") || "").trim() || undefined;
   const visitScheduleId = String(formData.get("visitScheduleId") || "").trim() || undefined;
   const intent = String(formData.get("intent") || "").trim() || undefined;
-  const visit = await startProfessionalVisit({
-    workspaceId: identity.workspaceId,
-    userId: identity.userId,
-    customerId,
-    reservationId,
-    visitScheduleId,
-    serviceContext: intent,
-  });
+  const visit = await startProfessionalVisit({ workspaceId: identity.workspaceId, userId: identity.userId, customerId, reservationId, visitScheduleId, serviceContext: intent });
   redirect(`/visits/${visit.id}`);
 }
 
@@ -31,7 +20,8 @@ export async function endVisitAction(formData: FormData) {
   const visitId = String(formData.get("visitId") || "");
   const visit = await endProfessionalVisit(visitId, identity.workspaceId, identity.userId);
   if (!visit) redirect("/people");
-  redirect(`/people/${visit.customerId}?justEnded=${encodeURIComponent(visit.id)}`);
+  const params = new URLSearchParams({ customerId: visit.customerId, fromVisit: visit.id });
+  redirect(`/capture?${params.toString()}`);
 }
 
 export async function quickUpdateVisitAction(visitId: string, field: "seatingReason" | "serviceContext", value: string) {
