@@ -6,46 +6,12 @@ import { getRequestIdentity } from "@/lib/auth/request-identity";
 import { getPlanAccess } from "@/lib/plan-access";
 import { getMediaAccess } from "@/lib/media-access";
 
-export default async function SettingsPage() {
-  const { ownerUserId } = await getRequestIdentity();
-  const [usage, access, media] = await Promise.all([getAiUsageStatus(ownerUserId), getPlanAccess(ownerUserId), getMediaAccess(ownerUserId)]);
-  const ai = getAiPlatformStatus();
-  const storage = getStorageStatus();
-  const aiReady = ai.configured && ai.contractReady && ai.clientConfigured;
-
-  const imageState = access.plan === "free"
-    ? "Freeでは画像保存なし"
-    : media.configured
-      ? "画像保存先に接続済み"
-      : "Pro機能・保存先は未接続";
-
-  return (
-    <main className="shell">
-      <header className="header"><div className="brand">Settings</div><Link className="subtle" href="/">閉じる</Link></header>
-
-      <div className="sectionTitle">状態</div>
-      <div className="stack">
-        <section className="card"><div className="timelineTitle">プラン</div><div className="timelineBody">{access.plan === "pro" ? "Pro" : "Free"}</div><div className="formHint">契約状態はowner単位で管理します。</div></section>
-        <section className="card"><div className="timelineTitle">画像</div><div className="timelineBody">{imageState}</div><div className="formHint">FreeはAPI段階で拒否します。Proでも保存先が未設定ならアップロードを受け付けません。</div></section>
-        <section className="card"><div className="timelineTitle">データ保存</div><div className="timelineBody">{storage.productionReady ? "永続化されています" : "開発用の一時保存です"}</div></section>
-        <section className="card"><div className="timelineTitle">整理・文章検索</div><div className="timelineBody">{aiReady ? "AI Platform Core Gateway 接続可能" : "ローカルfallbackで利用可能"}</div><div className="formHint">AI Platform Coreの `/v1/gateway/run` を利用します。未接続でも基本操作は止まりません。</div></section>
-        <section className="card"><div className="timelineTitle">今月のAI利用</div><div className="timelineBody">{usage.connected ? `${usage.usageCount ?? 0}回 · ${usage.totalTokens ?? 0} tokens` : "利用量連携はまだ有効ではありません"}</div><div className="formHint">利用量の正本はAI Platform Coreです。</div></section>
-        <section className="card"><div className="timelineTitle">AIポイント</div><div className="timelineBody">ポイント残高機能は未接続です</div><div className="formHint">Free/Proのポイント購入・残高は別の課金契約として実装します。Velvet側で仮残高は作りません。</div></section>
-      </div>
-
-      <div className="sectionTitle">入力</div>
-      <div className="stack">
-        <Link className="card" href="/settings/dictionary"><div className="timelineTitle">Capture辞書</div><div className="timelineBody">よく使う言葉を確認・削除</div></Link>
-      </div>
-
-      <div className="sectionTitle">記録</div>
-      <div className="stack"><Link className="card" href="/self-investment"><div className="timelineTitle">自己投資</div><div className="timelineBody">美容・衣装・学びなどを軽く記録</div></Link></div>
-
-      <div className="sectionTitle">データ</div>
-      <div className="stack">
-        <Link className="card" href="/import"><div className="timelineTitle">JSON Import</div><div className="timelineBody">customerIdに紐づくProfessional Memoryをまとめて登録</div></Link>
-        <Link className="card" href="/api/export"><div className="timelineTitle">JSON Export</div><div className="timelineBody">VelvetのProfessional Memoryを書き出す</div></Link>
-      </div>
-    </main>
-  );
+export default async function SettingsPage(){
+ const {ownerUserId}=await getRequestIdentity();const [usage,access,media]=await Promise.all([getAiUsageStatus(ownerUserId),getPlanAccess(ownerUserId),getMediaAccess(ownerUserId)]);const ai=getAiPlatformStatus();const storage=getStorageStatus();const aiReady=ai.configured&&ai.contractReady&&ai.clientConfigured;const imageState=access.plan==="free"?"このプランでは画像保存は使いません":media.configured?"画像を保存できます":"画像保存は準備中です";
+ return <main className="shell"><header className="header"><div className="brand">自分</div><Link className="subtle" href="/">閉じる</Link></header>
+ <div className="sectionTitle">利用状況</div><div className="stack"><section className="card"><div className="timelineTitle">プラン</div><div className="timelineBody">{access.plan==="pro"?"Pro":"Free"}</div></section><section className="card"><div className="timelineTitle">画像</div><div className="timelineBody">{imageState}</div></section><section className="card"><div className="timelineTitle">データ保存</div><div className="timelineBody">{storage.productionReady?"保存できます":"現在は一時保存です"}</div></section><section className="card"><div className="timelineTitle">メモ整理・文章検索</div><div className="timelineBody">{aiReady?"利用できます":"基本機能で利用できます"}</div><div className="formHint">接続状況にかかわらず、基本的な記録や検索は使えます。</div></section><section className="card"><div className="timelineTitle">今月のAI利用</div><div className="timelineBody">{usage.connected?`${usage.usageCount??0}回`:"利用回数の表示は準備中です"}</div></section></div>
+ <div className="sectionTitle">入力を使いやすくする</div><div className="stack"><Link className="card" href="/settings/dictionary"><div className="timelineTitle">よく使う言葉</div><div className="timelineBody">候補に出る言葉を確認・削除</div></Link></div>
+ <div className="sectionTitle">自分の記録</div><div className="stack"><Link className="card" href="/self-investment"><div className="timelineTitle">自己投資</div><div className="timelineBody">美容・衣装・学びなどを記録</div></Link></div>
+ <details className="detailsCard"><summary>データの入出力</summary><div className="stack detailsBody"><Link className="card" href="/import"><div className="timelineTitle">データをまとめて登録</div><div className="timelineBody">Velvetのお客様メモをまとめて取り込みます</div></Link><Link className="card" href="/api/export"><div className="timelineTitle">データを書き出す</div><div className="timelineBody">Velvetのお客様メモを書き出します</div></Link></div></details>
+ </main>;
 }
