@@ -1,60 +1,11 @@
 import fs from "node:fs";
-
-const read = (path) => fs.readFileSync(path, "utf8");
-const failures = [];
-const assert = (condition, message) => { if (!condition) failures.push(message); };
-
-const customerScopedFiles = [
-  "lib/customer-memory-repository.ts",
-  "lib/professional-visit-repository.ts",
-  "lib/professional-timeline-repository.ts",
-  "lib/capture-repository.ts",
-  "lib/gift-repository.ts",
-  "lib/schedule-repository.ts",
-  "lib/relationship-repository.ts",
-  "app/api/captures/route.ts",
-  "app/api/gifts/route.ts",
-  "app/api/visits/route.ts",
-];
-
-for (const path of customerScopedFiles) {
-  const source = read(path);
-  assert(source.includes("customerId") || source.includes("customer_id"), `${path}: canonical record must be customerId-scoped`);
-  assert(!/\bpersonId\b|\bperson_id\b/.test(source), `${path}: canonical code must not use personId/person_id`);
-}
-
-const professionalVisit = read("lib/professional-visit-repository.ts");
-for (const forbidden of ["salesAmount", "sales_amount", "paymentStatus", "payment_status", "paymentMethod", "payment_method", "receivable", "unpaidAmount", "collectedAmount", "stripe"]) {
-  assert(!professionalVisit.toLowerCase().includes(forbidden.toLowerCase()), `Professional Visit contains forbidden Sales/Payment field: ${forbidden}`);
-}
-
-for (const path of ["lib/person-store.ts", "lib/visit-repository.ts"]) {
-  const source = read(path).toLowerCase();
-  const forbiddenWrites = [
-    /insert\s+into\s+velvet_people/,
-    /update\s+velvet_people/,
-    /delete\s+from\s+velvet_people/,
-    /insert\s+into\s+velvet_visits/,
-    /update\s+velvet_visits/,
-    /delete\s+from\s+velvet_visits/,
-    /insert\s+into\s+velvet_visit_participants/,
-    /update\s+velvet_visit_participants/,
-    /delete\s+from\s+velvet_visit_participants/,
-  ];
-  for (const pattern of forbiddenWrites) assert(!pattern.test(source), `${path}: legacy table write detected (${pattern})`);
-}
-
-const peopleApi = read("app/api/people/route.ts");
-assert(!peopleApi.includes("createPersonStore"), "People API must not create a Velvet Customer/Person master");
-const contactsApi = read("app/api/contacts/route.ts");
-assert(!contactsApi.includes("createPersonContact"), "Contacts API must not create Customer contact master data");
-
-const importExport = read("lib/import-export.ts");
-assert(!/createPersonStore|velvet_people|personId|person_id|contacts\s*:/i.test(importExport), "Import/export must not create or export Velvet Customer master/contact data");
-assert(importExport.includes("customerId"), "Import/export must be customerId-scoped");
-
-if (failures.length) {
-  console.error("Responsibility boundary check failed:\n- " + failures.join("\n- "));
-  process.exit(1);
-}
-console.log("Responsibility boundary check passed.");
+const read=(path)=>fs.readFileSync(path,"utf8");const failures=[];const assert=(condition,message)=>{if(!condition)failures.push(message)};
+const customerScopedFiles=["lib/customer-memory-repository.ts","lib/professional-visit-repository.ts","lib/professional-timeline-repository.ts","lib/capture-repository.ts","lib/gift-repository.ts","lib/schedule-repository.ts","lib/relationship-repository.ts","app/api/captures/route.ts","app/api/gifts/route.ts","app/api/visits/route.ts"];
+for(const path of customerScopedFiles){const source=read(path);assert(source.includes("customerId")||source.includes("customer_id"),`${path}: canonical record must be customerId-scoped`);assert(!/\bpersonId\b|\bperson_id\b/.test(source),`${path}: canonical code must not use personId/person_id`)}
+const professionalVisit=read("lib/professional-visit-repository.ts");for(const forbidden of ["salesAmount","sales_amount","paymentStatus","payment_status","paymentMethod","payment_method","receivable","unpaidAmount","collectedAmount","stripe"])assert(!professionalVisit.toLowerCase().includes(forbidden.toLowerCase()),`Professional Visit contains forbidden Sales/Payment field: ${forbidden}`);
+for(const path of ["lib/person-store.ts","lib/visit-repository.ts"]){const source=read(path).toLowerCase();for(const pattern of [/insert\s+into\s+velvet_people/,/update\s+velvet_people/,/delete\s+from\s+velvet_people/,/insert\s+into\s+velvet_visits/,/update\s+velvet_visits/,/delete\s+from\s+velvet_visits/,/insert\s+into\s+velvet_visit_participants/,/update\s+velvet_visit_participants/,/delete\s+from\s+velvet_visit_participants/])assert(!pattern.test(source),`${path}: legacy table write detected (${pattern})`)}
+const peopleApi=read("app/api/people/route.ts");assert(!peopleApi.includes("createPersonStore"),"People API must not create a Velvet Customer/Person master");const contactsApi=read("app/api/contacts/route.ts");assert(!contactsApi.includes("createPersonContact"),"Contacts API must not create Customer contact master data");const importExport=read("lib/import-export.ts");assert(!/createPersonStore|velvet_people|personId|person_id|contacts\s*:/i.test(importExport),"Import/export must not create or export Velvet Customer master/contact data");assert(importExport.includes("customerId"),"Import/export must be customerId-scoped");
+// Communication Planner owns live 1:1 communication records and send safety. Velvet may only hand off references.
+const contractStatus=read("app/api/contracts/status/route.ts");for(const owned of ["conversation: false","message: false","conversationContext: false","replyDraft: false","safetyCheck: false","communicationSendWorkflow: false"])assert(contractStatus.includes(owned),`/contracts/status must declare Communication Planner ownership: ${owned}`);for(const ref of ["workspaceId","userId","customerId","personId","conversationId","purpose","inputRef","traceId","correlationId"])assert(contractStatus.includes(ref),`Communication Planner handoff reference missing: ${ref}`);for(const forbidden of ["paymentStatus","salesAmount","Stripe data","fullProfessionalMemoryBody","fullNotes","fullConversationHistory","API keys","secret prompts"])assert(contractStatus.includes(forbidden),`Communication Planner prohibited handoff field missing: ${forbidden}`);
+const treeRoots=["app","lib"];const files=[];const walk=(dir)=>{for(const entry of fs.readdirSync(dir,{withFileTypes:true})){const path=`${dir}/${entry.name}`;if(entry.isDirectory())walk(path);else if(/\.(ts|tsx)$/.test(entry.name))files.push(path)}};treeRoots.forEach(walk);const suspiciousDefinitions=[/create\s+table[^;]*(?:conversation|message|reply_draft|safety_check)/i,/insert\s+into\s+(?:velvet_)?(?:conversations?|messages?|reply_drafts?|safety_checks?)/i];for(const path of files){const source=read(path);for(const pattern of suspiciousDefinitions)assert(!pattern.test(source),`${path}: possible duplicate Communication Planner canonical store detected`)}
+if(failures.length){console.error("Responsibility boundary check failed:\n- "+failures.join("\n- "));process.exit(1)}console.log("Responsibility boundary check passed, including Communication Planner ownership.");
