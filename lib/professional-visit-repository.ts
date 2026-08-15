@@ -2,6 +2,7 @@ import { getStorageMode } from "@/lib/storage/config";
 import { dbQuery } from "@/lib/storage/postgres";
 import { addProfessionalTimelineItem } from "@/lib/professional-timeline-repository";
 import { getCustomerMemory, upsertCustomerMemory } from "@/lib/customer-memory-repository";
+import { mergeNextTopics } from "@/lib/next-topic";
 
 export type VelvetProfessionalVisit = {
   id: string; workspaceId: string; userId: string; customerId: string; reservationId?: string; visitScheduleId?: string;
@@ -22,7 +23,24 @@ export async function startProfessionalVisit(input:{workspaceId:string;userId:st
 export async function getProfessionalVisit(id:string,workspaceId:string,userId:string){ if(getStorageMode()!=="postgres") return visits.find(v=>v.id===id&&v.workspaceId===workspaceId&&v.userId===userId); const rows=await dbQuery<VisitRow>(`select ${returning} from velvet_professional_visits where id=$1 and workspace_id=$2 and user_id=$3 limit 1`,[id,workspaceId,userId]); return rows.rows[0]?mapRow(rows.rows[0]):undefined; }
 export async function getActiveProfessionalVisit(workspaceId:string,userId:string,customerId:string){ if(getStorageMode()!=="postgres") return visits.find(v=>v.workspaceId===workspaceId&&v.userId===userId&&v.customerId===customerId&&!v.endedAt); const rows=await dbQuery<VisitRow>(`select ${returning} from velvet_professional_visits where workspace_id=$1 and user_id=$2 and customer_id=$3 and ended_at is null order by visited_at desc limit 1`,[workspaceId,userId,customerId]); return rows.rows[0]?mapRow(rows.rows[0]):undefined; }
 export async function updateProfessionalVisit(id:string,workspaceId:string,userId:string,patch:Partial<Pick<VelvetProfessionalVisit,"serviceContext"|"seatingReason"|"conversationMemo"|"preferenceMemo"|"cautionMemo"|"nextActionMemo"|"summary">>){ const current=await getProfessionalVisit(id,workspaceId,userId); if(!current||current.endedAt)return current; const next={...current,...Object.fromEntries(Object.entries(patch).filter(([,v])=>v!==undefined))}; if(getStorageMode()!=="postgres"){Object.assign(current,next,{updatedAt:new Date().toISOString()});return current;} const rows=await dbQuery<VisitRow>(`update velvet_professional_visits set service_context=$4,seating_reason=$5,conversation_memo=$6,preference_memo=$7,caution_memo=$8,next_action_memo=$9,summary=$10,updated_at=now() where id=$1 and workspace_id=$2 and user_id=$3 returning ${returning}`,[id,workspaceId,userId,next.serviceContext??null,next.seatingReason??null,next.conversationMemo??null,next.preferenceMemo??null,next.cautionMemo??null,next.nextActionMemo??null,next.summary??null]); return rows.rows[0]?mapRow(rows.rows[0]):undefined; }
-export async function endProfessionalVisit(id:string,workspaceId:string,userId:string){ const current=await getProfessionalVisit(id,workspaceId,userId); if(!current)return undefined;if(current.endedAt)return current; const endedAt=new Date();const durationMinutes=Math.max(0,Math.round((endedAt.getTime()-new Date(current.visitedAt).getTime())/60000));let completed:VelvetProfessionalVisit; if(getStorageMode()!=="postgres"){current.endedAt=endedAt.toISOString();current.durationMinutes=durationMinutes;current.updatedAt=endedAt.toISOString();completed=current;}else{const rows=await dbQuery<VisitRow>(`update velvet_professional_visits set ended_at=$4,duration_minutes=$5,updated_at=now() where id=$1 and workspace_id=$2 and user_id=$3 returning ${returning}`,[id,workspaceId,userId,endedAt.toISOString(),durationMinutes]);if(!rows.rows[0])return undefined;completed=mapRow(rows.rows[0]);}
-  const title=[completed.seatingReason,completed.serviceContext].filter(Boolean).join(" · ")||"来店"; const body=[completed.summary,completed.conversationMemo,`滞在 ${durationMinutes}分`].filter(Boolean).join(" · "); await addProfessionalTimelineItem({workspaceId,userId,customerId:completed.customerId,eventType:"visit",title,body,sourceRef:completed.id,occurredAt:completed.visitedAt});
-  const memory=await getCustomerMemory(workspaceId,userId,completed.customerId); await upsertCustomerMemory(workspaceId,userId,completed.customerId,{preferenceNote:completed.preferenceMemo??memory?.preferenceNote,cautionNote:completed.cautionMemo??memory?.cautionNote,conversationSummary:completed.conversationMemo??memory?.conversationSummary,lastInteractionSummary:completed.summary??completed.conversationMemo??memory?.lastInteractionSummary,nextTopicHint:completed.nextActionMemo??memory?.nextTopicHint}); return completed;
+export async function endProfessionalVisit(id:string,workspaceId:string,userId:string){
+  const current=await getProfessionalVisit(id,workspaceId,userId); if(!current)return undefined;if(current.endedAt)return current;
+  const endedAt=new Date();const durationMinutes=Math.max(0,Math.round((endedAt.getTime()-new Date(current.visitedAt).getTime())/60000));let completed:VelvetProfessionalVisit;
+  if(getStorageMode()!=="postgres"){current.endedAt=endedAt.toISOString();current.durationMinutes=durationMinutes;current.updatedAt=endedAt.toISOString();completed=current;}else{const rows=await dbQuery<VisitRow>(`update velvet_professional_visits set ended_at=$4,duration_minutes=$5,updated_at=now() where id=$1 and workspace_id=$2 and user_id=$3 returning ${returning}`,[id,workspaceId,userId,endedAt.toISOString(),durationMinutes]);if(!rows.rows[0])return undefined;completed=mapRow(rows.rows[0]);}
+  const title=[completed.seatingReason,completed.serviceContext].filter(Boolean).join(" · ")||"来店";
+  const body=[completed.summary,completed.conversationMemo,`滞在 ${durationMinutes}分`].filter(Boolean).join(" · ");
+  await addProfessionalTimelineItem({workspaceId,userId,customerId:completed.customerId,eventType:"visit",title,body,sourceRef:completed.id,occurredAt:completed.visitedAt});
+  const memory=await getCustomerMemory(workspaceId,userId,completed.customerId);
+  const previousPreferences=(memory?.preferenceNote??"").split("、").map(value=>value.trim()).filter(Boolean);
+  const visitPreferences=(completed.preferenceMemo??"").split(/[、,\n]/).map(value=>value.trim()).filter(Boolean);
+  const mergedPreferences=Array.from(new Set([...visitPreferences,...previousPreferences]));
+  const nextTopics=mergeNextTopics(memory?.nextTopicHint,completed.nextActionMemo?[completed.nextActionMemo]:[]);
+  await upsertCustomerMemory(workspaceId,userId,completed.customerId,{
+    preferenceNote:mergedPreferences.length?mergedPreferences.join("、"):memory?.preferenceNote,
+    cautionNote:completed.cautionMemo??memory?.cautionNote,
+    conversationSummary:completed.conversationMemo??memory?.conversationSummary,
+    lastInteractionSummary:completed.summary??completed.conversationMemo??memory?.lastInteractionSummary,
+    nextTopicHint:nextTopics||memory?.nextTopicHint,
+  });
+  return completed;
 }
