@@ -1,16 +1,17 @@
 "use client";
 
 import { useState } from "react";
+import { parseNextTopics } from "@/lib/next-topics";
 
 export function MessageDraftCtaInput({ suggestion }: { suggestion?: string }) {
   const [value, setValue] = useState("");
+  const topics = parseNextTopics(suggestion).slice(0, 3);
   return <div className="stack">
-    {suggestion && <div className="card noticeCard">
-      <div className="timelineTitle">次回話題候補</div>
-      <div className="timelineBody">{suggestion}</div>
-      <button className="secondaryButton compactButton" type="button" onClick={() => setValue(suggestion)}>使う</button>
+    {topics.length > 0 && <div>
+      <div className="fieldLabel">話題を入れるなら</div>
+      <div className="chips">{topics.map((topic) => <button className="chip chipButton" type="button" key={topic} onClick={() => setValue(topic)}>{topic}</button>)}</div>
     </div>}
-    <label className="fieldLabel" htmlFor="cta">伝えたい行動（任意）</label>
-    <input className="searchBox" id="cta" name="cta" value={value} onChange={(event) => setValue(event.target.value)} placeholder="例：また時間ある時に連絡して" autoComplete="off" />
+    <label className="fieldLabel" htmlFor="cta">入れたい内容（任意）</label>
+    <input className="searchBox" id="cta" name="cta" value={value} onChange={(event) => setValue(event.target.value)} placeholder="例：この前の大阪出張どうだった？" autoComplete="off" />
   </div>;
 }
