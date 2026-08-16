@@ -27,6 +27,8 @@ jobs:
         run: npm run check:memory-inputs
       - name: Repeat visit flow
         run: npm run check:repeat-visits
+      - name: Mobile UX guard
+        run: npm run check:mobile-ux
       - name: Typecheck
         run: npm run typecheck
       - name: Build
