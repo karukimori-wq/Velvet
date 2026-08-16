@@ -1,0 +1,6 @@
+import fs from "node:fs";
+const read=path=>fs.readFileSync(path,"utf8");const failures=[];const assert=(condition,message)=>{if(!condition)failures.push(message)};
+const recall=read("lib/customer-recall.ts");for(const token of ["注意","前回","好み","約束・覚えておくこと","最近の出来事","maxItems","maxNextTopics"])assert(recall.includes(token),`Recall policy missing: ${token}`);assert(recall.includes("slice(0,maxItems)"),"Recall must cap quick items");
+for(const path of ["app/capture/page.tsx","app/people/[customerId]/page.tsx","app/visits/[visitId]/page.tsx"]){const source=read(path);assert(source.includes("buildCustomerRecall"),`${path}: must use shared Recall policy`);assert(!source.includes("memory?.tags.map"),`${path}: must not dump all memory tags into Recall`)}
+const detail=read("app/people/[customerId]/page.tsx");assert(detail.includes("rememberGroups"),"Customer detail must keep full categorized memory view");assert(detail.includes("この人について"),"Customer detail must expose full memory separately from Recall");
+if(failures.length){console.error("Recall policy check failed:\n- "+failures.join("\n- "));process.exit(1)}console.log("Recall policy check passed: quick Recall stays capped and full memory stays in customer detail.");
