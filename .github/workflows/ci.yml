@@ -23,6 +23,8 @@ jobs:
         run: npm run check:responsibility
       - name: MessageDraft contract
         run: npm run check:message-draft
+      - name: Recall policy
+        run: npm run check:recall
       - name: Typecheck
         run: npm run typecheck
       - name: Build
