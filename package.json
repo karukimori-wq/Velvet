@@ -9,6 +9,7 @@
     "typecheck": "tsc --noEmit",
     "check:responsibility": "node scripts/check-responsibility-boundary.mjs",
     "check:message-draft": "node scripts/check-message-draft-contract.mjs",
+    "check:recall": "node scripts/check-recall-policy.mjs",
     "db:migrate": "node scripts/migrate.mjs"
   },
   "dependencies": {
