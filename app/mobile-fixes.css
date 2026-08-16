@@ -1,45 +1,8 @@
 .shell { padding-bottom: calc(96px + env(safe-area-inset-bottom)); }
 .bottomNav { z-index: 100; bottom: calc(4px + env(safe-area-inset-bottom)); grid-template-columns: repeat(5, 1fr); padding: 6px 8px; border-radius: 22px; width: calc(100% - 20px); pointer-events: auto; }
 .navItem { min-height: 50px; display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 4px 3px; border-radius: 14px; touch-action: manipulation; -webkit-tap-highlight-color: transparent; position: relative; z-index: 1; }
-.navItem:active { background: #242027; color: #fff; }
-.captureNav { z-index: 2; }
-.captureNav strong { width: 54px; height: 54px; margin-top: -20px; font-size: 28px; box-shadow: 0 8px 24px rgba(0,0,0,.28); }
-.stickyConfirm { bottom: calc(78px + env(safe-area-inset-bottom)); }
-.scheduleShell { padding-bottom: calc(104px + env(safe-area-inset-bottom)); }
-.scheduleForm { padding-bottom: 12px; }
-.scheduleDateTime { min-height:50px; height:50px; font-size:16px !important; line-height:1.2; padding:12px 14px; text-align:left; -webkit-appearance:none; appearance:none; }
-.scheduleDateTime::-webkit-date-and-time-value { text-align:left; margin:0; font-size:16px; line-height:24px; }
-.scheduleDateTime::-webkit-datetime-edit { padding:0; font-size:16px; }
-.registerChoice { display:grid; grid-template-columns:48px 1fr auto; gap:14px; align-items:center; min-height:96px; }
-.registerChoice strong { font-size:18px; }
-.registerChoice p { margin:6px 0 0; color:#a9a2ad; font-size:13px; line-height:1.45; }
-.registerIcon { width:48px; height:48px; border-radius:16px; display:grid; place-items:center; background:#2b2630; font-weight:700; }
-.quickRegisterGrid { display:grid; grid-template-columns:1fr 1fr; gap:10px; }
-.quickRegister { text-align:center; font-weight:700; }
-.profileFields { display:grid; gap:10px; }
-.profileField { display:grid; gap:7px; }
-.profileField label { font-size:13px; color:#c9c2cc; }
-.profileInputRow { display:grid; grid-template-columns:minmax(0,1fr) auto; gap:8px; align-items:center; }
-.profileInputRow .compactButton { min-width:64px; }
-.chatComposer { display:grid; gap:10px; }
-.chatInputWrap { border:1px solid #2d2931; background:#1a181d; border-radius:20px; overflow:hidden; }
-.chatTextArea { border:0; border-radius:0; min-height:116px; background:transparent; }
-.chatTools { display:grid; grid-template-columns:1fr 1fr; gap:1px; border-top:1px solid #2d2931; background:#2d2931; }
-.composerTool { border:0; min-height:48px; background:#211e24; color:#ddd6df; font-weight:700; display:flex; gap:8px; align-items:center; justify-content:center; }
-.composerTool span { font-size:14px; }
-.composerTool.recording { background:#2c2024; color:#ffb6bf; }
-.stampPanel { border:1px solid #2d2931; background:#18161b; border-radius:20px; padding:12px; display:grid; gap:12px; }
-.stampTabs { display:flex; gap:7px; overflow-x:auto; padding:1px 2px 5px; scrollbar-width:none; scroll-snap-type:x proximity; -webkit-overflow-scrolling:touch; }
-.stampTabs::-webkit-scrollbar { display:none; }
-.stampTab { flex:0 0 auto; scroll-snap-align:start; white-space:nowrap; border:1px solid #342f38; background:#252128; color:#ddd6df; border-radius:999px; padding:9px 12px; font-size:12px; min-height:38px; }
-.stampFields { display:flex; gap:7px; overflow-x:auto; padding:1px 1px 10px; border-bottom:1px solid #28242c; scrollbar-width:none; -webkit-overflow-scrolling:touch; }
-.stampFields::-webkit-scrollbar { display:none; }
-.stampFields .chip { flex:0 0 auto; white-space:nowrap; }
-.stampCandidates { display:grid; gap:8px; }
-.stampGrid { display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); gap:8px; }
-.stampButton { min-height:78px; border:1px solid #342f38; background:#252128; color:#fff; border-radius:16px; padding:10px 6px; display:flex; flex-direction:column; align-items:center; justify-content:center; gap:5px; text-align:center; touch-action:manipulation; }
-.stampButton strong { font-size:14px; line-height:1.25; overflow-wrap:anywhere; }
-.stampButton span { color:#918997; font-size:10px; }
-.stampButton:active { background:#efe8f2; color:#171319; transform:scale(.98); }
-.stampEmpty { border:1px dashed #342f38; border-radius:14px; padding:16px 12px; color:#918997; font-size:12px; line-height:1.55; text-align:center; }
+.navItem:active { background: #242027; color: #fff; }.captureNav { z-index: 2; }.captureNav strong { width: 54px; height: 54px; margin-top: -20px; font-size: 28px; box-shadow: 0 8px 24px rgba(0,0,0,.28); }.stickyConfirm { bottom: calc(78px + env(safe-area-inset-bottom)); }.scheduleShell { padding-bottom: calc(104px + env(safe-area-inset-bottom)); }.scheduleForm { padding-bottom: 12px; }.scheduleDateTime { min-height:50px; height:50px; font-size:16px !important; line-height:1.2; padding:12px 14px; text-align:left; -webkit-appearance:none; appearance:none; }.scheduleDateTime::-webkit-date-and-time-value { text-align:left; margin:0; font-size:16px; line-height:24px; }.scheduleDateTime::-webkit-datetime-edit { padding:0; font-size:16px; }
+.registerChoice { display:grid; grid-template-columns:48px 1fr auto; gap:14px; align-items:center; min-height:96px; }.registerChoice strong { font-size:18px; }.registerChoice p { margin:6px 0 0; color:#a9a2ad; font-size:13px; line-height:1.45; }.registerIcon { width:48px; height:48px; border-radius:16px; display:grid; place-items:center; background:#2b2630; font-weight:700; }.quickRegisterGrid { display:grid; grid-template-columns:1fr 1fr; gap:10px; }.quickRegister { text-align:center; font-weight:700; }.profileFields { display:grid; gap:10px; }.profileField { display:grid; gap:7px; }.profileField label { font-size:13px; color:#c9c2cc; }.profileInputRow { display:grid; grid-template-columns:minmax(0,1fr) auto; gap:8px; align-items:center; }.profileInputRow .compactButton { min-width:64px; }
+.chatComposer { display:grid; gap:10px; }.chatInputWrap { border:1px solid #2d2931; background:#1a181d; border-radius:20px; overflow:hidden; }.chatTextArea { border:0; border-radius:0; min-height:116px; background:transparent; }.chatTools { display:grid; grid-template-columns:1fr 1fr; gap:1px; border-top:1px solid #2d2931; background:#2d2931; }.composerTool { border:0; min-height:48px; background:#211e24; color:#ddd6df; font-weight:700; display:flex; gap:8px; align-items:center; justify-content:center; }.composerTool span { font-size:14px; }.composerTool.recording { background:#2c2024; color:#ffb6bf; }.stampFeedback { border:1px solid #3a5144; background:#18241d; color:#dff5e5; border-radius:14px; padding:9px 12px; font-size:12px; text-align:center; }
+.stampPanel { border:1px solid #2d2931; background:#18161b; border-radius:20px; padding:12px; display:grid; gap:12px; }.stampTabs { display:flex; gap:7px; overflow-x:auto; padding:1px 2px 5px; scrollbar-width:none; scroll-snap-type:x proximity; -webkit-overflow-scrolling:touch; }.stampTabs::-webkit-scrollbar { display:none; }.stampTab { flex:0 0 auto; scroll-snap-align:start; white-space:nowrap; border:1px solid #342f38; background:#252128; color:#ddd6df; border-radius:999px; padding:9px 12px; font-size:12px; min-height:38px; }.stampFields { display:flex; gap:7px; overflow-x:auto; padding:1px 1px 10px; border-bottom:1px solid #28242c; scrollbar-width:none; -webkit-overflow-scrolling:touch; }.stampFields::-webkit-scrollbar { display:none; }.stampFields .chip { flex:0 0 auto; white-space:nowrap; }.stampCandidates { display:grid; gap:8px; }.stampGrid { display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); gap:8px; }.stampTile { position:relative; min-width:0; }.stampButton { width:100%; min-height:78px; border:1px solid #342f38; background:#252128; color:#fff; border-radius:16px; padding:10px 20px 10px 6px; display:flex; flex-direction:column; align-items:center; justify-content:center; gap:5px; text-align:center; touch-action:manipulation; }.stampButton strong { font-size:14px; line-height:1.25; overflow-wrap:anywhere; }.stampButton span { color:#918997; font-size:10px; }.stampButton:active,.stampButton.stampAdded { background:#efe8f2; color:#171319; transform:scale(.98); }.favoriteStamp { position:absolute; top:4px; right:4px; z-index:2; width:28px; height:28px; border:0; border-radius:50%; background:transparent; color:#665e6a; font-size:15px; display:grid; place-items:center; }.favoriteStamp.isFavorite { color:#f1d77a; background:#332f27; }.stampEmpty { border:1px dashed #342f38; border-radius:14px; padding:16px 12px; color:#918997; font-size:12px; line-height:1.55; text-align:center; }
 @media (max-width:380px) { .stampGrid { grid-template-columns:repeat(2,minmax(0,1fr)); } }
