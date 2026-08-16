@@ -25,6 +25,8 @@ jobs:
         run: npm run check:recall
       - name: Memory input convergence
         run: npm run check:memory-inputs
+      - name: Repeat visit flow
+        run: npm run check:repeat-visits
       - name: Typecheck
         run: npm run typecheck
       - name: Build
