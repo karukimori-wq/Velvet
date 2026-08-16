@@ -1,11 +1,9 @@
 name: Velvet CI
-
 on:
   push:
     branches: [main]
   pull_request:
     branches: [main]
-
 jobs:
   validate:
     runs-on: ubuntu-latest
@@ -25,6 +23,8 @@ jobs:
         run: npm run check:message-draft
       - name: Recall policy
         run: npm run check:recall
+      - name: Memory input convergence
+        run: npm run check:memory-inputs
       - name: Typecheck
         run: npm run typecheck
       - name: Build
