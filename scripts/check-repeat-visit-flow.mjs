@@ -13,7 +13,10 @@ const required=[
  [organize,'addProfessionalTimelineItem','chat/AI path records timeline changes'],
  [remember,'mergeMemoryTags','field-entry path uses shared merge policy'],
  [remember,'addProfessionalTimelineItem','field-entry corrections preserve history'],
- [recall,'freshnessForTag','recall applies freshness'],
+ [recall,'timeSensitiveDays','recall defines freshness windows'],
+ [recall,'latestTagTime','recall resolves when a fact was captured'],
+ [recall,'ageDays>maxAge','recall excludes stale time-sensitive facts'],
+ [recall,'freshness=','recall marks aging facts'],
  [timeline,'order by occurred_at desc','timeline keeps newest events first']
 ];
 const failures=required.filter(([text,needle])=>!text.includes(needle)).map(([,needle,label])=>`${label}: ${needle}`);
