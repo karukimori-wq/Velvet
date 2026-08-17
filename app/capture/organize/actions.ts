@@ -29,6 +29,7 @@ export async function organizeCaptureAction(customerId: string | undefined, from
   }
 
   const organizeParams = new URLSearchParams();
+  if (customerId) organizeParams.set("customerId", customerId);
   if (fromVisit) organizeParams.set("fromVisit", fromVisit);
   const query = organizeParams.toString();
   redirect(`/capture/organize/${raw.id}${query ? `?${query}` : ""}`);
