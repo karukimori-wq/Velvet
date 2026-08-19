@@ -28,7 +28,9 @@ export async function quickUpdateVisitAction(visitId: string, field: "seatingRea
   const identity = await getRequestIdentity();
   const patch = field === "seatingReason" ? { seatingReason: value || undefined } : { serviceContext: value || undefined };
   await updateProfessionalVisit(visitId, identity.workspaceId, identity.userId, patch);
-  redirect(`/visits/${visitId}`);
+  const params = new URLSearchParams();
+  params.set(field, value);
+  redirect(`/visits/${visitId}?${params.toString()}`);
 }
 
 export async function updateVisitAction(formData: FormData) {
