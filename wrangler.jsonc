@@ -1,0 +1,21 @@
+{
+  "$schema": "node_modules/wrangler/config-schema.json",
+  "name": "velvet",
+  "main": ".open-next/worker.js",
+  "compatibility_date": "2026-08-25",
+  "compatibility_flags": ["nodejs_compat", "global_fetch_strictly_public"],
+  "assets": { "directory": ".open-next/assets", "binding": "ASSETS" },
+  "vars": {
+    "VELVET_STORAGE_MODE": "d1",
+    "VELVET_AUTH_MODE": "fixed_owner",
+    "VELVET_OWNER_USER_ID": "owner_default",
+    "AI_PLATFORM_CORE_URL": "https://ai-platform-core.karukimori.workers.dev",
+    "AI_PLATFORM_CORE_CLIENT_ID": "velvet"
+  },
+  "d1_databases": [
+    { "binding": "DB", "database_name": "velvet", "database_id": "00000000-0000-0000-0000-000000000000" }
+  ],
+  "services": [
+    { "binding": "AI_PLATFORM_CORE_SERVICE", "service": "ai-platform-core" }
+  ]
+}
