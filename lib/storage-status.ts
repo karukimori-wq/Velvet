@@ -1,7 +1,7 @@
-import { getStorageReadiness } from "@/lib/storage/config";
+import { getStorageReadiness, type StorageMode } from "@/lib/storage/config";
 
 export type StorageStatus = {
-  mode: "memory" | "postgres";
+  mode: StorageMode;
   persistent: boolean;
   productionReady: boolean;
 };
