@@ -38,6 +38,5 @@ export async function getD1Readiness() {
 }
 
 export function makeD1Id(prefix: string) {
-  if (globalThis.crypto?.randomUUID) return `${prefix}_${crypto.randomUUID().replace(/-/g, "").slice(0, 12)}`;
-  return `${prefix}_${Date.now().toString(36)}_${Math.random().toString(36).slice(2, 8)}`;
+  return `${prefix}_${crypto.randomUUID().replace(/-/g, "").slice(0, 12)}`;
 }
