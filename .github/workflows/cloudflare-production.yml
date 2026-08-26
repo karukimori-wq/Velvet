@@ -1,0 +1,92 @@
+name: Cloudflare Production
+on:
+  workflow_dispatch:
+permissions:
+  contents: read
+env:
+  CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+  CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+  PRODUCTION_URL: https://velvet.karukimori.workers.dev
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    environment: production
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - run: npm install
+      - run: npm run typecheck
+      - run: npm run check:responsibility
+      - run: npm run check:message-draft
+      - run: npm run check:recall
+      - run: npm run check:memory-inputs
+      - run: npm run check:repeat-visits
+      - run: npm run check:mobile-ux
+      - name: Require Cloudflare configuration
+        run: test -n "$CLOUDFLARE_API_TOKEN" && test -n "$CLOUDFLARE_ACCOUNT_ID"
+      - name: Verify Cloudflare identity
+        run: npx wrangler whoami
+      - name: Ensure Velvet D1 database
+        run: |
+          npx wrangler d1 list --json > /tmp/d1-list.json
+          DB_ID=$(node -e 'const fs=require("fs");const list=JSON.parse(fs.readFileSync("/tmp/d1-list.json","utf8"));const db=list.find(x=>x.name==="velvet");process.stdout.write(db?.uuid??db?.id??"")')
+          if [ -z "$DB_ID" ]; then
+            npx wrangler d1 create velvet
+            npx wrangler d1 list --json > /tmp/d1-list.json
+            DB_ID=$(node -e 'const fs=require("fs");const list=JSON.parse(fs.readFileSync("/tmp/d1-list.json","utf8"));const db=list.find(x=>x.name==="velvet");process.stdout.write(db?.uuid??db?.id??"")')
+          fi
+          test -n "$DB_ID"
+          echo "D1_DATABASE_ID=$DB_ID" >> "$GITHUB_ENV"
+          node -e 'const fs=require("fs");const p="wrangler.jsonc";const s=fs.readFileSync(p,"utf8").replace("00000000-0000-0000-0000-000000000000",process.argv[1]);fs.writeFileSync(p,s)' "$DB_ID"
+          npx wrangler d1 info velvet
+      - name: Apply D1 schema
+        run: npx wrangler d1 execute velvet --remote --file=cloudflare/schema.sql --yes
+      - name: Build OpenNext Worker
+        run: npm run cf:build
+      - name: Deploy Worker
+        run: npx wrangler deploy
+      - name: Verify public production endpoints
+        run: |
+          sleep 5
+          curl --fail --silent --show-error "$PRODUCTION_URL/health" | tee /tmp/health.json
+          curl --fail --silent --show-error "$PRODUCTION_URL/version" | tee /tmp/version.json
+          curl --fail --silent --show-error "$PRODUCTION_URL/contracts/status" | tee /tmp/contracts.json
+          curl --fail --silent --show-error "$PRODUCTION_URL/api/persistence/status" | tee /tmp/persistence.json
+          node - <<'NODE'
+          const fs=require('node:fs');
+          const health=JSON.parse(fs.readFileSync('/tmp/health.json','utf8'));
+          const version=JSON.parse(fs.readFileSync('/tmp/version.json','utf8'));
+          const contracts=JSON.parse(fs.readFileSync('/tmp/contracts.json','utf8'));
+          const persistence=JSON.parse(fs.readFileSync('/tmp/persistence.json','utf8'));
+          if(health.status!=='success'||health.appName!=='velvet')throw new Error('Velvet health failed');
+          if(version.status!=='success'||version.appName!=='velvet')throw new Error('Velvet version failed');
+          if(contracts.status!=='success'||contracts.professionalIdRequired!==false||contracts.usesLegacyEventNames===true)throw new Error('Velvet contract failed');
+          if(persistence.status!=='success'||persistence.driver!=='d1'||persistence.d1Reachable!==true||persistence.databaseBackedPersistenceReady!==true)throw new Error('Velvet D1 readiness failed');
+          NODE
+      - name: Verify D1 roundtrip
+        run: |
+          curl --fail --silent --show-error -X POST "$PRODUCTION_URL/api/persistence/roundtrip" -H 'x-workspace-id: ws_velvet_e2e' -H 'x-user-id: user_velvet_e2e' | tee /tmp/roundtrip.json
+          node - <<'NODE'
+          const fs=require('node:fs');
+          const roundtrip=JSON.parse(fs.readFileSync('/tmp/roundtrip.json','utf8'));
+          if(roundtrip.status!=='success'||roundtrip.persistenceDriver!=='d1'||roundtrip.roundtripReady!==true)throw new Error('Velvet D1 roundtrip failed');
+          NODE
+      - name: Verify customer memory D1 isolation
+        run: |
+          RUN_ID="${GITHUB_RUN_ID}-${GITHUB_RUN_ATTEMPT}"
+          CUSTOMER_ID="cust_velvet_e2e_$RUN_ID"
+          PATCH_BODY="{\"personalityNote\":\"Production E2E memory note $RUN_ID\",\"tags\":[\"production-e2e\"],\"pinned\":true}"
+          curl --fail --silent --show-error -X PATCH "$PRODUCTION_URL/api/customers/$CUSTOMER_ID/memory" -H 'content-type: application/json' -H 'x-workspace-id: ws_velvet_e2e' -H 'x-user-id: user_velvet_e2e' --data "$PATCH_BODY" | tee /tmp/memory-write.json
+          curl --fail --silent --show-error "$PRODUCTION_URL/api/customers/$CUSTOMER_ID/memory" -H 'x-workspace-id: ws_velvet_e2e' -H 'x-user-id: user_velvet_e2e' | tee /tmp/memory-read.json
+          curl --fail --silent --show-error "$PRODUCTION_URL/api/customers/$CUSTOMER_ID/memory" -H 'x-workspace-id: ws_velvet_other' -H 'x-user-id: user_velvet_other' | tee /tmp/memory-isolation.json
+          node - <<'NODE'
+          const fs=require('node:fs');
+          const write=JSON.parse(fs.readFileSync('/tmp/memory-write.json','utf8'));
+          const read=JSON.parse(fs.readFileSync('/tmp/memory-read.json','utf8'));
+          const isolation=JSON.parse(fs.readFileSync('/tmp/memory-isolation.json','utf8'));
+          if(write.status!=='success'||!write.memoryId)throw new Error('Velvet memory write failed');
+          if(read.status!=='success'||!read.memory||read.memory.pinned!==true)throw new Error('Velvet memory read failed');
+          if(isolation.status!=='success'||isolation.memory!==null)throw new Error('Velvet memory isolation failed');
+          NODE
