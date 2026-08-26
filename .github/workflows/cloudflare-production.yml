@@ -6,7 +6,10 @@ permissions:
 env:
   CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
   CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+  VELVET_SESSION_BRIDGE_SECRET: ${{ secrets.VELVET_SESSION_BRIDGE_SECRET }}
   PRODUCTION_URL: https://velvet.karukimori.workers.dev
+  E2E_WORKSPACE_ID: ws_velvet_e2e
+  E2E_USER_ID: user_velvet_e2e
 jobs:
   deploy:
     runs-on: ubuntu-latest
@@ -25,7 +28,7 @@ jobs:
       - run: npm run check:repeat-visits
       - run: npm run check:mobile-ux
       - name: Require Cloudflare configuration
-        run: test -n "$CLOUDFLARE_API_TOKEN" && test -n "$CLOUDFLARE_ACCOUNT_ID"
+        run: test -n "$CLOUDFLARE_API_TOKEN" && test -n "$CLOUDFLARE_ACCOUNT_ID" && test -n "$VELVET_SESSION_BRIDGE_SECRET"
       - name: Verify Cloudflare identity
         run: npx wrangler whoami
       - name: Ensure Velvet D1 database
@@ -47,6 +50,8 @@ jobs:
         run: npm run cf:build
       - name: Deploy Worker
         run: npx wrangler deploy
+      - name: Configure production auth secret
+        run: printf '%s' "$VELVET_SESSION_BRIDGE_SECRET" | npx wrangler secret put VELVET_SESSION_BRIDGE_SECRET
       - name: Verify public production endpoints
         run: |
           sleep 5
@@ -67,7 +72,11 @@ jobs:
           NODE
       - name: Verify D1 roundtrip
         run: |
-          curl --fail --silent --show-error -X POST "$PRODUCTION_URL/api/persistence/roundtrip" -H 'x-workspace-id: ws_velvet_e2e' -H 'x-user-id: user_velvet_e2e' | tee /tmp/roundtrip.json
+          curl --fail --silent --show-error -X POST "$PRODUCTION_URL/api/persistence/roundtrip" \
+            -H "x-velvet-auth-bridge: $VELVET_SESSION_BRIDGE_SECRET" \
+            -H "x-velvet-workspace-id: $E2E_WORKSPACE_ID" \
+            -H "x-velvet-user-id: $E2E_USER_ID" \
+            -H "x-velvet-owner-user-id: $E2E_USER_ID" | tee /tmp/roundtrip.json
           node - <<'NODE'
           const fs=require('node:fs');
           const roundtrip=JSON.parse(fs.readFileSync('/tmp/roundtrip.json','utf8'));
@@ -78,9 +87,10 @@ jobs:
           RUN_ID="${GITHUB_RUN_ID}-${GITHUB_RUN_ATTEMPT}"
           CUSTOMER_ID="cust_velvet_e2e_$RUN_ID"
           PATCH_BODY="{\"personalityNote\":\"Production E2E memory note $RUN_ID\",\"tags\":[\"production-e2e\"],\"pinned\":true}"
-          curl --fail --silent --show-error -X PATCH "$PRODUCTION_URL/api/customers/$CUSTOMER_ID/memory" -H 'content-type: application/json' -H 'x-workspace-id: ws_velvet_e2e' -H 'x-user-id: user_velvet_e2e' --data "$PATCH_BODY" | tee /tmp/memory-write.json
-          curl --fail --silent --show-error "$PRODUCTION_URL/api/customers/$CUSTOMER_ID/memory" -H 'x-workspace-id: ws_velvet_e2e' -H 'x-user-id: user_velvet_e2e' | tee /tmp/memory-read.json
-          curl --fail --silent --show-error "$PRODUCTION_URL/api/customers/$CUSTOMER_ID/memory" -H 'x-workspace-id: ws_velvet_other' -H 'x-user-id: user_velvet_other' | tee /tmp/memory-isolation.json
+          AUTH=(-H "x-velvet-auth-bridge: $VELVET_SESSION_BRIDGE_SECRET" -H "x-velvet-workspace-id: $E2E_WORKSPACE_ID" -H "x-velvet-user-id: $E2E_USER_ID" -H "x-velvet-owner-user-id: $E2E_USER_ID")
+          curl --fail --silent --show-error -X PATCH "$PRODUCTION_URL/api/customers/$CUSTOMER_ID/memory" -H 'content-type: application/json' "${AUTH[@]}" --data "$PATCH_BODY" | tee /tmp/memory-write.json
+          curl --fail --silent --show-error "$PRODUCTION_URL/api/customers/$CUSTOMER_ID/memory" "${AUTH[@]}" | tee /tmp/memory-read.json
+          curl --fail --silent --show-error "$PRODUCTION_URL/api/customers/$CUSTOMER_ID/memory" -H "x-velvet-auth-bridge: $VELVET_SESSION_BRIDGE_SECRET" -H 'x-velvet-workspace-id: ws_velvet_other' -H 'x-velvet-user-id: user_velvet_other' -H 'x-velvet-owner-user-id: user_velvet_other' | tee /tmp/memory-isolation.json
           node - <<'NODE'
           const fs=require('node:fs');
           const write=JSON.parse(fs.readFileSync('/tmp/memory-write.json','utf8'));
