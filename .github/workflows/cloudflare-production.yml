@@ -100,3 +100,41 @@ jobs:
           if(read.status!=='success'||!read.memory||read.memory.pinned!==true)throw new Error('Velvet memory read failed');
           if(isolation.status!=='success'||isolation.memory!==null)throw new Error('Velvet memory isolation failed');
           NODE
+      - name: Verify Professional Memory production flow
+        run: |
+          RUN_ID="${GITHUB_RUN_ID}-${GITHUB_RUN_ATTEMPT}"
+          CUSTOMER_ID="cust_velvet_flow_$RUN_ID"
+          AUTH=(-H "x-velvet-auth-bridge: $VELVET_SESSION_BRIDGE_SECRET" -H "x-velvet-workspace-id: $E2E_WORKSPACE_ID" -H "x-velvet-user-id: $E2E_USER_ID" -H "x-velvet-owner-user-id: $E2E_USER_ID")
+
+          curl --fail --silent --show-error -X PATCH "$PRODUCTION_URL/api/customers/$CUSTOMER_ID/memory" -H 'content-type: application/json' "${AUTH[@]}" --data "{\"displayNameSnapshot\":\"E2E Customer $RUN_ID\",\"personalityNote\":\"calm\",\"tags\":[\"趣味：旅行\"]}" | tee /tmp/flow-memory.json
+
+          curl --fail --silent --show-error -X POST "$PRODUCTION_URL/api/visits" -H 'content-type: application/json' "${AUTH[@]}" --data "{\"customerId\":\"$CUSTOMER_ID\",\"intent\":\"production-e2e\"}" | tee /tmp/flow-visit-start.json
+          VISIT_ID=$(node -e 'const fs=require("fs");const j=JSON.parse(fs.readFileSync("/tmp/flow-visit-start.json","utf8"));if(j.status!=="success"||!j.visitId)process.exit(1);process.stdout.write(j.visitId)')
+
+          curl --fail --silent --show-error -X PATCH "$PRODUCTION_URL/api/visits/$VISIT_ID" -H 'content-type: application/json' "${AUTH[@]}" --data '{"seatingReason":"指名","conversationMemo":"Production E2E conversation","preferenceMemo":"旅行","nextActionMemo":"旅行の感想を聞く","summary":"Production E2E visit"}' | tee /tmp/flow-visit-update.json
+          curl --fail --silent --show-error -X POST "$PRODUCTION_URL/api/customers/$CUSTOMER_ID/notes" -H 'content-type: application/json' "${AUTH[@]}" --data "{\"visitId\":\"$VISIT_ID\",\"title\":\"E2E Note\",\"note\":\"Production E2E professional note\"}" | tee /tmp/flow-note.json
+          curl --fail --silent --show-error -X POST "$PRODUCTION_URL/api/visits/$VISIT_ID" -H 'content-type: application/json' "${AUTH[@]}" --data '{"action":"end"}' | tee /tmp/flow-visit-end.json
+
+          curl --fail --silent --show-error -X POST "$PRODUCTION_URL/api/customers/$CUSTOMER_ID/next-actions" -H 'content-type: application/json' "${AUTH[@]}" --data '{"text":"Production E2E next action"}' | tee /tmp/flow-next-create.json
+          NEXT_ID=$(node -e 'const fs=require("fs");const j=JSON.parse(fs.readFileSync("/tmp/flow-next-create.json","utf8"));if(j.status!=="success"||!j.nextActionId)process.exit(1);process.stdout.write(j.nextActionId)')
+          curl --fail --silent --show-error -X PATCH "$PRODUCTION_URL/api/customers/$CUSTOMER_ID/next-actions/$NEXT_ID" -H 'content-type: application/json' "${AUTH[@]}" --data '{"action":"complete"}' | tee /tmp/flow-next-complete.json
+
+          curl --fail --silent --show-error "$PRODUCTION_URL/api/customers/$CUSTOMER_ID/memory" "${AUTH[@]}" | tee /tmp/flow-memory-read.json
+          curl --fail --silent --show-error "$PRODUCTION_URL/api/visits/$VISIT_ID" "${AUTH[@]}" | tee /tmp/flow-visit-read.json
+          curl --fail --silent --show-error "$PRODUCTION_URL/api/customers/$CUSTOMER_ID/next-actions" "${AUTH[@]}" | tee /tmp/flow-next-read.json
+          curl --fail --silent --show-error "$PRODUCTION_URL/api/customers/$CUSTOMER_ID/timeline" "${AUTH[@]}" | tee /tmp/flow-timeline.json
+
+          node - <<'NODE'
+          const fs=require('node:fs');
+          const read=(path)=>JSON.parse(fs.readFileSync(path,'utf8'));
+          const memory=read('/tmp/flow-memory-read.json');
+          const visit=read('/tmp/flow-visit-read.json');
+          const next=read('/tmp/flow-next-read.json');
+          const timeline=read('/tmp/flow-timeline.json');
+          if(memory.status!=='success'||!memory.memory||!String(memory.memory.preferenceNote??'').includes('旅行'))throw new Error('Professional Memory persistence failed');
+          if(visit.status!=='success'||!visit.visit?.endedAt||visit.visit?.seatingReason!=='指名')throw new Error('Visit persistence failed');
+          const completed=next.items?.find((item)=>item.text==='Production E2E next action');
+          if(next.status!=='success'||!completed||completed.status!=='done'||!completed.completedAt)throw new Error('NextAction persistence failed');
+          const types=new Set((timeline.entries??[]).map((entry)=>entry.eventType));
+          if(timeline.status!=='success'||!types.has('visit')||!types.has('note')||!types.has('next_action'))throw new Error('Timeline persistence failed');
+          NODE
