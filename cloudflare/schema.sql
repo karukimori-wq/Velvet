@@ -19,3 +19,5 @@ CREATE TABLE IF NOT EXISTS velvet_capture_dictionary (id TEXT PRIMARY KEY,worksp
 CREATE INDEX IF NOT EXISTS idx_velvet_capture_dictionary_scope ON velvet_capture_dictionary(workspace_id,user_id,use_count DESC,last_used_at DESC);
 CREATE TABLE IF NOT EXISTS velvet_self_investments (id TEXT PRIMARY KEY,owner_user_id TEXT NOT NULL,occurred_at TEXT NOT NULL,category TEXT NOT NULL,amount INTEGER NOT NULL,memo TEXT,created_at TEXT NOT NULL);
 CREATE INDEX IF NOT EXISTS idx_velvet_self_investments_owner ON velvet_self_investments(owner_user_id,occurred_at DESC);
+CREATE TABLE IF NOT EXISTS velvet_professional_relationships (id TEXT PRIMARY KEY,workspace_id TEXT NOT NULL,user_id TEXT NOT NULL,customer_a_id TEXT NOT NULL,customer_b_id TEXT NOT NULL,relation_type TEXT NOT NULL,note TEXT,created_at TEXT NOT NULL);
+CREATE INDEX IF NOT EXISTS idx_velvet_professional_relationships_scope ON velvet_professional_relationships(workspace_id,user_id,created_at DESC);
