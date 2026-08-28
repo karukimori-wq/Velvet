@@ -1,0 +1,7 @@
+import { NextResponse } from "next/server";
+import { getRequestIdentity } from "@/lib/auth/request-identity";
+import { completeNextAction, listNextActions } from "@/lib/professional-next-action-repository";
+
+function observability(request:Request){const traceId=request.headers.get("x-trace-id")??crypto.randomUUID();const correlationId=request.headers.get("x-correlation-id")??traceId;const requestId=request.headers.get("x-request-id")??crypto.randomUUID();return{traceId,correlationId,requestId}}
+
+export async function PATCH(request:Request,{params}:{params:Promise<{customerId:string;nextActionId:string}>}){const {workspaceId,userId}=await getRequestIdentity();const {customerId,nextActionId}=await params;const obs=observability(request);const body=await request.json().catch(()=>({})) as Record<string,unknown>;if(body.action!=="complete")return NextResponse.json({status:"error",error:{code:"INVALID_ACTION",message:"action must be complete"},...obs},{status:400});const ok=await completeNextAction(workspaceId,userId,customerId,nextActionId);if(!ok)return NextResponse.json({status:"error",error:{code:"NEXT_ACTION_NOT_FOUND",message:"next action not found"},...obs},{status:404});const item=(await listNextActions(workspaceId,userId,customerId)).find(value=>value.id===nextActionId);return NextResponse.json({status:"success",customerId,nextActionId,statusValue:item?.status??"done",completedAt:item?.completedAt,...obs})}
