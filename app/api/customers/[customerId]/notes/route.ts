@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { getRequestIdentity } from "@/lib/auth/request-identity";
-import { addProfessionalTimelineItem } from "@/lib/professional-timeline-repository";
+import { createProfessionalNote } from "@/lib/professional-note-repository";
 
 export async function POST(request: Request,{params}:{params:Promise<{customerId:string}>}){
   const {workspaceId,userId}=await getRequestIdentity(); const {customerId}=await params;
@@ -8,6 +8,6 @@ export async function POST(request: Request,{params}:{params:Promise<{customerId
   const body=await request.json().catch(()=>({})) as Record<string,unknown>;
   for(const key of ["salesAmount","paymentStatus","paymentMethod","stripe","customer"]){if(key in body)return NextResponse.json({status:"error",error:{code:"PROHIBITED_FIELDS",message:`${key} is not accepted by VelvetNote.Create`},traceId,correlationId,requestId},{status:400});}
   const note=typeof body.note==="string"?body.note.trim():""; if(!note)return NextResponse.json({status:"error",error:{code:"NOTE_REQUIRED",message:"note is required"},traceId,correlationId,requestId},{status:400});
-  const item=await addProfessionalTimelineItem({workspaceId,userId,customerId,eventType:"note",title:typeof body.title==="string"&&body.title.trim()?body.title.trim():"接客メモ",body:note});
+  const item=await createProfessionalNote({workspaceId,userId,customerId,visitId:typeof body.visitId==="string"?body.visitId:undefined,title:typeof body.title==="string"?body.title:undefined,body:note});
   return NextResponse.json({status:"success",noteId:item.id,customerId,eventName:"velvet.note.created.v1",traceId,correlationId,requestId},{status:201});
 }
