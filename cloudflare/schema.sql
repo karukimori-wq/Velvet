@@ -19,3 +19,6 @@ CREATE INDEX IF NOT EXISTS idx_velvet_notes_scope ON velvet_notes(workspace_id,u
 
 CREATE TABLE IF NOT EXISTS velvet_professional_gifts (id TEXT PRIMARY KEY,workspace_id TEXT NOT NULL,user_id TEXT NOT NULL,customer_id TEXT NOT NULL,direction TEXT NOT NULL,item TEXT NOT NULL,occasion TEXT,memo TEXT,occurred_at TEXT NOT NULL);
 CREATE INDEX IF NOT EXISTS idx_velvet_professional_gifts_scope ON velvet_professional_gifts(workspace_id,user_id,customer_id,occurred_at DESC);
+
+CREATE TABLE IF NOT EXISTS velvet_professional_schedule_entries (id TEXT PRIMARY KEY,workspace_id TEXT NOT NULL,user_id TEXT NOT NULL,customer_id TEXT,visit_schedule_id TEXT,entry_type TEXT NOT NULL,title TEXT NOT NULL,starts_at TEXT NOT NULL,note TEXT,created_at TEXT NOT NULL);
+CREATE INDEX IF NOT EXISTS idx_velvet_professional_schedule_scope ON velvet_professional_schedule_entries(workspace_id,user_id,starts_at);
