@@ -41,7 +41,7 @@ export function FeedbackHubLauncher(){
   }
 
   return <>
-    <button type="button" className="feedbackLauncher" onClick={()=>{setOpen(true);setResult(null)}} aria-label="質問・改善を送る">?</button>
+    <button type="button" className="feedbackLauncher" onClick={()=>{setOpen(true);setResult(null)}} aria-label="質問・改善を送る"><span>?</span>質問・改善</button>
     {open&&<div className="feedbackBackdrop" role="presentation" onMouseDown={e=>{if(e.target===e.currentTarget)setOpen(false)}}>
       <section className="feedbackSheet" role="dialog" aria-modal="true" aria-label="質問・改善">
         <div className="feedbackHeader"><div><strong>質問・改善</strong><span>{screenName}</span></div><button type="button" className="feedbackClose" onClick={()=>setOpen(false)} aria-label="閉じる">×</button></div>
