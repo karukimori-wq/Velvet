@@ -1,6 +1,8 @@
 import type { Metadata } from "next";
+import { FeedbackHubLauncher } from "@/components/feedback-hub-launcher";
 import "./globals.css";
 import "./mobile-fixes.css";
+import "./feedback.css";
 
 export const dynamic = "force-dynamic";
 
@@ -12,7 +14,7 @@ export const metadata: Metadata = {
 export default function RootLayout({ children }: Readonly<{ children: React.ReactNode }>) {
   return (
     <html lang="ja">
-      <body>{children}</body>
+      <body>{children}<FeedbackHubLauncher /></body>
     </html>
   );
 }
