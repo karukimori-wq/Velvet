@@ -13,6 +13,7 @@
     "check:memory-inputs": "node scripts/check-memory-input-paths.mjs",
     "check:repeat-visits": "node scripts/check-repeat-visit-flow.mjs",
     "check:mobile-ux": "node scripts/check-mobile-ux.mjs",
+    "check:feedback-hub": "node scripts/check-feedback-hub-boundary.mjs",
     "db:migrate": "node scripts/migrate.mjs",
     "cf:build": "opennextjs-cloudflare build",
     "cf:preview": "opennextjs-cloudflare build && opennextjs-cloudflare preview",
