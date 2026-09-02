@@ -27,6 +27,7 @@ jobs:
       - run: npm run check:memory-inputs
       - run: npm run check:repeat-visits
       - run: npm run check:mobile-ux
+      - run: npm run check:feedback-hub
       - name: Require Cloudflare configuration
         run: test -n "$CLOUDFLARE_API_TOKEN" && test -n "$CLOUDFLARE_ACCOUNT_ID" && test -n "$VELVET_SESSION_BRIDGE_SECRET"
       - name: Verify Cloudflare identity
