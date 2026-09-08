@@ -29,6 +29,8 @@ export type PlanAccess = {
   integratedTimeline: boolean;
   eventViews: boolean;
   attachmentsAllowed: boolean;
+  /** Compatibility alias used by media/status APIs. Keep in sync with attachmentsAllowed. */
+  imagesAllowed: boolean;
   exportAllowed: boolean;
   businessAvailable: boolean;
   aiAssistLevel: "small" | "advanced";
@@ -42,10 +44,10 @@ const PRO_FEATURES = new Set<VelvetFeature>([
 const FREE_FEATURES = new Set<VelvetFeature>(["customer.manage","history.basic","ai.assist.basic"]);
 
 function buildAccess(plan: VelvetPlan, now: Date): PlanAccess {
-  if (plan === "pro") return { plan, fullHistory:true, integratedTimeline:true, eventViews:true, attachmentsAllowed:true, exportAllowed:true, businessAvailable:false, aiAssistLevel:"advanced" };
-  if (plan === "business") return { plan, fullHistory:true, integratedTimeline:true, eventViews:true, attachmentsAllowed:true, exportAllowed:true, businessAvailable:false, aiAssistLevel:"advanced" };
+  if (plan === "pro") return { plan, fullHistory:true, integratedTimeline:true, eventViews:true, attachmentsAllowed:true, imagesAllowed:true, exportAllowed:true, businessAvailable:false, aiAssistLevel:"advanced" };
+  if (plan === "business") return { plan, fullHistory:true, integratedTimeline:true, eventViews:true, attachmentsAllowed:true, imagesAllowed:true, exportAllowed:true, businessAvailable:false, aiAssistLevel:"advanced" };
   const cutoff = new Date(now); cutoff.setUTCMonth(cutoff.getUTCMonth() - 3);
-  return { plan:"free", historyCutoff:cutoff, fullHistory:false, customerLimit:30, integratedTimeline:false, eventViews:false, attachmentsAllowed:false, exportAllowed:false, businessAvailable:false, aiAssistLevel:"small" };
+  return { plan:"free", historyCutoff:cutoff, fullHistory:false, customerLimit:30, integratedTimeline:false, eventViews:false, attachmentsAllowed:false, imagesAllowed:false, exportAllowed:false, businessAvailable:false, aiAssistLevel:"small" };
 }
 
 function normalizePlan(plan: unknown, status: unknown): VelvetPlan {
