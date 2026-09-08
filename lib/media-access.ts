@@ -1,4 +1,5 @@
 import { getPlanAccess } from "@/lib/plan-access";
+import { getMediaBucket } from "@/lib/storage/r2";
 
 export type MediaAccessStatus = {
   allowed: boolean;
@@ -10,9 +11,8 @@ export async function getMediaAccess(ownerUserId: string): Promise<MediaAccessSt
   const access = await getPlanAccess(ownerUserId);
   if (!access.imagesAllowed) return { allowed: false, configured: false, errorCode: "PRO_REQUIRED" };
 
-  // Storage provider remains intentionally abstract until a provider is selected.
-  // Do not pretend image upload works simply because the user is Pro.
-  const configured = Boolean(process.env.VELVET_IMAGE_STORAGE_PROVIDER?.trim());
+  const bucket = await getMediaBucket();
+  const configured = Boolean(bucket);
   return {
     allowed: configured,
     configured,
