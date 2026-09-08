@@ -29,6 +29,8 @@ jobs:
         run: npm run check:repeat-visits
       - name: Mobile UX guard
         run: npm run check:mobile-ux
+      - name: Plan enforcement
+        run: npm run check:plan-enforcement
       - name: Typecheck
         run: npm run typecheck
       - name: Build
