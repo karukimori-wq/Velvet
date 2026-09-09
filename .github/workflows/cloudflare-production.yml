@@ -29,6 +29,7 @@ jobs:
       - run: npm run check:mobile-ux
       - run: npm run check:feedback-hub
       - run: npm run check:plan-enforcement
+      - run: npm run check:media-access
       - name: Require Cloudflare configuration
         run: test -n "$CLOUDFLARE_API_TOKEN" && test -n "$CLOUDFLARE_ACCOUNT_ID" && test -n "$VELVET_SESSION_BRIDGE_SECRET"
       - name: Verify Cloudflare identity
@@ -143,3 +144,39 @@ jobs:
           const types=new Set((timeline.entries??[]).map((entry)=>entry.eventType));
           if(timeline.status!=='success'||!types.has('visit')||!types.has('note')||!types.has('next_action'))throw new Error('Timeline persistence failed');
           NODE
+      - name: Verify production media R2 flow
+        run: |
+          RUN_ID="${GITHUB_RUN_ID}-${GITHUB_RUN_ATTEMPT}"
+          CUSTOMER_ID="cust_velvet_media_$RUN_ID"
+          AUTH=(-H "x-velvet-auth-bridge: $VELVET_SESSION_BRIDGE_SECRET" -H "x-velvet-workspace-id: $E2E_WORKSPACE_ID" -H "x-velvet-user-id: $E2E_USER_ID" -H "x-velvet-owner-user-id: $E2E_USER_ID")
+
+          curl --fail --silent --show-error -X PATCH "$PRODUCTION_URL/api/customers/$CUSTOMER_ID/memory" -H 'content-type: application/json' "${AUTH[@]}" --data "{\"displayNameSnapshot\":\"Media E2E Customer $RUN_ID\",\"tags\":[\"media-e2e\"]}" | tee /tmp/media-memory.json
+          curl --fail --silent --show-error "$PRODUCTION_URL/api/media/status" "${AUTH[@]}" | tee /tmp/media-status.json
+
+          printf 'velvet-media-e2e-%s' "$RUN_ID" > /tmp/velvet-media-e2e.txt
+          curl --fail --silent --show-error -X POST "$PRODUCTION_URL/api/media/upload" "${AUTH[@]}" -F "customerId=$CUSTOMER_ID" -F "file=@/tmp/velvet-media-e2e.txt;type=image/png;filename=e2e.png" | tee /tmp/media-upload.json
+          MEDIA_KEY=$(node -e 'const fs=require("fs");const j=JSON.parse(fs.readFileSync("/tmp/media-upload.json","utf8"));if(j.status!=="success"||!j.media?.key)process.exit(1);process.stdout.write(j.media.key)')
+          ENCODED_KEY=$(node -e 'process.stdout.write(encodeURIComponent(process.argv[1]))' "$MEDIA_KEY")
+
+          curl --fail --silent --show-error "$PRODUCTION_URL/api/media/object?key=$ENCODED_KEY&customerId=$CUSTOMER_ID" "${AUTH[@]}" -o /tmp/media-object.bin -D /tmp/media-headers.txt
+          WRONG_SCOPE_STATUS=$(curl --silent --output /tmp/media-wrong-scope.json --write-out '%{http_code}' "$PRODUCTION_URL/api/media/object?key=$ENCODED_KEY&customerId=other_customer" "${AUTH[@]}")
+          curl --fail --silent --show-error "$PRODUCTION_URL/api/customers/$CUSTOMER_ID/timeline" "${AUTH[@]}" | tee /tmp/media-timeline.json
+
+          node - <<'NODE'
+          const fs=require('node:fs');
+          const status=JSON.parse(fs.readFileSync('/tmp/media-status.json','utf8'));
+          const upload=JSON.parse(fs.readFileSync('/tmp/media-upload.json','utf8'));
+          const body=fs.readFileSync('/tmp/media-object.bin','utf8');
+          const headers=fs.readFileSync('/tmp/media-headers.txt','utf8');
+          const wrongStatus=process.env.WRONG_SCOPE_STATUS;
+          const timeline=JSON.parse(fs.readFileSync('/tmp/media-timeline.json','utf8'));
+          if(status.status!=='success'||status.uploadReady!==true||status.retrievalReady!==true)throw new Error('Media status readiness failed');
+          if(upload.status!=='success'||upload.eventName!=='velvet.media.uploaded.v1'||!upload.media?.key)throw new Error('Media upload failed');
+          if(!body.includes('velvet-media-e2e-'))throw new Error('Media object body mismatch');
+          if(!headers.toLowerCase().includes('content-type: image/png'))throw new Error('Media object content type mismatch');
+          if(wrongStatus!=='403')throw new Error('Media scope isolation failed');
+          const hasMedia=(timeline.entries??[]).some((entry)=>entry.eventType==='media'&&String(entry.sourceRef??'')===upload.media.key);
+          if(timeline.status!=='success'||!hasMedia)throw new Error('Media timeline link failed');
+          NODE
+        env:
+          WRONG_SCOPE_STATUS: ${{ steps.media_scope.outputs.status }}
