@@ -13,6 +13,10 @@ export async function GET() {
     imagesAllowedByPlan: access.imagesAllowed,
     storageConfigured: media.configured,
     uploadReady: media.allowed,
+    retrievalReady: media.allowed,
+    uploadEndpoint: "POST /api/media/upload",
+    retrievalEndpoint: "GET /api/media/object?key={r2Key}&customerId={customerId}",
+    ownershipBoundary: "workspaceId+userId+customerId",
     error: media.errorCode ? { code: media.errorCode, retryable: media.errorCode === "IMAGE_STORAGE_NOT_CONFIGURED" } : null,
   });
 }
