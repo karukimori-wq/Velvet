@@ -12,8 +12,15 @@ export interface D1DatabaseLike {
   prepare(query: string): D1PreparedStatementLike;
 }
 
+/**
+ * Resolve the actual Cloudflare DB binding when it exists.
+ *
+ * Do not gate this lookup on process.env.VELVET_STORAGE_MODE. OpenNext can expose
+ * Worker bindings through getCloudflareContext even when process.env resolution
+ * differs between server bundles. Repository code can therefore prefer the
+ * concrete D1 binding and avoid accidentally falling back to in-memory storage.
+ */
 export async function getD1Database(): Promise<D1DatabaseLike | null> {
-  if (getStorageMode() !== "d1") return null;
   try {
     const context = await getCloudflareContext({ async: true });
     return (context.env as unknown as { DB?: D1DatabaseLike }).DB ?? null;
@@ -23,11 +30,16 @@ export async function getD1Database(): Promise<D1DatabaseLike | null> {
 }
 
 export async function getD1Readiness() {
-  if (getStorageMode() !== "d1") {
-    return { driver: getStorageMode(), d1Configured: false, d1Reachable: false, databaseBackedPersistenceReady: getStorageMode() === "postgres" };
-  }
+  const configuredMode = getStorageMode();
   const db = await getD1Database();
-  if (!db) return { driver: "d1" as const, d1Configured: false, d1Reachable: false, databaseBackedPersistenceReady: false };
+  if (!db) {
+    return {
+      driver: configuredMode,
+      d1Configured: false,
+      d1Reachable: false,
+      databaseBackedPersistenceReady: configuredMode === "postgres",
+    };
+  }
   try {
     const row = await db.prepare("SELECT 1 AS ok").first<{ ok: number }>();
     const ready = row?.ok === 1;
