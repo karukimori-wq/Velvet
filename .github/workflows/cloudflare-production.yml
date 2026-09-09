@@ -78,104 +78,51 @@ jobs:
           NODE
       - name: Verify D1 roundtrip
         run: |
-          curl --fail --silent --show-error -X POST "$PRODUCTION_URL/api/persistence/roundtrip" \
-            -H "x-velvet-auth-bridge: $VELVET_SESSION_BRIDGE_SECRET" \
-            -H "x-velvet-workspace-id: $E2E_WORKSPACE_ID" \
-            -H "x-velvet-user-id: $E2E_USER_ID" \
-            -H "x-velvet-owner-user-id: $E2E_USER_ID" | tee /tmp/roundtrip.json
-          node - <<'NODE'
-          const fs=require('node:fs');
-          const roundtrip=JSON.parse(fs.readFileSync('/tmp/roundtrip.json','utf8'));
-          if(roundtrip.status!=='success'||roundtrip.persistenceDriver!=='d1'||roundtrip.roundtripReady!==true)throw new Error('Velvet D1 roundtrip failed');
-          NODE
+          curl --fail --silent --show-error -X POST "$PRODUCTION_URL/api/persistence/roundtrip" -H "x-velvet-auth-bridge: $VELVET_SESSION_BRIDGE_SECRET" -H "x-velvet-workspace-id: $E2E_WORKSPACE_ID" -H "x-velvet-user-id: $E2E_USER_ID" -H "x-velvet-owner-user-id: $E2E_USER_ID" | tee /tmp/roundtrip.json
+          node -e "const fs=require('fs');const j=JSON.parse(fs.readFileSync('/tmp/roundtrip.json','utf8'));if(j.status!=='success'||j.persistenceDriver!=='d1'||j.roundtripReady!==true)throw new Error('Velvet D1 roundtrip failed')"
       - name: Verify customer memory D1 isolation
         run: |
-          RUN_ID="${GITHUB_RUN_ID}-${GITHUB_RUN_ATTEMPT}"
-          CUSTOMER_ID="cust_velvet_e2e_$RUN_ID"
-          PATCH_BODY="{\"personalityNote\":\"Production E2E memory note $RUN_ID\",\"tags\":[\"production-e2e\"],\"pinned\":true}"
+          RUN_ID="${GITHUB_RUN_ID}-${GITHUB_RUN_ATTEMPT}"; CUSTOMER_ID="cust_velvet_e2e_$RUN_ID"
           AUTH=(-H "x-velvet-auth-bridge: $VELVET_SESSION_BRIDGE_SECRET" -H "x-velvet-workspace-id: $E2E_WORKSPACE_ID" -H "x-velvet-user-id: $E2E_USER_ID" -H "x-velvet-owner-user-id: $E2E_USER_ID")
-          curl --fail --silent --show-error -X PATCH "$PRODUCTION_URL/api/customers/$CUSTOMER_ID/memory" -H 'content-type: application/json' "${AUTH[@]}" --data "$PATCH_BODY" | tee /tmp/memory-write.json
+          curl --fail --silent --show-error -X PATCH "$PRODUCTION_URL/api/customers/$CUSTOMER_ID/memory" -H 'content-type: application/json' "${AUTH[@]}" --data "{\"personalityNote\":\"Production E2E memory note $RUN_ID\",\"tags\":[\"production-e2e\"],\"pinned\":true}" | tee /tmp/memory-write.json
           curl --fail --silent --show-error "$PRODUCTION_URL/api/customers/$CUSTOMER_ID/memory" "${AUTH[@]}" | tee /tmp/memory-read.json
           curl --fail --silent --show-error "$PRODUCTION_URL/api/customers/$CUSTOMER_ID/memory" -H "x-velvet-auth-bridge: $VELVET_SESSION_BRIDGE_SECRET" -H 'x-velvet-workspace-id: ws_velvet_other' -H 'x-velvet-user-id: user_velvet_other' -H 'x-velvet-owner-user-id: user_velvet_other' | tee /tmp/memory-isolation.json
           node - <<'NODE'
-          const fs=require('node:fs');
-          const write=JSON.parse(fs.readFileSync('/tmp/memory-write.json','utf8'));
-          const read=JSON.parse(fs.readFileSync('/tmp/memory-read.json','utf8'));
-          const isolation=JSON.parse(fs.readFileSync('/tmp/memory-isolation.json','utf8'));
-          if(write.status!=='success'||!write.memoryId)throw new Error('Velvet memory write failed');
-          if(read.status!=='success'||!read.memory||read.memory.pinned!==true)throw new Error('Velvet memory read failed');
-          if(isolation.status!=='success'||isolation.memory!==null)throw new Error('Velvet memory isolation failed');
+          const fs=require('fs'),r=p=>JSON.parse(fs.readFileSync(p,'utf8')); const w=r('/tmp/memory-write.json'),m=r('/tmp/memory-read.json'),i=r('/tmp/memory-isolation.json'); if(w.status!=='success'||!w.memoryId||m.status!=='success'||!m.memory||m.memory.pinned!==true||i.status!=='success'||i.memory!==null)throw new Error('Velvet memory isolation failed');
           NODE
       - name: Verify Professional Memory production flow
         run: |
-          RUN_ID="${GITHUB_RUN_ID}-${GITHUB_RUN_ATTEMPT}"
-          CUSTOMER_ID="cust_velvet_flow_$RUN_ID"
+          RUN_ID="${GITHUB_RUN_ID}-${GITHUB_RUN_ATTEMPT}"; CUSTOMER_ID="cust_velvet_flow_$RUN_ID"
           AUTH=(-H "x-velvet-auth-bridge: $VELVET_SESSION_BRIDGE_SECRET" -H "x-velvet-workspace-id: $E2E_WORKSPACE_ID" -H "x-velvet-user-id: $E2E_USER_ID" -H "x-velvet-owner-user-id: $E2E_USER_ID")
-
-          curl --fail --silent --show-error -X PATCH "$PRODUCTION_URL/api/customers/$CUSTOMER_ID/memory" -H 'content-type: application/json' "${AUTH[@]}" --data "{\"displayNameSnapshot\":\"E2E Customer $RUN_ID\",\"personalityNote\":\"calm\",\"tags\":[\"趣味：旅行\"]}" | tee /tmp/flow-memory.json
-
-          curl --fail --silent --show-error -X POST "$PRODUCTION_URL/api/visits" -H 'content-type: application/json' "${AUTH[@]}" --data "{\"customerId\":\"$CUSTOMER_ID\",\"intent\":\"production-e2e\"}" | tee /tmp/flow-visit-start.json
-          VISIT_ID=$(node -e 'const fs=require("fs");const j=JSON.parse(fs.readFileSync("/tmp/flow-visit-start.json","utf8"));if(j.status!=="success"||!j.visitId)process.exit(1);process.stdout.write(j.visitId)')
-
-          curl --fail --silent --show-error -X PATCH "$PRODUCTION_URL/api/visits/$VISIT_ID" -H 'content-type: application/json' "${AUTH[@]}" --data '{"seatingReason":"指名","conversationMemo":"Production E2E conversation","preferenceMemo":"旅行","nextActionMemo":"旅行の感想を聞く","summary":"Production E2E visit"}' | tee /tmp/flow-visit-update.json
-          curl --fail --silent --show-error -X POST "$PRODUCTION_URL/api/customers/$CUSTOMER_ID/notes" -H 'content-type: application/json' "${AUTH[@]}" --data "{\"visitId\":\"$VISIT_ID\",\"title\":\"E2E Note\",\"note\":\"Production E2E professional note\"}" | tee /tmp/flow-note.json
-          curl --fail --silent --show-error -X POST "$PRODUCTION_URL/api/visits/$VISIT_ID" -H 'content-type: application/json' "${AUTH[@]}" --data '{"action":"end"}' | tee /tmp/flow-visit-end.json
-
-          curl --fail --silent --show-error -X POST "$PRODUCTION_URL/api/customers/$CUSTOMER_ID/next-actions" -H 'content-type: application/json' "${AUTH[@]}" --data '{"text":"Production E2E next action"}' | tee /tmp/flow-next-create.json
-          NEXT_ID=$(node -e 'const fs=require("fs");const j=JSON.parse(fs.readFileSync("/tmp/flow-next-create.json","utf8"));if(j.status!=="success"||!j.nextActionId)process.exit(1);process.stdout.write(j.nextActionId)')
-          curl --fail --silent --show-error -X PATCH "$PRODUCTION_URL/api/customers/$CUSTOMER_ID/next-actions/$NEXT_ID" -H 'content-type: application/json' "${AUTH[@]}" --data '{"action":"complete"}' | tee /tmp/flow-next-complete.json
-
-          curl --fail --silent --show-error "$PRODUCTION_URL/api/customers/$CUSTOMER_ID/memory" "${AUTH[@]}" | tee /tmp/flow-memory-read.json
-          curl --fail --silent --show-error "$PRODUCTION_URL/api/visits/$VISIT_ID" "${AUTH[@]}" | tee /tmp/flow-visit-read.json
-          curl --fail --silent --show-error "$PRODUCTION_URL/api/customers/$CUSTOMER_ID/next-actions" "${AUTH[@]}" | tee /tmp/flow-next-read.json
-          curl --fail --silent --show-error "$PRODUCTION_URL/api/customers/$CUSTOMER_ID/timeline" "${AUTH[@]}" | tee /tmp/flow-timeline.json
-
+          curl --fail --silent --show-error -X PATCH "$PRODUCTION_URL/api/customers/$CUSTOMER_ID/memory" -H 'content-type: application/json' "${AUTH[@]}" --data "{\"displayNameSnapshot\":\"E2E Customer $RUN_ID\",\"personalityNote\":\"calm\",\"tags\":[\"趣味：旅行\"]}" >/tmp/flow-memory.json
+          curl --fail --silent --show-error -X POST "$PRODUCTION_URL/api/visits" -H 'content-type: application/json' "${AUTH[@]}" --data "{\"customerId\":\"$CUSTOMER_ID\",\"intent\":\"production-e2e\"}" >/tmp/flow-visit-start.json
+          VISIT_ID=$(node -e 'const j=require("/tmp/flow-visit-start.json");process.stdout.write(j.visitId)')
+          curl --fail --silent --show-error -X PATCH "$PRODUCTION_URL/api/visits/$VISIT_ID" -H 'content-type: application/json' "${AUTH[@]}" --data '{"seatingReason":"指名","conversationMemo":"Production E2E conversation","preferenceMemo":"旅行","nextActionMemo":"旅行の感想を聞く","summary":"Production E2E visit"}' >/tmp/flow-visit-update.json
+          curl --fail --silent --show-error -X POST "$PRODUCTION_URL/api/customers/$CUSTOMER_ID/notes" -H 'content-type: application/json' "${AUTH[@]}" --data "{\"visitId\":\"$VISIT_ID\",\"title\":\"E2E Note\",\"note\":\"Production E2E professional note\"}" >/tmp/flow-note.json
+          curl --fail --silent --show-error -X POST "$PRODUCTION_URL/api/visits/$VISIT_ID" -H 'content-type: application/json' "${AUTH[@]}" --data '{"action":"end"}' >/tmp/flow-visit-end.json
+          curl --fail --silent --show-error -X POST "$PRODUCTION_URL/api/customers/$CUSTOMER_ID/next-actions" -H 'content-type: application/json' "${AUTH[@]}" --data '{"text":"Production E2E next action"}' >/tmp/flow-next-create.json
+          NEXT_ID=$(node -e 'const j=require("/tmp/flow-next-create.json");process.stdout.write(j.nextActionId)')
+          curl --fail --silent --show-error -X PATCH "$PRODUCTION_URL/api/customers/$CUSTOMER_ID/next-actions/$NEXT_ID" -H 'content-type: application/json' "${AUTH[@]}" --data '{"action":"complete"}' >/tmp/flow-next-complete.json
+          curl --fail --silent --show-error "$PRODUCTION_URL/api/customers/$CUSTOMER_ID/memory" "${AUTH[@]}" >/tmp/flow-memory-read.json
+          curl --fail --silent --show-error "$PRODUCTION_URL/api/visits/$VISIT_ID" "${AUTH[@]}" >/tmp/flow-visit-read.json
+          curl --fail --silent --show-error "$PRODUCTION_URL/api/customers/$CUSTOMER_ID/next-actions" "${AUTH[@]}" >/tmp/flow-next-read.json
+          curl --fail --silent --show-error "$PRODUCTION_URL/api/customers/$CUSTOMER_ID/timeline" "${AUTH[@]}" >/tmp/flow-timeline.json
           node - <<'NODE'
-          const fs=require('node:fs');
-          const read=(path)=>JSON.parse(fs.readFileSync(path,'utf8'));
-          const memory=read('/tmp/flow-memory-read.json');
-          const visit=read('/tmp/flow-visit-read.json');
-          const next=read('/tmp/flow-next-read.json');
-          const timeline=read('/tmp/flow-timeline.json');
-          if(memory.status!=='success'||!memory.memory||!String(memory.memory.preferenceNote??'').includes('旅行'))throw new Error('Professional Memory persistence failed');
-          if(visit.status!=='success'||!visit.visit?.endedAt||visit.visit?.seatingReason!=='指名')throw new Error('Visit persistence failed');
-          const completed=next.items?.find((item)=>item.text==='Production E2E next action');
-          if(next.status!=='success'||!completed||completed.status!=='done'||!completed.completedAt)throw new Error('NextAction persistence failed');
-          const types=new Set((timeline.entries??[]).map((entry)=>entry.eventType));
-          if(timeline.status!=='success'||!types.has('visit')||!types.has('note')||!types.has('next_action'))throw new Error('Timeline persistence failed');
+          const fs=require('fs'),r=p=>JSON.parse(fs.readFileSync(p,'utf8'));const m=r('/tmp/flow-memory-read.json'),v=r('/tmp/flow-visit-read.json'),n=r('/tmp/flow-next-read.json'),t=r('/tmp/flow-timeline.json');const c=n.items?.find(x=>x.text==='Production E2E next action'),types=new Set((t.entries??[]).map(x=>x.eventType));if(m.status!=='success'||!String(m.memory?.preferenceNote??'').includes('旅行')||v.status!=='success'||!v.visit?.endedAt||v.visit?.seatingReason!=='指名'||n.status!=='success'||!c||c.status!=='done'||!c.completedAt||t.status!=='success'||!types.has('visit')||!types.has('note')||!types.has('next_action'))throw new Error('Professional Memory production flow failed');
           NODE
       - name: Verify production media R2 flow
         run: |
-          RUN_ID="${GITHUB_RUN_ID}-${GITHUB_RUN_ATTEMPT}"
-          CUSTOMER_ID="cust_velvet_media_$RUN_ID"
+          RUN_ID="${GITHUB_RUN_ID}-${GITHUB_RUN_ATTEMPT}"; CUSTOMER_ID="cust_velvet_media_$RUN_ID"
           AUTH=(-H "x-velvet-auth-bridge: $VELVET_SESSION_BRIDGE_SECRET" -H "x-velvet-workspace-id: $E2E_WORKSPACE_ID" -H "x-velvet-user-id: $E2E_USER_ID" -H "x-velvet-owner-user-id: $E2E_USER_ID")
-
-          curl --fail --silent --show-error -X PATCH "$PRODUCTION_URL/api/customers/$CUSTOMER_ID/memory" -H 'content-type: application/json' "${AUTH[@]}" --data "{\"displayNameSnapshot\":\"Media E2E Customer $RUN_ID\",\"tags\":[\"media-e2e\"]}" | tee /tmp/media-memory.json
-          curl --fail --silent --show-error "$PRODUCTION_URL/api/media/status" "${AUTH[@]}" | tee /tmp/media-status.json
-
-          printf 'velvet-media-e2e-%s' "$RUN_ID" > /tmp/velvet-media-e2e.txt
-          curl --fail --silent --show-error -X POST "$PRODUCTION_URL/api/media/upload" "${AUTH[@]}" -F "customerId=$CUSTOMER_ID" -F "file=@/tmp/velvet-media-e2e.txt;type=image/png;filename=e2e.png" | tee /tmp/media-upload.json
-          MEDIA_KEY=$(node -e 'const fs=require("fs");const j=JSON.parse(fs.readFileSync("/tmp/media-upload.json","utf8"));if(j.status!=="success"||!j.media?.key)process.exit(1);process.stdout.write(j.media.key)')
+          curl --fail --silent --show-error -X PATCH "$PRODUCTION_URL/api/customers/$CUSTOMER_ID/memory" -H 'content-type: application/json' "${AUTH[@]}" --data "{\"displayNameSnapshot\":\"Media E2E Customer $RUN_ID\",\"tags\":[\"media-e2e\"]}" >/tmp/media-memory.json
+          curl --fail --silent --show-error "$PRODUCTION_URL/api/media/status" "${AUTH[@]}" >/tmp/media-status.json
+          printf 'velvet-media-e2e-%s' "$RUN_ID" >/tmp/velvet-media-e2e.txt
+          curl --fail --silent --show-error -X POST "$PRODUCTION_URL/api/media/upload" "${AUTH[@]}" -F "customerId=$CUSTOMER_ID" -F "file=@/tmp/velvet-media-e2e.txt;type=image/png;filename=e2e.png" >/tmp/media-upload.json
+          MEDIA_KEY=$(node -e 'const j=require("/tmp/media-upload.json");if(j.status!=="success"||!j.media?.key)process.exit(1);process.stdout.write(j.media.key)')
           ENCODED_KEY=$(node -e 'process.stdout.write(encodeURIComponent(process.argv[1]))' "$MEDIA_KEY")
-
           curl --fail --silent --show-error "$PRODUCTION_URL/api/media/object?key=$ENCODED_KEY&customerId=$CUSTOMER_ID" "${AUTH[@]}" -o /tmp/media-object.bin -D /tmp/media-headers.txt
-          WRONG_SCOPE_STATUS=$(curl --silent --output /tmp/media-wrong-scope.json --write-out '%{http_code}' "$PRODUCTION_URL/api/media/object?key=$ENCODED_KEY&customerId=other_customer" "${AUTH[@]}")
-          export WRONG_SCOPE_STATUS
-          curl --fail --silent --show-error "$PRODUCTION_URL/api/customers/$CUSTOMER_ID/timeline" "${AUTH[@]}" | tee /tmp/media-timeline.json
-
+          WRONG_SCOPE_STATUS=$(curl --silent --output /tmp/media-wrong-scope.json --write-out '%{http_code}' "$PRODUCTION_URL/api/media/object?key=$ENCODED_KEY&customerId=other_customer" "${AUTH[@]}"); export WRONG_SCOPE_STATUS
+          curl --fail --silent --show-error "$PRODUCTION_URL/api/customers/$CUSTOMER_ID/timeline" "${AUTH[@]}" >/tmp/media-timeline.json
           node - <<'NODE'
-          const fs=require('node:fs');
-          const status=JSON.parse(fs.readFileSync('/tmp/media-status.json','utf8'));
-          const upload=JSON.parse(fs.readFileSync('/tmp/media-upload.json','utf8'));
-          const body=fs.readFileSync('/tmp/media-object.bin','utf8');
-          const headers=fs.readFileSync('/tmp/media-headers.txt','utf8');
-          const wrongStatus=process.env.WRONG_SCOPE_STATUS;
-          const timeline=JSON.parse(fs.readFileSync('/tmp/media-timeline.json','utf8'));
-          if(status.status!=='success'||status.uploadReady!==true||status.retrievalReady!==true)throw new Error('Media status readiness failed');
-          if(upload.status!=='success'||upload.eventName!=='velvet.media.uploaded.v1'||!upload.media?.key)throw new Error('Media upload failed');
-          if(!body.includes('velvet-media-e2e-'))throw new Error('Media object body mismatch');
-          if(!headers.toLowerCase().includes('content-type: image/png'))throw new Error('Media object content type mismatch');
-          if(wrongStatus!=='403')throw new Error('Media scope isolation failed');
-          const hasMedia=(timeline.entries??[]).some((entry)=>entry.eventType==='media'&&String(entry.sourceRef??'')===upload.media.key);
-          if(timeline.status!=='success'||!hasMedia)throw new Error('Media timeline link failed');
+          const fs=require('fs'),r=p=>JSON.parse(fs.readFileSync(p,'utf8'));const s=r('/tmp/media-status.json'),u=r('/tmp/media-upload.json'),t=r('/tmp/media-timeline.json');const body=fs.readFileSync('/tmp/media-object.bin','utf8'),headers=fs.readFileSync('/tmp/media-headers.txt','utf8');const expected=`r2:${u.media?.key??''}`;const linked=(t.entries??[]).some(e=>e.eventType==='media'&&String(e.sourceRef??'')===expected);if(s.status!=='success'||!s.uploadReady||!s.retrievalReady||u.status!=='success'||u.eventName!=='velvet.media.uploaded.v1'||!u.media?.key||!body.includes('velvet-media-e2e-')||!headers.toLowerCase().includes('content-type: image/png')||process.env.WRONG_SCOPE_STATUS!=='403'||t.status!=='success'||!linked)throw new Error('Production media R2 flow failed');
           NODE
