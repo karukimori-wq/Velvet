@@ -160,6 +160,7 @@ jobs:
 
           curl --fail --silent --show-error "$PRODUCTION_URL/api/media/object?key=$ENCODED_KEY&customerId=$CUSTOMER_ID" "${AUTH[@]}" -o /tmp/media-object.bin -D /tmp/media-headers.txt
           WRONG_SCOPE_STATUS=$(curl --silent --output /tmp/media-wrong-scope.json --write-out '%{http_code}' "$PRODUCTION_URL/api/media/object?key=$ENCODED_KEY&customerId=other_customer" "${AUTH[@]}")
+          export WRONG_SCOPE_STATUS
           curl --fail --silent --show-error "$PRODUCTION_URL/api/customers/$CUSTOMER_ID/timeline" "${AUTH[@]}" | tee /tmp/media-timeline.json
 
           node - <<'NODE'
@@ -178,5 +179,3 @@ jobs:
           const hasMedia=(timeline.entries??[]).some((entry)=>entry.eventType==='media'&&String(entry.sourceRef??'')===upload.media.key);
           if(timeline.status!=='success'||!hasMedia)throw new Error('Media timeline link failed');
           NODE
-        env:
-          WRONG_SCOPE_STATUS: ${{ steps.media_scope.outputs.status }}
