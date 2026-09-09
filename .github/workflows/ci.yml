@@ -31,6 +31,8 @@ jobs:
         run: npm run check:mobile-ux
       - name: Plan enforcement
         run: npm run check:plan-enforcement
+      - name: Media access
+        run: npm run check:media-access
       - name: Typecheck
         run: npm run typecheck
       - name: Build
