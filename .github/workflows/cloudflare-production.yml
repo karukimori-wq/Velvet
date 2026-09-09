@@ -13,6 +13,9 @@ env:
 jobs:
   deploy:
     runs-on: ubuntu-latest
+    defaults:
+      run:
+        shell: bash
     environment: production
     steps:
       - uses: actions/checkout@v4
@@ -57,7 +60,17 @@ jobs:
       - name: Deploy Worker
         run: npx wrangler deploy
       - name: Configure production auth secret
-        run: printf '%s' "$VELVET_SESSION_BRIDGE_SECRET" | npx wrangler secret put VELVET_SESSION_BRIDGE_SECRET
+        run: |
+          for attempt in 1 2 3; do
+            if printf '%s' "$VELVET_SESSION_BRIDGE_SECRET" | npx wrangler secret put VELVET_SESSION_BRIDGE_SECRET; then
+              exit 0
+            fi
+            if [ "$attempt" -eq 3 ]; then
+              echo "Failed to configure production auth secret after 3 attempts" >&2
+              exit 1
+            fi
+            sleep $((attempt * 5))
+          done
       - name: Verify public production endpoints
         run: |
           sleep 5
@@ -116,13 +129,13 @@ jobs:
           AUTH=(-H "x-velvet-auth-bridge: $VELVET_SESSION_BRIDGE_SECRET" -H "x-velvet-workspace-id: $E2E_WORKSPACE_ID" -H "x-velvet-user-id: $E2E_USER_ID" -H "x-velvet-owner-user-id: $E2E_USER_ID")
           curl --fail --silent --show-error -X PATCH "$PRODUCTION_URL/api/customers/$CUSTOMER_ID/memory" -H 'content-type: application/json' "${AUTH[@]}" --data "{\"displayNameSnapshot\":\"Media E2E Customer $RUN_ID\",\"tags\":[\"media-e2e\"]}" >/tmp/media-memory.json
           curl --fail --silent --show-error "$PRODUCTION_URL/api/media/status" "${AUTH[@]}" >/tmp/media-status.json
-          printf 'velvet-media-e2e-%s' "$RUN_ID" >/tmp/velvet-media-e2e.txt
-          curl --fail --silent --show-error -X POST "$PRODUCTION_URL/api/media/upload" "${AUTH[@]}" -F "customerId=$CUSTOMER_ID" -F "file=@/tmp/velvet-media-e2e.txt;type=image/png;filename=e2e.png" >/tmp/media-upload.json
+          printf '%s' 'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNk+A8AAQUBAScY42YAAAAASUVORK5CYII=' | base64 --decode >/tmp/velvet-media-e2e.png
+          curl --fail --silent --show-error -X POST "$PRODUCTION_URL/api/media/upload" "${AUTH[@]}" -F "customerId=$CUSTOMER_ID" -F "file=@/tmp/velvet-media-e2e.png;type=image/png;filename=e2e.png" >/tmp/media-upload.json
           MEDIA_KEY=$(node -e 'const j=require("/tmp/media-upload.json");if(j.status!=="success"||!j.media?.key)process.exit(1);process.stdout.write(j.media.key)')
           ENCODED_KEY=$(node -e 'process.stdout.write(encodeURIComponent(process.argv[1]))' "$MEDIA_KEY")
           curl --fail --silent --show-error "$PRODUCTION_URL/api/media/object?key=$ENCODED_KEY&customerId=$CUSTOMER_ID" "${AUTH[@]}" -o /tmp/media-object.bin -D /tmp/media-headers.txt
           WRONG_SCOPE_STATUS=$(curl --silent --output /tmp/media-wrong-scope.json --write-out '%{http_code}' "$PRODUCTION_URL/api/media/object?key=$ENCODED_KEY&customerId=other_customer" "${AUTH[@]}"); export WRONG_SCOPE_STATUS
           curl --fail --silent --show-error "$PRODUCTION_URL/api/customers/$CUSTOMER_ID/timeline" "${AUTH[@]}" >/tmp/media-timeline.json
           node - <<'NODE'
-          const fs=require('fs'),r=p=>JSON.parse(fs.readFileSync(p,'utf8'));const s=r('/tmp/media-status.json'),u=r('/tmp/media-upload.json'),t=r('/tmp/media-timeline.json');const body=fs.readFileSync('/tmp/media-object.bin','utf8'),headers=fs.readFileSync('/tmp/media-headers.txt','utf8');const expected=`r2:${u.media?.key??''}`;const linked=(t.entries??[]).some(e=>e.eventType==='media'&&String(e.sourceRef??'')===expected);if(s.status!=='success'||!s.uploadReady||!s.retrievalReady||u.status!=='success'||u.eventName!=='velvet.media.uploaded.v1'||!u.media?.key||!body.includes('velvet-media-e2e-')||!headers.toLowerCase().includes('content-type: image/png')||process.env.WRONG_SCOPE_STATUS!=='403'||t.status!=='success'||!linked)throw new Error('Production media R2 flow failed');
+          const fs=require('fs'),r=p=>JSON.parse(fs.readFileSync(p,'utf8'));const s=r('/tmp/media-status.json'),u=r('/tmp/media-upload.json'),t=r('/tmp/media-timeline.json');const original=fs.readFileSync('/tmp/velvet-media-e2e.png'),retrieved=fs.readFileSync('/tmp/media-object.bin'),headers=fs.readFileSync('/tmp/media-headers.txt','utf8');const expected=`r2:${u.media?.key??''}`;const linked=(t.entries??[]).some(e=>e.eventType==='media'&&String(e.sourceRef??'')===expected);if(s.status!=='success'||!s.uploadReady||!s.retrievalReady||u.status!=='success'||u.eventName!=='velvet.media.uploaded.v1'||!u.media?.key||!original.equals(retrieved)||!headers.toLowerCase().includes('content-type: image/png')||process.env.WRONG_SCOPE_STATUS!=='403'||t.status!=='success'||!linked)throw new Error('Production media R2 flow failed');
           NODE
