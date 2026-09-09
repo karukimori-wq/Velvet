@@ -15,6 +15,7 @@
     "check:mobile-ux": "node scripts/check-mobile-ux.mjs",
     "check:feedback-hub": "node scripts/check-feedback-hub-boundary.mjs",
     "check:plan-enforcement": "node scripts/check-plan-enforcement.mjs",
+    "check:media-access": "node scripts/check-media-access.mjs",
     "db:migrate": "node scripts/migrate.mjs",
     "cf:build": "opennextjs-cloudflare build",
     "cf:preview": "opennextjs-cloudflare build && opennextjs-cloudflare preview",
