@@ -7,7 +7,7 @@
   "assets": { "directory": ".open-next/assets", "binding": "ASSETS" },
   "vars": {
     "VELVET_STORAGE_MODE": "d1",
-    "VELVET_AUTH_MODE": "session",
+    "VELVET_AUTH_MODE": "clerk",
     "AI_PLATFORM_CORE_URL": "https://ai-platform-core.karukimori.workers.dev",
     "AI_PLATFORM_CORE_CLIENT_ID": "velvet"
   },
