@@ -7,9 +7,13 @@ const status = fs.readFileSync("app/api/media/status/route.ts", "utf8");
 const requiredUpload = [
   "getCustomerMemory",
   "CUSTOMER_REFERENCE_NOT_FOUND",
+  "matchesImageSignature",
+  "IMAGE_CONTENT_MISMATCH",
   "addProfessionalTimelineItem",
   "eventType: \"media\"",
   "sourceRef: `r2:${key}`",
+  "bucket.delete(key)",
+  "MEDIA_REGISTRATION_FAILED",
   "velvet.media.uploaded.v1",
 ];
 
@@ -48,4 +52,4 @@ if (/public-read|publicRead|acl/i.test(upload + object)) {
   throw new Error("Media routes must not enable public object access.");
 }
 
-console.log("Media access check passed: upload, retrieval, scope, timeline registration, and ownership guards are present.");
+console.log("Media access check passed: upload validation, rollback, retrieval registration, scope, and ownership guards are present.");
