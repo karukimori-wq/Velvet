@@ -1,16 +1,18 @@
 import { timingSafeEqual } from "node:crypto";
 import { headers } from "next/headers";
+import { auth } from "@clerk/nextjs/server";
 import { DEMO_OWNER_USER_ID } from "@/lib/current-owner";
 
 export type RequestIdentity = {
   userId: string;
   ownerUserId: string;
   workspaceId: string;
-  source: "demo" | "fixed_owner" | "session_bridge";
+  source: "demo" | "fixed_owner" | "session_bridge" | "clerk";
 };
 
 function authMode() {
   const value = process.env.VELVET_AUTH_MODE?.trim().toLowerCase();
+  if (value === "clerk") return "clerk" as const;
   if (value === "session") return "session" as const;
   if (value === "fixed_owner") return "fixed_owner" as const;
   return "demo" as const;
@@ -41,13 +43,13 @@ function secretMatches(expected: string, supplied: string | null) {
 /**
  * Server-only request identity boundary.
  *
- * In session mode Velvet accepts identity headers only when a trusted upstream
- * auth layer also supplies the shared bridge secret. Public clients must never
- * know VELVET_SESSION_BRIDGE_SECRET.
+ * Clerk mode is the public end-user mode. The Clerk user id is the MVP owner
+ * identity and gets a stable owner-scoped workspace id. No client-provided
+ * workspace/user headers are trusted in Clerk mode.
  *
- * Replace this bridge with a direct Clerk/Auth.js/Supabase session adapter when
- * the authentication provider is selected. Repository code must continue to
- * consume only the returned ownerUserId/workspaceId, never client form values.
+ * Session mode remains available for trusted production E2E and service bridge
+ * requests. Identity headers are accepted there only with the shared bridge
+ * secret. Public clients must never know VELVET_SESSION_BRIDGE_SECRET.
  */
 export async function getRequestIdentity(): Promise<RequestIdentity> {
   const mode = authMode();
@@ -64,6 +66,17 @@ export async function getRequestIdentity(): Promise<RequestIdentity> {
     if (!ownerUserId) throw new Error("AUTH_FIXED_OWNER_MISSING");
     if (process.env.NODE_ENV === "production") throw new Error("AUTH_FIXED_OWNER_FORBIDDEN_FOR_PUBLIC_PRODUCTION");
     return { userId: ownerUserId, ownerUserId, workspaceId: `workspace_${ownerUserId}`, source: "fixed_owner" };
+  }
+
+  if (mode === "clerk") {
+    const { isAuthenticated, userId } = await auth();
+    if (!isAuthenticated || !userId) throw new Error("AUTH_CLERK_UNAUTHENTICATED");
+    return {
+      userId,
+      ownerUserId: userId,
+      workspaceId: `workspace_${userId}`,
+      source: "clerk",
+    };
   }
 
   const bridgeSecret = process.env.VELVET_SESSION_BRIDGE_SECRET?.trim();
