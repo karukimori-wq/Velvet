@@ -70,9 +70,9 @@ export function CustomerMediaPanel({ customerId, initialItems }: { customerId: s
     {items.length > 0 ? <div className="mediaGrid">{items.map(item => {
       const url = mediaUrl(customerId, item.key);
       const deleting = deletingKey === item.key;
-      return <div className="mediaTile" key={item.id}>
+      return <div className="stack" key={item.id}>
         <a className="mediaThumb" href={url} target="_blank" rel="noreferrer"><img src={url} alt={`${item.occurredAt.slice(0, 10)}に保存した画像`} loading="lazy" /></a>
-        <button className="mediaDeleteButton" type="button" disabled={deletingKey !== null} onClick={() => remove(item)}>{deleting ? "削除中…" : "削除"}</button>
+        <button className="dangerButton compactButton" type="button" disabled={deletingKey !== null} onClick={() => remove(item)}>{deleting ? "削除中…" : "削除"}</button>
       </div>;
     })}</div> : <div className="formHint">保存した画像はまだありません。</div>}
   </section>;
