@@ -22,6 +22,7 @@
     "cf:deploy": "opennextjs-cloudflare build && opennextjs-cloudflare deploy"
   },
   "dependencies": {
+    "@clerk/nextjs": "^7.9.2",
     "next": "^16.0.0",
     "pg": "^8.13.1",
     "react": "^19.2.0",
