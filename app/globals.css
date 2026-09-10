@@ -88,4 +88,8 @@ button { cursor: pointer; }
 .miniChoices { display: flex; flex-wrap: wrap; gap: 6px; }
 .miniChoices .choiceChip { padding: 7px 10px; font-size: 12px; }
 .stickyConfirm { position: sticky; bottom: calc(12px + env(safe-area-inset-bottom)); z-index: 5; box-shadow: 0 10px 30px rgba(0,0,0,.32); }
+.mediaGrid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; }
+.mediaThumb { display: block; aspect-ratio: 1; overflow: hidden; border-radius: 14px; background: #252128; border: 1px solid #312c35; }
+.mediaThumb img { width: 100%; height: 100%; object-fit: cover; display: block; }
+@media (max-width: 480px) { .mediaGrid { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
 @media (min-width: 700px) { .shell { padding-top: 32px; } }
