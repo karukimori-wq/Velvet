@@ -17,6 +17,11 @@ const requiredObject = [
   "belongsToCurrentScope",
   "MEDIA_SCOPE_FORBIDDEN",
   "MEDIA_KEY_REQUIRED",
+  "MEDIA_CUSTOMER_REQUIRED",
+  "listProfessionalTimeline",
+  "MEDIA_REFERENCE_NOT_FOUND",
+  "item.eventType === \"media\"",
+  "item.sourceRef === `r2:${key}`",
   "getMediaAccess",
   "bucket.get(key)",
   "x-velvet-media-key",
@@ -43,4 +48,4 @@ if (/public-read|publicRead|acl/i.test(upload + object)) {
   throw new Error("Media routes must not enable public object access.");
 }
 
-console.log("Media access check passed: upload, retrieval, ownership, and timeline linkage are guarded.");
+console.log("Media access check passed: upload, retrieval, scope, timeline registration, and ownership guards are present.");
