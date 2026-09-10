@@ -62,13 +62,8 @@ jobs:
       - name: Configure production auth secret
         run: |
           for attempt in 1 2 3; do
-            if printf '%s' "$VELVET_SESSION_BRIDGE_SECRET" | npx wrangler secret put VELVET_SESSION_BRIDGE_SECRET; then
-              exit 0
-            fi
-            if [ "$attempt" -eq 3 ]; then
-              echo "Failed to configure production auth secret after 3 attempts" >&2
-              exit 1
-            fi
+            if printf '%s' "$VELVET_SESSION_BRIDGE_SECRET" | npx wrangler secret put VELVET_SESSION_BRIDGE_SECRET; then exit 0; fi
+            if [ "$attempt" -eq 3 ]; then echo "Failed to configure production auth secret after 3 attempts" >&2; exit 1; fi
             sleep $((attempt * 5))
           done
       - name: Verify public production endpoints
@@ -79,11 +74,8 @@ jobs:
           curl --fail --silent --show-error "$PRODUCTION_URL/contracts/status" | tee /tmp/contracts.json
           curl --fail --silent --show-error "$PRODUCTION_URL/api/persistence/status" | tee /tmp/persistence.json
           node - <<'NODE'
-          const fs=require('node:fs');
-          const health=JSON.parse(fs.readFileSync('/tmp/health.json','utf8'));
-          const version=JSON.parse(fs.readFileSync('/tmp/version.json','utf8'));
-          const contracts=JSON.parse(fs.readFileSync('/tmp/contracts.json','utf8'));
-          const persistence=JSON.parse(fs.readFileSync('/tmp/persistence.json','utf8'));
+          const fs=require('node:fs'); const r=p=>JSON.parse(fs.readFileSync(p,'utf8'));
+          const health=r('/tmp/health.json'),version=r('/tmp/version.json'),contracts=r('/tmp/contracts.json'),persistence=r('/tmp/persistence.json');
           if(health.status!=='success'||health.appName!=='velvet')throw new Error('Velvet health failed');
           if(version.status!=='success'||version.appName!=='velvet')throw new Error('Velvet version failed');
           if(contracts.status!=='success'||contracts.professionalIdRequired!==false||contracts.usesLegacyEventNames===true)throw new Error('Velvet contract failed');
@@ -97,9 +89,9 @@ jobs:
         run: |
           RUN_ID="${GITHUB_RUN_ID}-${GITHUB_RUN_ATTEMPT}"; CUSTOMER_ID="cust_velvet_e2e_$RUN_ID"
           AUTH=(-H "x-velvet-auth-bridge: $VELVET_SESSION_BRIDGE_SECRET" -H "x-velvet-workspace-id: $E2E_WORKSPACE_ID" -H "x-velvet-user-id: $E2E_USER_ID" -H "x-velvet-owner-user-id: $E2E_USER_ID")
-          curl --fail --silent --show-error -X PATCH "$PRODUCTION_URL/api/customers/$CUSTOMER_ID/memory" -H 'content-type: application/json' "${AUTH[@]}" --data "{\"personalityNote\":\"Production E2E memory note $RUN_ID\",\"tags\":[\"production-e2e\"],\"pinned\":true}" | tee /tmp/memory-write.json
-          curl --fail --silent --show-error "$PRODUCTION_URL/api/customers/$CUSTOMER_ID/memory" "${AUTH[@]}" | tee /tmp/memory-read.json
-          curl --fail --silent --show-error "$PRODUCTION_URL/api/customers/$CUSTOMER_ID/memory" -H "x-velvet-auth-bridge: $VELVET_SESSION_BRIDGE_SECRET" -H 'x-velvet-workspace-id: ws_velvet_other' -H 'x-velvet-user-id: user_velvet_other' -H 'x-velvet-owner-user-id: user_velvet_other' | tee /tmp/memory-isolation.json
+          curl --fail --silent --show-error -X PATCH "$PRODUCTION_URL/api/customers/$CUSTOMER_ID/memory" -H 'content-type: application/json' "${AUTH[@]}" --data "{\"personalityNote\":\"Production E2E memory note $RUN_ID\",\"tags\":[\"production-e2e\"],\"pinned\":true}" >/tmp/memory-write.json
+          curl --fail --silent --show-error "$PRODUCTION_URL/api/customers/$CUSTOMER_ID/memory" "${AUTH[@]}" >/tmp/memory-read.json
+          curl --fail --silent --show-error "$PRODUCTION_URL/api/customers/$CUSTOMER_ID/memory" -H "x-velvet-auth-bridge: $VELVET_SESSION_BRIDGE_SECRET" -H 'x-velvet-workspace-id: ws_velvet_other' -H 'x-velvet-user-id: user_velvet_other' -H 'x-velvet-owner-user-id: user_velvet_other' >/tmp/memory-isolation.json
           node - <<'NODE'
           const fs=require('fs'),r=p=>JSON.parse(fs.readFileSync(p,'utf8')); const w=r('/tmp/memory-write.json'),m=r('/tmp/memory-read.json'),i=r('/tmp/memory-isolation.json'); if(w.status!=='success'||!w.memoryId||m.status!=='success'||!m.memory||m.memory.pinned!==true||i.status!=='success'||i.memory!==null)throw new Error('Velvet memory isolation failed');
           NODE
@@ -123,19 +115,24 @@ jobs:
           node - <<'NODE'
           const fs=require('fs'),r=p=>JSON.parse(fs.readFileSync(p,'utf8'));const m=r('/tmp/flow-memory-read.json'),v=r('/tmp/flow-visit-read.json'),n=r('/tmp/flow-next-read.json'),t=r('/tmp/flow-timeline.json');const c=n.items?.find(x=>x.text==='Production E2E next action'),types=new Set((t.entries??[]).map(x=>x.eventType));if(m.status!=='success'||!String(m.memory?.preferenceNote??'').includes('旅行')||v.status!=='success'||!v.visit?.endedAt||v.visit?.seatingReason!=='指名'||n.status!=='success'||!c||c.status!=='done'||!c.completedAt||t.status!=='success'||!types.has('visit')||!types.has('note')||!types.has('next_action'))throw new Error('Professional Memory production flow failed');
           NODE
-      - name: Verify production media R2 flow
+      - name: Verify production media R2 lifecycle
         run: |
           RUN_ID="${GITHUB_RUN_ID}-${GITHUB_RUN_ATTEMPT}"; CUSTOMER_ID="cust_velvet_media_$RUN_ID"
           AUTH=(-H "x-velvet-auth-bridge: $VELVET_SESSION_BRIDGE_SECRET" -H "x-velvet-workspace-id: $E2E_WORKSPACE_ID" -H "x-velvet-user-id: $E2E_USER_ID" -H "x-velvet-owner-user-id: $E2E_USER_ID")
           curl --fail --silent --show-error -X PATCH "$PRODUCTION_URL/api/customers/$CUSTOMER_ID/memory" -H 'content-type: application/json' "${AUTH[@]}" --data "{\"displayNameSnapshot\":\"Media E2E Customer $RUN_ID\",\"tags\":[\"media-e2e\"]}" >/tmp/media-memory.json
           curl --fail --silent --show-error "$PRODUCTION_URL/api/media/status" "${AUTH[@]}" >/tmp/media-status.json
           printf '%s' 'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNk+A8AAQUBAScY42YAAAAASUVORK5CYII=' | base64 --decode >/tmp/velvet-media-e2e.png
+          printf 'not a png' >/tmp/velvet-media-invalid.png
+          INVALID_STATUS=$(curl --silent --output /tmp/media-invalid.json --write-out '%{http_code}' -X POST "$PRODUCTION_URL/api/media/upload" "${AUTH[@]}" -F "customerId=$CUSTOMER_ID" -F "file=@/tmp/velvet-media-invalid.png;type=image/png;filename=invalid.png"); export INVALID_STATUS
           curl --fail --silent --show-error -X POST "$PRODUCTION_URL/api/media/upload" "${AUTH[@]}" -F "customerId=$CUSTOMER_ID" -F "file=@/tmp/velvet-media-e2e.png;type=image/png;filename=e2e.png" >/tmp/media-upload.json
           MEDIA_KEY=$(node -e 'const j=require("/tmp/media-upload.json");if(j.status!=="success"||!j.media?.key)process.exit(1);process.stdout.write(j.media.key)')
           ENCODED_KEY=$(node -e 'process.stdout.write(encodeURIComponent(process.argv[1]))' "$MEDIA_KEY")
           curl --fail --silent --show-error "$PRODUCTION_URL/api/media/object?key=$ENCODED_KEY&customerId=$CUSTOMER_ID" "${AUTH[@]}" -o /tmp/media-object.bin -D /tmp/media-headers.txt
           WRONG_SCOPE_STATUS=$(curl --silent --output /tmp/media-wrong-scope.json --write-out '%{http_code}' "$PRODUCTION_URL/api/media/object?key=$ENCODED_KEY&customerId=other_customer" "${AUTH[@]}"); export WRONG_SCOPE_STATUS
           curl --fail --silent --show-error "$PRODUCTION_URL/api/customers/$CUSTOMER_ID/timeline" "${AUTH[@]}" >/tmp/media-timeline.json
+          DELETE_STATUS=$(curl --silent --output /tmp/media-delete.json --write-out '%{http_code}' -X DELETE "$PRODUCTION_URL/api/media/object?key=$ENCODED_KEY&customerId=$CUSTOMER_ID" "${AUTH[@]}"); export DELETE_STATUS
+          AFTER_DELETE_STATUS=$(curl --silent --output /tmp/media-after-delete.json --write-out '%{http_code}' "$PRODUCTION_URL/api/media/object?key=$ENCODED_KEY&customerId=$CUSTOMER_ID" "${AUTH[@]}"); export AFTER_DELETE_STATUS
+          curl --fail --silent --show-error "$PRODUCTION_URL/api/customers/$CUSTOMER_ID/timeline" "${AUTH[@]}" >/tmp/media-timeline-after-delete.json
           node - <<'NODE'
-          const fs=require('fs'),r=p=>JSON.parse(fs.readFileSync(p,'utf8'));const s=r('/tmp/media-status.json'),u=r('/tmp/media-upload.json'),t=r('/tmp/media-timeline.json');const original=fs.readFileSync('/tmp/velvet-media-e2e.png'),retrieved=fs.readFileSync('/tmp/media-object.bin'),headers=fs.readFileSync('/tmp/media-headers.txt','utf8');const expected=`r2:${u.media?.key??''}`;const linked=(t.entries??[]).some(e=>e.eventType==='media'&&String(e.sourceRef??'')===expected);if(s.status!=='success'||!s.uploadReady||!s.retrievalReady||u.status!=='success'||u.eventName!=='velvet.media.uploaded.v1'||!u.media?.key||!original.equals(retrieved)||!headers.toLowerCase().includes('content-type: image/png')||process.env.WRONG_SCOPE_STATUS!=='403'||t.status!=='success'||!linked)throw new Error('Production media R2 flow failed');
+          const fs=require('fs'),r=p=>JSON.parse(fs.readFileSync(p,'utf8'));const s=r('/tmp/media-status.json'),u=r('/tmp/media-upload.json'),t=r('/tmp/media-timeline.json'),d=r('/tmp/media-delete.json'),ta=r('/tmp/media-timeline-after-delete.json'),invalid=r('/tmp/media-invalid.json');const original=fs.readFileSync('/tmp/velvet-media-e2e.png'),retrieved=fs.readFileSync('/tmp/media-object.bin'),headers=fs.readFileSync('/tmp/media-headers.txt','utf8');const expected=`r2:${u.media?.key??''}`;const linked=(t.entries??[]).some(e=>e.eventType==='media'&&String(e.sourceRef??'')===expected);const stillLinked=(ta.entries??[]).some(e=>e.eventType==='media'&&String(e.sourceRef??'')===expected);if(s.status!=='success'||!s.uploadReady||!s.retrievalReady||process.env.INVALID_STATUS!=='415'||invalid.error?.code!=='IMAGE_CONTENT_MISMATCH'||u.status!=='success'||u.eventName!=='velvet.media.uploaded.v1'||!u.media?.key||!original.equals(retrieved)||!headers.toLowerCase().includes('content-type: image/png')||process.env.WRONG_SCOPE_STATUS!=='403'||t.status!=='success'||!linked||process.env.DELETE_STATUS!=='200'||d.status!=='success'||d.eventName!=='velvet.media.deleted.v1'||process.env.AFTER_DELETE_STATUS!=='404'||ta.status!=='success'||stillLinked)throw new Error('Production media R2 lifecycle failed');
           NODE
