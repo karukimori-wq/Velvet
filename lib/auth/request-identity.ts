@@ -18,13 +18,6 @@ function authMode() {
   return "demo" as const;
 }
 
-/**
- * Safe UI-only preview mode for a brand-new Vercel deployment.
- *
- * It is allowed only when no persistent database is configured. As soon as
- * DATABASE_URL or explicit postgres storage is configured, production demo
- * identity is rejected again and real authentication is required.
- */
 function isSafeVercelPreviewDemo() {
   const onVercel = process.env.VERCEL === "1";
   const hasDatabase = Boolean(process.env.DATABASE_URL?.trim());
@@ -40,24 +33,27 @@ function secretMatches(expected: string, supplied: string | null) {
   return timingSafeEqual(expectedBuffer, suppliedBuffer);
 }
 
-/**
- * Server-only request identity boundary.
- *
- * Clerk mode is the public end-user mode. The Clerk user id is the MVP owner
- * identity and gets a stable owner-scoped workspace id. No client-provided
- * workspace/user headers are trusted in Clerk mode.
- *
- * Session mode remains available for trusted production E2E and service bridge
- * requests. Identity headers are accepted there only with the shared bridge
- * secret. Public clients must never know VELVET_SESSION_BRIDGE_SECRET.
- */
+async function trustedBridgeIdentity(): Promise<RequestIdentity | null> {
+  const bridgeSecret = process.env.VELVET_SESSION_BRIDGE_SECRET?.trim();
+  if (!bridgeSecret) return null;
+  const requestHeaders = await headers();
+  if (!secretMatches(bridgeSecret, requestHeaders.get("x-velvet-auth-bridge"))) return null;
+  const userId = requestHeaders.get("x-velvet-user-id")?.trim();
+  const ownerUserId = requestHeaders.get("x-velvet-owner-user-id")?.trim();
+  const workspaceId = requestHeaders.get("x-velvet-workspace-id")?.trim();
+  if (!userId || !ownerUserId || !workspaceId) throw new Error("AUTH_SESSION_IDENTITY_MISSING");
+  return { userId, ownerUserId, workspaceId, source: "session_bridge" };
+}
+
+/** Public production uses Clerk. A request carrying the server-only bridge
+ * secret may still use the trusted identity headers for production E2E and
+ * service-to-service checks. Ordinary browser requests can never select this
+ * path without that secret. */
 export async function getRequestIdentity(): Promise<RequestIdentity> {
   const mode = authMode();
 
   if (mode === "demo") {
-    if (process.env.NODE_ENV === "production" && !isSafeVercelPreviewDemo()) {
-      throw new Error("AUTH_DEMO_FORBIDDEN_IN_PRODUCTION");
-    }
+    if (process.env.NODE_ENV === "production" && !isSafeVercelPreviewDemo()) throw new Error("AUTH_DEMO_FORBIDDEN_IN_PRODUCTION");
     return { userId: DEMO_OWNER_USER_ID, ownerUserId: DEMO_OWNER_USER_ID, workspaceId: "workspace_demo", source: "demo" };
   }
 
@@ -69,27 +65,16 @@ export async function getRequestIdentity(): Promise<RequestIdentity> {
   }
 
   if (mode === "clerk") {
+    const bridge = await trustedBridgeIdentity();
+    if (bridge) return bridge;
     const { isAuthenticated, userId } = await auth();
     if (!isAuthenticated || !userId) throw new Error("AUTH_CLERK_UNAUTHENTICATED");
-    return {
-      userId,
-      ownerUserId: userId,
-      workspaceId: `workspace_${userId}`,
-      source: "clerk",
-    };
+    return { userId, ownerUserId: userId, workspaceId: `workspace_${userId}`, source: "clerk" };
   }
 
   const bridgeSecret = process.env.VELVET_SESSION_BRIDGE_SECRET?.trim();
   if (!bridgeSecret) throw new Error("AUTH_SESSION_BRIDGE_SECRET_MISSING");
-
-  const requestHeaders = await headers();
-  const suppliedSecret = requestHeaders.get("x-velvet-auth-bridge");
-  if (!secretMatches(bridgeSecret, suppliedSecret)) throw new Error("AUTH_SESSION_BRIDGE_INVALID");
-
-  const userId = requestHeaders.get("x-velvet-user-id")?.trim();
-  const ownerUserId = requestHeaders.get("x-velvet-owner-user-id")?.trim();
-  const workspaceId = requestHeaders.get("x-velvet-workspace-id")?.trim();
-  if (!userId || !ownerUserId || !workspaceId) throw new Error("AUTH_SESSION_IDENTITY_MISSING");
-
-  return { userId, ownerUserId, workspaceId, source: "session_bridge" };
+  const bridge = await trustedBridgeIdentity();
+  if (!bridge) throw new Error("AUTH_SESSION_BRIDGE_INVALID");
+  return bridge;
 }
