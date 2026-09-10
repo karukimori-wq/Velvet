@@ -1,5 +1,6 @@
 import { getRequestIdentity } from "@/lib/auth/request-identity";
 import { getMediaAccess } from "@/lib/media-access";
+import { listProfessionalTimeline } from "@/lib/professional-timeline-repository";
 import { getMediaBucket } from "@/lib/storage/r2";
 
 function observability(request: Request) {
@@ -11,11 +12,9 @@ function observability(request: Request) {
   };
 }
 
-function belongsToCurrentScope(key: string, input: { workspaceId: string; userId: string; customerId?: string }) {
-  const base = `velvet/${encodeURIComponent(input.workspaceId)}/${encodeURIComponent(input.userId)}/`;
-  if (!key.startsWith(base)) return false;
-  if (!input.customerId) return true;
-  return key.startsWith(`${base}${encodeURIComponent(input.customerId)}/`);
+function belongsToCurrentScope(key: string, input: { workspaceId: string; userId: string; customerId: string }) {
+  const base = `velvet/${encodeURIComponent(input.workspaceId)}/${encodeURIComponent(input.userId)}/${encodeURIComponent(input.customerId)}/`;
+  return key.startsWith(base);
 }
 
 export async function GET(request: Request) {
@@ -23,9 +22,12 @@ export async function GET(request: Request) {
   const obs = observability(request);
   const url = new URL(request.url);
   const key = url.searchParams.get("key")?.trim() ?? "";
-  const customerId = url.searchParams.get("customerId")?.trim() || undefined;
+  const customerId = url.searchParams.get("customerId")?.trim() ?? "";
   if (!key) {
     return Response.json({ status: "error", error: { code: "MEDIA_KEY_REQUIRED", message: "key is required", retryable: false }, ...obs }, { status: 400 });
+  }
+  if (!customerId) {
+    return Response.json({ status: "error", error: { code: "MEDIA_CUSTOMER_REQUIRED", message: "customerId is required", retryable: false }, ...obs }, { status: 400 });
   }
 
   const media = await getMediaAccess(ownerUserId);
@@ -40,6 +42,12 @@ export async function GET(request: Request) {
 
   if (!belongsToCurrentScope(key, { workspaceId, userId, customerId })) {
     return Response.json({ status: "error", error: { code: "MEDIA_SCOPE_FORBIDDEN", message: "この画像は現在のworkspace/user/customerに紐づいていません。", retryable: false }, ...obs }, { status: 403 });
+  }
+
+  const timeline = await listProfessionalTimeline(workspaceId, userId, customerId);
+  const registered = timeline.some((item) => item.eventType === "media" && item.sourceRef === `r2:${key}`);
+  if (!registered) {
+    return Response.json({ status: "error", error: { code: "MEDIA_REFERENCE_NOT_FOUND", message: "この画像を現在の顧客記録に紐づくメディアとして確認できません。", retryable: false }, ...obs }, { status: 404 });
   }
 
   const bucket = await getMediaBucket();
