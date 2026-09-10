@@ -33,6 +33,8 @@ jobs:
         run: npm run check:plan-enforcement
       - name: Media access
         run: npm run check:media-access
+      - name: Auth boundary
+        run: npm run check:auth-boundary
       - name: Typecheck
         run: npm run typecheck
       - name: Build
