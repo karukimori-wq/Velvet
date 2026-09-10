@@ -8,13 +8,22 @@ const PUBLIC_PATHS = new Set([
   "/api/persistence/status",
 ]);
 
+function hasTrustedBridge(request: Request) {
+  const expected = process.env.VELVET_SESSION_BRIDGE_SECRET?.trim();
+  const supplied = request.headers.get("x-velvet-auth-bridge");
+  return Boolean(expected && supplied && expected === supplied);
+}
+
 export default clerkMiddleware(async (auth, request) => {
-  // Trusted E2E/service-bridge production still uses session mode. Clerk must
-  // not become a dependency for those requests until the public cutover.
   if (process.env.VELVET_AUTH_MODE?.trim().toLowerCase() !== "clerk") return;
 
   const pathname = request.nextUrl.pathname;
   if (pathname === "/auth" || PUBLIC_PATHS.has(pathname)) return;
+
+  // The bridge secret is server-only and preserves production E2E/service
+  // requests during Clerk cutover. Identity headers are validated again by
+  // getRequestIdentity before application data is accessed.
+  if (hasTrustedBridge(request)) return;
 
   const { isAuthenticated } = await auth();
   if (isAuthenticated) return;
