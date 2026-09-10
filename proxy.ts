@@ -1,4 +1,5 @@
 import { clerkMiddleware } from "@clerk/nextjs/server";
+import { NextResponse } from "next/server";
 
 const PUBLIC_PATHS = new Set([
   "/api/health",
@@ -15,7 +16,16 @@ export default clerkMiddleware(async (auth, request) => {
   const pathname = request.nextUrl.pathname;
   if (pathname === "/auth" || PUBLIC_PATHS.has(pathname)) return;
 
-  await auth.protect();
+  const { isAuthenticated } = await auth();
+  if (isAuthenticated) return;
+
+  if (pathname.startsWith("/api/")) {
+    return NextResponse.json({ status: "error", code: "AUTH_REQUIRED" }, { status: 401 });
+  }
+
+  const authUrl = new URL("/auth", request.url);
+  authUrl.searchParams.set("returnTo", `${pathname}${request.nextUrl.search}`);
+  return NextResponse.redirect(authUrl);
 });
 
 export const config = {
