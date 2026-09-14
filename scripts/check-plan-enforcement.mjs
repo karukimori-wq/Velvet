@@ -2,6 +2,8 @@ import fs from "node:fs";
 
 const source = fs.readFileSync(new URL("../lib/plan-access.ts", import.meta.url), "utf8");
 const spec = fs.readFileSync(new URL("../docs/plan-enforcement-spec.md", import.meta.url), "utf8");
+const billing = fs.readFileSync(new URL("../lib/billing-readiness.ts", import.meta.url), "utf8");
+const searchPage = fs.readFileSync(new URL("../app/search/page.tsx", import.meta.url), "utf8");
 
 const checks = [
   ["Free customer limit is 30", /customerLimit:\s*30/.test(source)],
@@ -10,10 +12,17 @@ const checks = [
   ["Free event views are disabled", /plan:\s*["']free["'][\s\S]*?eventViews:\s*false/.test(source)],
   ["Free attachments are disabled", /plan:\s*["']free["'][\s\S]*?attachmentsAllowed:\s*false/.test(source)],
   ["Free image uploads are disabled", /plan:\s*["']free["'][\s\S]*?imagesAllowed:\s*false/.test(source)],
+  ["Free voice capture is disabled", /plan:\s*["']free["'][\s\S]*?voiceCaptureAllowed:\s*false/.test(source)],
+  ["Free message draft is disabled", /plan:\s*["']free["'][\s\S]*?messageDraftAllowed:\s*false/.test(source)],
   ["Pro full history is enabled", /plan === ["']pro["'][\s\S]*?fullHistory:\s*true/.test(source)],
   ["Pro integrated timeline is enabled", /plan === ["']pro["'][\s\S]*?integratedTimeline:\s*true/.test(source)],
   ["Pro event views are enabled", /plan === ["']pro["'][\s\S]*?eventViews:\s*true/.test(source)],
   ["Pro attachments are enabled", /plan === ["']pro["'][\s\S]*?attachmentsAllowed:\s*true/.test(source)],
+  ["Pro voice capture is enabled", /plan === ["']pro["'][\s\S]*?voiceCaptureAllowed:\s*true/.test(source)],
+  ["Pro message draft is enabled", /plan === ["']pro["'][\s\S]*?messageDraftAllowed:\s*true/.test(source)],
+  ["Pro price target is 990", /990 JPY \/ month/.test(spec) && /proPriceTargetJpy:\s*990/.test(billing)],
+  ["Advanced search is gated by plan", /advancedSearchAllowed/.test(searchPage) && /hasVelvetFeature\(access,\s*["']history\.search["']\)/.test(searchPage)],
+  ["Search respects Free history window", /visibleCaptures/.test(searchPage) && /visibleGifts/.test(searchPage) && /isWithinHistoryWindow/.test(searchPage)],
   ["Business integrations cannot be enabled", /feature === ["']business\.integrations["']\) return false/.test(source)],
   ["Business remains unavailable", /plan === ["']business["'][\s\S]*?businessAvailable:\s*false/.test(source)],
   ["Plan spec says Business is not purchasable", /Business[\s\S]{0,300}(not purchasable|購入不可)/i.test(spec)],
