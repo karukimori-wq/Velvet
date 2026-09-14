@@ -2,6 +2,9 @@ import { clerkMiddleware } from "@clerk/nextjs/server";
 import { NextResponse } from "next/server";
 
 const PUBLIC_PATHS = new Set([
+  "/health",
+  "/version",
+  "/contracts/status",
   "/api/health",
   "/api/version",
   "/api/contracts/status",
