@@ -10,6 +10,8 @@ import { listNextActions } from "@/lib/professional-next-action-repository";
 import { buildCustomerRecall } from "@/lib/customer-recall";
 import { rememberGroups } from "@/lib/remember-fields";
 import { getPlanAccess, isWithinHistoryWindow, hasVelvetFeature } from "@/lib/plan-access";
+import { getOwnerPreferences } from "@/lib/owner-preferences";
+import { buildSoonVisitAlert } from "@/lib/soon-alerts";
 import { startVisitAction } from "@/app/visits/actions";
 
 const eventLabels: Record<string, string> = { visit: "来店", conversation: "会話", note: "メモ", gift: "プレゼント", schedule: "予定", relationship: "関係", next_action: "次回", media: "画像" };
@@ -31,13 +33,14 @@ export default async function Page({ params, searchParams }: { params: Promise<{
   const { customerId } = await params;
   const query = await searchParams;
   const identity = await getRequestIdentity();
-  const [customer, memory, timeline, activeVisit, nextActions, access] = await Promise.all([
+  const [customer, memory, timeline, activeVisit, nextActions, access, preferences] = await Promise.all([
     getGrowthCustomerDisplay({ workspaceId: identity.workspaceId, userId: identity.userId, customerId }),
     getCustomerMemory(identity.workspaceId, identity.userId, customerId),
     listProfessionalTimeline(identity.workspaceId, identity.userId, customerId),
     getActiveProfessionalVisit(identity.workspaceId, identity.userId, customerId),
     listNextActions(identity.workspaceId, identity.userId, customerId),
     getPlanAccess(identity.ownerUserId),
+    getOwnerPreferences(identity.ownerUserId),
   ]);
 
   const displayName = customer.displayName || memory?.displayNameSnapshot || "お客様";
@@ -49,6 +52,7 @@ export default async function Page({ params, searchParams }: { params: Promise<{
   const olderTimeline = visibleTimeline.slice(5);
   const archivedCount = timeline.length - visibleTimeline.length;
   const followupAllowed = hasVelvetFeature(access, "followup.manage");
+  const soonAlert = access.soonAlertsAllowed && preferences.soonAlertsEnabled ? buildSoonVisitAlert(customerId, timeline) : undefined;
   const openNext = followupAllowed ? nextActions.filter(action => action.status === "open").slice(0, 3) : [];
   const mediaItems = access.imagesAllowed ? timeline.filter(item => item.eventType === "media" && item.sourceRef?.startsWith("r2:")).map(item => ({ id: item.id, key: item.sourceRef!.slice(3), occurredAt: item.occurredAt, title: item.title })) : [];
   const savedItems = [
@@ -62,6 +66,7 @@ export default async function Page({ params, searchParams }: { params: Promise<{
     <header className="header"><Link className="subtle" href="/people">‹ お客様</Link><div className="searchActions"><Link className="subtle" href="/plans">{access.plan === "free" ? "Free" : "Pro"}</Link><Link className="subtle" href={`/remember?customerId=${customerId}`}>編集</Link></div></header>
     <section className="hero customerHero"><h1>{displayName}</h1></section>
     {activeVisit ? <Link className="primaryButton actionLink" href={`/visits/${activeVisit.id}`}>接客中に戻る</Link> : <div className="customerPrimaryActions"><Link className="primaryButton actionLink" href={`/capture?customerId=${customerId}`}>今日の接客を残す</Link><Link className="secondaryButton actionLink" href={`/remember?customerId=${customerId}`}>情報を追加</Link></div>}
+    {soonAlert && <section className="card noticeCard"><div className="timelineTitle">そろそろ</div><div className="timelineBody">前回来店から{soonAlert.daysSinceLastVisit}日。いつもは約{soonAlert.averageIntervalDays}日周期です。</div><div className="formHint">来店履歴 {soonAlert.visitCount}件から計算 · {soonAlert.status === "overdue" ? `${soonAlert.overdueDays}日ほど空いています` : "近いタイミングです"}</div></section>}
     {query.captureSaved && <div className="card successCard stack"><strong>今日の接客を記録しました</strong>{savedItems.map(item => <div className="timelineBody" key={item}>✓ {item}</div>)}</div>}
     {(quickRecall.items.length > 0 || quickRecall.nextTopics.length > 0) && <section className="card noticeCard"><div className="timelineTitle">思い出す</div><div className="quickRecallGrid">{quickRecall.items.map(item => <div key={`${item.label}-${item.value}`}><div className="formHint">{item.label}</div><div className="timelineBody">{item.value}</div></div>)}{quickRecall.nextTopics.length > 0 && <div><div className="formHint">次に話す</div>{quickRecall.nextTopics.map(topic => <div className="timelineBody" key={topic}>・{topic}</div>)}</div>}</div></section>}
 
