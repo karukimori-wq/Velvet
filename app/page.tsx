@@ -8,11 +8,12 @@ import { visibleNextTopics } from "@/lib/next-topic";
 import { getPlanAccess } from "@/lib/plan-access";
 import { getOwnerPreferences } from "@/lib/owner-preferences";
 import { listProfessionalTimeline } from "@/lib/professional-timeline-repository";
-import { buildSoonVisitAlert, sortSoonVisitAlerts } from "@/lib/soon-alerts";
+import { buildSoonVisitAlert, sortSoonVisitAlerts, type SoonVisitAlert } from "@/lib/soon-alerts";
 import { startHomeVisitAction } from "./home-actions";
 
 const tokyoDate=(value:Date|string)=>new Intl.DateTimeFormat("ja-JP",{timeZone:"Asia/Tokyo",year:"numeric",month:"2-digit",day:"2-digit"}).format(new Date(value));
 const tokyoTime=(value:string)=>new Intl.DateTimeFormat("ja-JP",{timeZone:"Asia/Tokyo",hour:"2-digit",minute:"2-digit"}).format(new Date(value));
+const isSoonAlert=(value:SoonVisitAlert|undefined):value is SoonVisitAlert=>Boolean(value);
 
 export default async function HomePage(){
   const {workspaceId,userId,ownerUserId}=await getRequestIdentity();
@@ -20,7 +21,7 @@ export default async function HomePage(){
   const customerById=new Map(customers.map(c=>[c.customerId,c])); const memoryByCustomer=new Map(memories.map(m=>[m.customerId,m])); const today=tokyoDate(new Date());
   const todayEntries=schedule.filter(entry=>tokyoDate(entry.startsAt)===today); const todayVisitors=todayEntries.filter(entry=>entry.kind==="visit"&&entry.customerId).sort((a,b)=>a.startsAt.localeCompare(b.startsAt)); const otherToday=todayEntries.filter(entry=>entry.kind!=="visit").sort((a,b)=>a.startsAt.localeCompare(b.startsAt));
   const allCustomerIds=[...new Set([...customers.map(c=>c.customerId),...memories.map(m=>m.customerId)])];
-  const soonAlerts=access.soonAlertsAllowed&&preferences.soonAlertsEnabled?sortSoonVisitAlerts((await Promise.all(allCustomerIds.map(async customerId=>buildSoonVisitAlert(customerId,await listProfessionalTimeline(workspaceId,userId,customerId))))).filter(Boolean).slice(0,3) as ReturnType<typeof buildSoonVisitAlert>[]):[];
+  const soonAlerts=access.soonAlertsAllowed&&preferences.soonAlertsEnabled?sortSoonVisitAlerts((await Promise.all(allCustomerIds.map(async customerId=>buildSoonVisitAlert(customerId,await listProfessionalTimeline(workspaceId,userId,customerId))))).filter(isSoonAlert)).slice(0,3):[];
   const nameFor=(customerId:string)=>customerById.get(customerId)?.displayName??memoryByCustomer.get(customerId)?.displayNameSnapshot??"お客様";
   return <main className="shell">
     <header className="header"><div className="brand">Velvet</div><Link className="subtle" href="/schedule">予定を見る</Link></header>
