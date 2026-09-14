@@ -11,7 +11,6 @@ import { buildCustomerRecall } from "@/lib/customer-recall";
 import { rememberGroups } from "@/lib/remember-fields";
 import { getPlanAccess, isWithinHistoryWindow, hasVelvetFeature } from "@/lib/plan-access";
 import { startVisitAction } from "@/app/visits/actions";
-import { toggleCustomerPinAction } from "./actions";
 
 const eventLabels: Record<string, string> = { visit: "来店", conversation: "会話", note: "メモ", gift: "プレゼント", schedule: "予定", relationship: "関係", next_action: "次回", media: "画像" };
 
@@ -60,7 +59,7 @@ export default async function Page({ params, searchParams }: { params: Promise<{
   ].filter(Boolean) as string[];
 
   return <main className="shell customerDetailShell">
-    <header className="header"><Link className="subtle" href="/people">‹ お客様</Link><div className="searchActions"><Link className="subtle" href="/plans">{access.plan === "free" ? "Free" : "Pro"}</Link><form action={toggleCustomerPinAction.bind(null, customerId)}><button className="subtle" type="submit" aria-label={memory?.pinned ? "ピンを外す" : "ピン留めする"}>{memory?.pinned ? "★" : "☆"}</button></form><Link className="subtle" href={`/remember?customerId=${customerId}`}>編集</Link></div></header>
+    <header className="header"><Link className="subtle" href="/people">‹ お客様</Link><div className="searchActions"><Link className="subtle" href="/plans">{access.plan === "free" ? "Free" : "Pro"}</Link><Link className="subtle" href={`/remember?customerId=${customerId}`}>編集</Link></div></header>
     <section className="hero customerHero"><h1>{displayName}</h1></section>
     {activeVisit ? <Link className="primaryButton actionLink" href={`/visits/${activeVisit.id}`}>接客中に戻る</Link> : <div className="customerPrimaryActions"><Link className="primaryButton actionLink" href={`/capture?customerId=${customerId}`}>今日の接客を残す</Link><Link className="secondaryButton actionLink" href={`/remember?customerId=${customerId}`}>情報を追加</Link></div>}
     {query.captureSaved && <div className="card successCard stack"><strong>今日の接客を記録しました</strong>{savedItems.map(item => <div className="timelineBody" key={item}>✓ {item}</div>)}</div>}
