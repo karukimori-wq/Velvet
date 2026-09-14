@@ -8,7 +8,7 @@ export function getBillingReadiness() {
     growthEngineConfigured,
     subscriptionContractReady,
     aiPointPurchaseContractReady,
-    proPriceTargetJpy: 10000,
+    proPriceTargetJpy: 990,
     responsibilities: {
       paymentCanonicalOwner: "growth-engine",
       aiUsageCanonicalOwner: "ai-platform-core",
