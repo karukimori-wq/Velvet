@@ -12,6 +12,8 @@ export type VelvetFeature =
   | "history.gifts"
   | "history.life_events"
   | "history.search"
+  | "capture.voice"
+  | "message.draft"
   | "promise.manage"
   | "followup.manage"
   | "reminder.manage"
@@ -32,6 +34,9 @@ export type PlanAccess = {
   /** Compatibility alias used by media/status APIs. Keep in sync with attachmentsAllowed. */
   imagesAllowed: boolean;
   exportAllowed: boolean;
+  voiceCaptureAllowed: boolean;
+  messageDraftAllowed: boolean;
+  soonAlertsAllowed: boolean;
   businessAvailable: boolean;
   aiAssistLevel: "small" | "advanced";
 };
@@ -39,15 +44,15 @@ export type PlanAccess = {
 type EntitlementRow = { plan: VelvetPlan; status: "trialing" | "active" | "past_due" | "canceled" | "expired" | "inactive" };
 
 const PRO_FEATURES = new Set<VelvetFeature>([
-  "customer.manage","history.basic","history.unlimited","timeline.integrated","history.by_event","history.gifts","history.life_events","history.search","promise.manage","followup.manage","reminder.manage","attachment.manage","export.data","ai.assist.basic","ai.assist.advanced",
+  "customer.manage","history.basic","history.unlimited","timeline.integrated","history.by_event","history.gifts","history.life_events","history.search","capture.voice","message.draft","promise.manage","followup.manage","reminder.manage","attachment.manage","export.data","ai.assist.basic","ai.assist.advanced",
 ]);
 const FREE_FEATURES = new Set<VelvetFeature>(["customer.manage","history.basic","ai.assist.basic"]);
 
 function buildAccess(plan: VelvetPlan, now: Date): PlanAccess {
-  if (plan === "pro") return { plan, fullHistory:true, integratedTimeline:true, eventViews:true, attachmentsAllowed:true, imagesAllowed:true, exportAllowed:true, businessAvailable:false, aiAssistLevel:"advanced" };
-  if (plan === "business") return { plan, fullHistory:true, integratedTimeline:true, eventViews:true, attachmentsAllowed:true, imagesAllowed:true, exportAllowed:true, businessAvailable:false, aiAssistLevel:"advanced" };
+  if (plan === "pro") return { plan, fullHistory:true, integratedTimeline:true, eventViews:true, attachmentsAllowed:true, imagesAllowed:true, exportAllowed:true, voiceCaptureAllowed:true, messageDraftAllowed:true, soonAlertsAllowed:true, businessAvailable:false, aiAssistLevel:"advanced" };
+  if (plan === "business") return { plan, fullHistory:true, integratedTimeline:true, eventViews:true, attachmentsAllowed:true, imagesAllowed:true, exportAllowed:true, voiceCaptureAllowed:true, messageDraftAllowed:true, soonAlertsAllowed:true, businessAvailable:false, aiAssistLevel:"advanced" };
   const cutoff = new Date(now); cutoff.setUTCMonth(cutoff.getUTCMonth() - 3);
-  return { plan:"free", historyCutoff:cutoff, fullHistory:false, customerLimit:30, integratedTimeline:false, eventViews:false, attachmentsAllowed:false, imagesAllowed:false, exportAllowed:false, businessAvailable:false, aiAssistLevel:"small" };
+  return { plan:"free", historyCutoff:cutoff, fullHistory:false, customerLimit:30, integratedTimeline:false, eventViews:false, attachmentsAllowed:false, imagesAllowed:false, exportAllowed:false, voiceCaptureAllowed:false, messageDraftAllowed:false, soonAlertsAllowed:false, businessAvailable:false, aiAssistLevel:"small" };
 }
 
 function normalizePlan(plan: unknown, status: unknown): VelvetPlan {
