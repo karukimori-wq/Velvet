@@ -61,17 +61,19 @@ jobs:
           npx wrangler d1 info velvet
       - name: Migrate existing D1 schema
         run: |
-          npx wrangler d1 execute velvet --remote --yes --json --command="SELECT COUNT(*) AS column_exists FROM pragma_table_info('velvet_professional_next_actions') WHERE name='due_at';" > /tmp/due-at-column.json
-          HAS_DUE_AT=$(node - <<'NODE'
+          npx wrangler d1 execute velvet --remote --yes --json --command="SELECT EXISTS(SELECT 1 FROM sqlite_master WHERE type='table' AND name='velvet_professional_next_actions') AS table_exists, EXISTS(SELECT 1 FROM pragma_table_info('velvet_professional_next_actions') WHERE name='due_at') AS column_exists;" > /tmp/due-at-column.json
+          MIGRATION_STATE=$(node - <<'NODE'
           const fs = require('node:fs');
           const payload = JSON.parse(fs.readFileSync('/tmp/due-at-column.json', 'utf8'));
           const rows = Array.isArray(payload) ? payload.flatMap(item => item?.results ?? []) : (payload?.results ?? []);
-          const value = rows[0]?.column_exists;
-          if (value === undefined) throw new Error('Unable to inspect due_at column');
-          process.stdout.write(String(Number(value) > 0 ? 1 : 0));
+          const row = rows[0];
+          if (row?.table_exists === undefined || row?.column_exists === undefined) {
+            throw new Error('Unable to inspect next-actions schema');
+          }
+          process.stdout.write(Number(row.table_exists) === 0 ? 'missing_table' : Number(row.column_exists) === 0 ? 'missing_column' : 'ready');
           NODE
           )
-          if [ "$HAS_DUE_AT" = "0" ]; then
+          if [ "$MIGRATION_STATE" = "missing_column" ]; then
             npx wrangler d1 execute velvet --remote --yes --command="ALTER TABLE velvet_professional_next_actions ADD COLUMN due_at TEXT;"
           fi
       - name: Apply D1 schema
