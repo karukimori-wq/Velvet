@@ -7,6 +7,8 @@ env:
   CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
   CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
   VELVET_SESSION_BRIDGE_SECRET: ${{ secrets.VELVET_SESSION_BRIDGE_SECRET }}
+  NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY: ${{ secrets.NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY }}
+  CLERK_SECRET_KEY: ${{ secrets.CLERK_SECRET_KEY }}
   PRODUCTION_URL: https://velvet.karukimori.workers.dev
   E2E_WORKSPACE_ID: ws_velvet_e2e
   E2E_USER_ID: user_velvet_e2e
@@ -33,8 +35,15 @@ jobs:
       - run: npm run check:feedback-hub
       - run: npm run check:plan-enforcement
       - run: npm run check:media-access
-      - name: Require Cloudflare configuration
-        run: test -n "$CLOUDFLARE_API_TOKEN" && test -n "$CLOUDFLARE_ACCOUNT_ID" && test -n "$VELVET_SESSION_BRIDGE_SECRET"
+      - name: Require production configuration
+        run: |
+          test -n "$CLOUDFLARE_API_TOKEN"
+          test -n "$CLOUDFLARE_ACCOUNT_ID"
+          test -n "$VELVET_SESSION_BRIDGE_SECRET"
+          test -n "$NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY"
+          test -n "$CLERK_SECRET_KEY"
+          case "$NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY" in pk_*) ;; *) echo "Invalid Clerk publishable key shape" >&2; exit 1;; esac
+          case "$CLERK_SECRET_KEY" in sk_*) ;; *) echo "Invalid Clerk secret key shape" >&2; exit 1;; esac
       - name: Verify Cloudflare identity
         run: npx wrangler whoami
       - name: Ensure Velvet D1 database
@@ -50,6 +59,21 @@ jobs:
           echo "D1_DATABASE_ID=$DB_ID" >> "$GITHUB_ENV"
           node -e 'const fs=require("fs");const p="wrangler.jsonc";const s=fs.readFileSync(p,"utf8").replace("00000000-0000-0000-0000-000000000000",process.argv[1]);fs.writeFileSync(p,s)' "$DB_ID"
           npx wrangler d1 info velvet
+      - name: Migrate existing D1 schema
+        run: |
+          npx wrangler d1 execute velvet --remote --yes --json --command="SELECT COUNT(*) AS column_exists FROM pragma_table_info('velvet_professional_next_actions') WHERE name='due_at';" > /tmp/due-at-column.json
+          HAS_DUE_AT=$(node - <<'NODE'
+          const fs = require('node:fs');
+          const payload = JSON.parse(fs.readFileSync('/tmp/due-at-column.json', 'utf8'));
+          const rows = Array.isArray(payload) ? payload.flatMap(item => item?.results ?? []) : (payload?.results ?? []);
+          const value = rows[0]?.column_exists;
+          if (value === undefined) throw new Error('Unable to inspect due_at column');
+          process.stdout.write(String(Number(value) > 0 ? 1 : 0));
+          NODE
+          )
+          if [ "$HAS_DUE_AT" = "0" ]; then
+            npx wrangler d1 execute velvet --remote --yes --command="ALTER TABLE velvet_professional_next_actions ADD COLUMN due_at TEXT;"
+          fi
       - name: Apply D1 schema
         run: npx wrangler d1 execute velvet --remote --file=cloudflare/schema.sql --yes
       - name: Seed Pro entitlement for production E2E
@@ -59,13 +83,19 @@ jobs:
         run: npm run cf:build
       - name: Deploy Worker
         run: npx wrangler deploy
-      - name: Configure production auth secret
+      - name: Configure production auth secrets
         run: |
-          for attempt in 1 2 3; do
-            if printf '%s' "$VELVET_SESSION_BRIDGE_SECRET" | npx wrangler secret put VELVET_SESSION_BRIDGE_SECRET; then exit 0; fi
-            if [ "$attempt" -eq 3 ]; then echo "Failed to configure production auth secret after 3 attempts" >&2; exit 1; fi
-            sleep $((attempt * 5))
-          done
+          put_secret() {
+            local name="$1" value="$2"
+            for attempt in 1 2 3; do
+              if printf '%s' "$value" | npx wrangler secret put "$name"; then return 0; fi
+              if [ "$attempt" -eq 3 ]; then echo "Failed to configure $name after 3 attempts" >&2; return 1; fi
+              sleep $((attempt * 5))
+            done
+          }
+          put_secret VELVET_SESSION_BRIDGE_SECRET "$VELVET_SESSION_BRIDGE_SECRET"
+          put_secret NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY "$NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY"
+          put_secret CLERK_SECRET_KEY "$CLERK_SECRET_KEY"
       - name: Verify public production endpoints
         run: |
           sleep 5
