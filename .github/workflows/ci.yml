@@ -35,6 +35,8 @@ jobs:
         run: npm run check:media-access
       - name: Auth boundary
         run: npm run check:auth-boundary
+      - name: Soon alert boundary
+        run: npm run check:soon-alerts
       - name: Typecheck
         run: npm run typecheck
       - name: Build
