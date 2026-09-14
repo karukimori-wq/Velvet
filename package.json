@@ -17,6 +17,7 @@
     "check:plan-enforcement": "node scripts/check-plan-enforcement.mjs",
     "check:media-access": "node scripts/check-media-access.mjs",
     "check:auth-boundary": "node scripts/check-auth-boundary.mjs",
+    "check:soon-alerts": "node scripts/check-soon-alerts.mjs",
     "db:migrate": "node scripts/migrate.mjs",
     "cf:build": "opennextjs-cloudflare build",
     "cf:preview": "opennextjs-cloudflare build && opennextjs-cloudflare preview",
