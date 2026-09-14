@@ -8,8 +8,9 @@ CREATE TABLE IF NOT EXISTS velvet_professional_visits (id TEXT PRIMARY KEY,works
 CREATE INDEX IF NOT EXISTS idx_velvet_professional_visits_scope ON velvet_professional_visits(workspace_id,user_id,customer_id,visited_at DESC);
 CREATE TABLE IF NOT EXISTS velvet_professional_timeline (id TEXT PRIMARY KEY,workspace_id TEXT NOT NULL,user_id TEXT NOT NULL,customer_id TEXT NOT NULL,occurred_at TEXT NOT NULL,event_type TEXT NOT NULL,title TEXT NOT NULL,body TEXT,source_ref TEXT);
 CREATE INDEX IF NOT EXISTS idx_velvet_timeline_scope ON velvet_professional_timeline(workspace_id,user_id,customer_id,occurred_at DESC);
-CREATE TABLE IF NOT EXISTS velvet_professional_next_actions (id TEXT PRIMARY KEY,workspace_id TEXT NOT NULL,user_id TEXT NOT NULL,customer_id TEXT NOT NULL,text TEXT NOT NULL,status TEXT NOT NULL DEFAULT 'open',created_at TEXT NOT NULL,completed_at TEXT);
+CREATE TABLE IF NOT EXISTS velvet_professional_next_actions (id TEXT PRIMARY KEY,workspace_id TEXT NOT NULL,user_id TEXT NOT NULL,customer_id TEXT NOT NULL,text TEXT NOT NULL,status TEXT NOT NULL DEFAULT 'open',created_at TEXT NOT NULL,due_at TEXT,completed_at TEXT);
 CREATE INDEX IF NOT EXISTS idx_velvet_next_actions_scope ON velvet_professional_next_actions(workspace_id,user_id,customer_id,status,created_at DESC);
+CREATE INDEX IF NOT EXISTS idx_velvet_next_actions_due ON velvet_professional_next_actions(workspace_id,user_id,status,due_at);
 CREATE TABLE IF NOT EXISTS velvet_professional_captures (id TEXT PRIMARY KEY,workspace_id TEXT NOT NULL,user_id TEXT NOT NULL,customer_id TEXT,kind TEXT NOT NULL,raw_text TEXT NOT NULL,created_at TEXT NOT NULL);
 CREATE INDEX IF NOT EXISTS idx_velvet_captures_scope ON velvet_professional_captures(workspace_id,user_id,customer_id,created_at DESC);
 CREATE TABLE IF NOT EXISTS velvet_notes (id TEXT PRIMARY KEY,workspace_id TEXT NOT NULL,user_id TEXT NOT NULL,customer_id TEXT NOT NULL,visit_id TEXT,note_type TEXT NOT NULL DEFAULT 'professional_note',note_ref TEXT,body_preview TEXT,created_at TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ','now')));
