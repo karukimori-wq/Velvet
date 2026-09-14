@@ -2,10 +2,15 @@
 
 import { redirect } from "next/navigation";
 import { getRequestIdentity } from "@/lib/auth/request-identity";
+import { getPlanAccess } from "@/lib/plan-access";
 import { generateMessageDraft, type MessageDraftChannel } from "@/lib/message-draft";
 
 export async function requestMessageDraftAction(customerId: string, formData: FormData) {
   const identity = await getRequestIdentity();
+  const access = await getPlanAccess(identity.ownerUserId);
+  if (!access.messageDraftAllowed) {
+    redirect(`/people/${customerId}/message?status=pro_required`);
+  }
   const channelRaw = String(formData.get("channel") ?? "line");
   const channel = (["line", "instagram", "email", "sms", "other"] as const).includes(channelRaw as MessageDraftChannel)
     ? channelRaw as MessageDraftChannel
