@@ -101,12 +101,13 @@ jobs:
       - name: Verify public production endpoints
         run: |
           sleep 5
-          curl --fail --silent --show-error "$PRODUCTION_URL/health" | tee /tmp/health.json
-          curl --fail --silent --show-error "$PRODUCTION_URL/version" | tee /tmp/version.json
-          curl --fail --silent --show-error "$PRODUCTION_URL/contracts/status" | tee /tmp/contracts.json
+          curl --fail --silent --show-error "$PRODUCTION_URL/api/health" | tee /tmp/health.json
+          curl --fail --silent --show-error "$PRODUCTION_URL/api/version" | tee /tmp/version.json
+          curl --fail --silent --show-error "$PRODUCTION_URL/api/contracts/status" | tee /tmp/contracts.json
           curl --fail --silent --show-error "$PRODUCTION_URL/api/persistence/status" | tee /tmp/persistence.json
           node - <<'NODE'
-          const fs=require('node:fs'); const r=p=>JSON.parse(fs.readFileSync(p,'utf8'));
+          const fs=require('node:fs');
+          const r=p=>{const body=fs.readFileSync(p,'utf8').trim();if(!body)throw new Error(`Empty JSON response from ${p}`);return JSON.parse(body)};
           const health=r('/tmp/health.json'),version=r('/tmp/version.json'),contracts=r('/tmp/contracts.json'),persistence=r('/tmp/persistence.json');
           if(health.status!=='success'||health.appName!=='velvet')throw new Error('Velvet health failed');
           if(version.status!=='success'||version.appName!=='velvet')throw new Error('Velvet version failed');
