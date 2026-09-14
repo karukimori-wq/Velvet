@@ -10,6 +10,7 @@ const checks = [
   [identity.includes('source: "clerk"') && identity.includes("await auth()"), "Clerk identity must be resolved server-side"],
   [identity.includes("workspace_${userId}"), "Clerk identity must map to a stable owner workspace"],
   [proxy.includes('pathname === "/auth"') && proxy.includes("AUTH_REQUIRED"), "Auth screen must stay public while protected APIs reject signed-out requests"],
+  [proxy.includes('"/health"') && proxy.includes('"/version"') && proxy.includes('"/contracts/status"'), "Operational status aliases must stay public for production monitoring"],
   [layout.includes("<ClerkProvider>"), "ClerkProvider must be available in Clerk mode"],
   [authPage.includes("無料で登録") && authPage.includes("登録済みの方はこちら（ログイン）"), "Public auth UX must use Velvet-facing Japanese copy"],
   [authPage.includes("8文字以上") && authPage.includes("/[A-Za-z]/") && authPage.includes("/[0-9]/"), "Velvet password UI must enforce the approved 8+ letter/number rule"],
