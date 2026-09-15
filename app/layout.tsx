@@ -6,6 +6,7 @@ import "./mobile-fixes.css";
 import "./feedback.css";
 import "./velvet-theme.css";
 import "./capture-polish.css";
+import "./customer-detail-polish.css";
 
 export const dynamic = "force-dynamic";
 
