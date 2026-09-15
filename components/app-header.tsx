@@ -8,7 +8,7 @@ const menuItems = [
   ["⌂", "ホーム", "/"],
   ["♙", "顧客管理", "/people"],
   ["▣", "予定・イベント", "/schedule"],
-  ["▤", "記録", "/capture"],
+  ["＋", "覚える", "/capture"],
   ["⌕", "詳しく探す", "/search"],
 ] as const;
 
