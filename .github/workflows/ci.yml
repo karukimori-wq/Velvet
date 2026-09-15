@@ -39,6 +39,8 @@ jobs:
         run: npm run check:soon-alerts
       - name: Due followup boundary
         run: npm run check:next-action-due-dates
+      - name: Customer sorting boundary
+        run: npm run check:customer-sorting
       - name: Typecheck
         run: npm run typecheck
       - name: Build
