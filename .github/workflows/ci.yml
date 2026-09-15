@@ -41,6 +41,8 @@ jobs:
         run: npm run check:next-action-due-dates
       - name: Customer sorting boundary
         run: npm run check:customer-sorting
+      - name: Search boundary
+        run: npm run check:search-boundary
       - name: Typecheck
         run: npm run typecheck
       - name: Build
