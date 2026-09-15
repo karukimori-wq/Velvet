@@ -4,12 +4,13 @@ import { FeedbackHubLauncher } from "@/components/feedback-hub-launcher";
 import "./globals.css";
 import "./mobile-fixes.css";
 import "./feedback.css";
+import "./velvet-theme.css";
 
 export const dynamic = "force-dynamic";
 
 export const metadata: Metadata = {
   title: "Velvet",
-  description: "夜職専用営業アシスタント",
+  description: "大切な人との関係を忘れず、次の時間につなげるRelationship Managementアプリ",
 };
 
 export default function RootLayout({ children }: Readonly<{ children: React.ReactNode }>) {
