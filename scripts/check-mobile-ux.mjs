@@ -1,6 +1,7 @@
 import fs from "node:fs";
 const css=fs.readFileSync("app/mobile-fixes.css","utf8");
 const theme=fs.readFileSync("app/velvet-theme.css","utf8");
+const polish=fs.readFileSync("app/ux-polish.css","utf8");
 const nav=fs.readFileSync("components/bottom-nav.tsx","utf8");
 const composer=fs.readFileSync("components/capture-chat-input.tsx","utf8");
 const checks=[
@@ -11,7 +12,9 @@ const checks=[
  [css,"min-height:48px","composer touch target"],
  [css,"-webkit-overflow-scrolling:touch","horizontal stamp scrolling"],
  [nav,"navActive","active bottom navigation state"],
- [nav,"/capture","record action in daily navigation"],
+ [nav,'["＋", "覚える", "/capture"]',"explicit remember action label"],
+ [nav,"captureNav","prominent remember action hook"],
+ [polish,".bottomNav .captureNav strong","prominent remember button styling"],
  [composer,"webkitSpeechRecognition","iPhone/Safari speech fallback"],
  [composer,"stampGrid","stamp palette"]
 ];
