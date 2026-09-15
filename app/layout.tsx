@@ -5,6 +5,7 @@ import "./globals.css";
 import "./mobile-fixes.css";
 import "./feedback.css";
 import "./velvet-theme.css";
+import "./capture-polish.css";
 
 export const dynamic = "force-dynamic";
 
