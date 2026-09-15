@@ -22,7 +22,7 @@ const checks = [
   ["Pro message draft is enabled", /plan === ["']pro["'][\s\S]*?messageDraftAllowed:\s*true/.test(source)],
   ["Pro price target is 990", /990 JPY \/ month/.test(spec) && /proPriceTargetJpy:\s*990/.test(billing)],
   ["Advanced search is gated by plan", /advancedSearchAllowed/.test(searchPage) && /hasVelvetFeature\(access,\s*["']history\.search["']\)/.test(searchPage)],
-  ["Search respects Free history window", /visibleCaptures/.test(searchPage) && /visibleGifts/.test(searchPage) && /isWithinHistoryWindow/.test(searchPage)],
+  ["Search respects Free history window", /searchableCaptures/.test(searchPage) && /searchableGifts/.test(searchPage) && /isWithinHistoryWindow/.test(searchPage)],
   ["Business integrations cannot be enabled", /feature === ["']business\.integrations["']\) return false/.test(source)],
   ["Business remains unavailable", /plan === ["']business["'][\s\S]*?businessAvailable:\s*false/.test(source)],
   ["Plan spec says Business is not purchasable", /Business[\s\S]{0,300}(not purchasable|購入不可)/i.test(spec)],
