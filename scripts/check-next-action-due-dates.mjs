@@ -16,7 +16,7 @@ const checks = [
   ["Create action accepts due date", /dueAtFromForm/.test(actions) && /createNextAction\(workspaceId,userId,customerId,text,dueAtFromForm\(formData\)\)/.test(actions)],
   ["UI exposes due date input", /name=\"dueDate\"/.test(page) && /期限付きフォロー/.test(page)],
   ["UI states no notification", /通知は送らず/.test(page)],
-  ["Home shows Pro due followups", /hasVelvetFeature\(access,\s*"followup\.manage"\)/.test(home) && /listDueNextActions/.test(home) && /忘れない/.test(home)],
+  ["Home shows Pro due followups", /hasVelvetFeature\(access,\s*"followup\.manage"\)/.test(home) && /listDueNextActions/.test(home) && /dueFollowups/.test(home) && /本日のアクション/.test(home)],
   ["D1 schema includes due_at", /velvet_professional_next_actions[\s\S]*due_at TEXT/.test(schema)],
   ["Existing D1 table has conditional due_at migration", /pragma_table_info\('velvet_professional_next_actions'\)/.test(productionWorkflow) && /ALTER TABLE velvet_professional_next_actions ADD COLUMN due_at TEXT/.test(productionWorkflow)],
   ["Postgres migration adds due_at", /ALTER TABLE velvet_professional_next_actions ADD COLUMN IF NOT EXISTS due_at TIMESTAMPTZ/.test(migration)],
