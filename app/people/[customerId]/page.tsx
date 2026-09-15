@@ -15,10 +15,28 @@ import { buildSoonVisitAlert } from "@/lib/soon-alerts";
 import { startVisitAction } from "@/app/visits/actions";
 
 const eventLabels: Record<string, string> = { visit: "来店", conversation: "会話", note: "メモ", gift: "プレゼント", schedule: "予定", relationship: "関係", next_action: "次回", media: "画像" };
+const DAY = 24 * 60 * 60 * 1000;
 
 function tagLabel(value: string) {
   const index = value.indexOf("：");
   return index >= 0 ? value.slice(0, index) : "";
+}
+
+function daysUntil(dateLike?: string) {
+  if (!dateLike) return undefined;
+  const due = new Date(dateLike);
+  if (!Number.isFinite(due.getTime())) return undefined;
+  const today = new Date(); today.setHours(0, 0, 0, 0);
+  const target = new Date(due); target.setHours(0, 0, 0, 0);
+  return Math.round((target.getTime() - today.getTime()) / DAY);
+}
+
+function dueLabel(dateLike?: string) {
+  const days = daysUntil(dateLike);
+  if (days === undefined) return undefined;
+  if (days < 0) return `${Math.abs(days)}日過ぎています`;
+  if (days === 0) return "今日まで";
+  return `あと${days}日`;
 }
 
 function ProTimelineRows({ items }: { items: ProfessionalTimelineItem[] }) {
@@ -54,6 +72,8 @@ export default async function Page({ params, searchParams }: { params: Promise<{
   const followupAllowed = hasVelvetFeature(access, "followup.manage");
   const soonAlert = access.soonAlertsAllowed && preferences.soonAlertsEnabled ? buildSoonVisitAlert(customerId, timeline) : undefined;
   const openNext = followupAllowed ? nextActions.filter(action => action.status === "open").slice(0, 3) : [];
+  const urgentNext = openNext.filter(action => action.dueAt && (daysUntil(action.dueAt) ?? 99) <= 7).slice(0, 2);
+  const recallVisible = quickRecall.items.length > 0 || quickRecall.nextTopics.length > 0 || Boolean(soonAlert) || urgentNext.length > 0;
   const mediaItems = access.imagesAllowed ? timeline.filter(item => item.eventType === "media" && item.sourceRef?.startsWith("r2:")).map(item => ({ id: item.id, key: item.sourceRef!.slice(3), occurredAt: item.occurredAt, title: item.title })) : [];
   const savedItems = [
     Number(query.memoryAdded) > 0 && `人物情報 ${query.memoryAdded}件`,
@@ -66,14 +86,13 @@ export default async function Page({ params, searchParams }: { params: Promise<{
     <header className="header"><Link className="subtle" href="/people">‹ お客様</Link><div className="searchActions"><Link className="subtle" href="/plans">{access.plan === "free" ? "Free" : "Pro"}</Link><Link className="subtle" href={`/remember?customerId=${customerId}`}>編集</Link></div></header>
     <section className="hero customerHero"><h1>{displayName}</h1></section>
     {activeVisit ? <Link className="primaryButton actionLink" href={`/visits/${activeVisit.id}`}>接客中に戻る</Link> : <div className="customerPrimaryActions"><Link className="primaryButton actionLink" href={`/capture?customerId=${customerId}`}>今日の接客を残す</Link><Link className="secondaryButton actionLink" href={`/remember?customerId=${customerId}`}>情報を追加</Link></div>}
-    {soonAlert && <section className="card noticeCard"><div className="timelineTitle">そろそろ</div><div className="timelineBody">前回来店から{soonAlert.daysSinceLastVisit}日。いつもは約{soonAlert.averageIntervalDays}日周期です。</div><div className="formHint">来店履歴 {soonAlert.visitCount}件から計算 · {soonAlert.status === "overdue" ? `${soonAlert.overdueDays}日ほど空いています` : "近いタイミングです"}</div></section>}
     {query.captureSaved && <div className="card successCard stack"><strong>今日の接客を記録しました</strong>{savedItems.map(item => <div className="timelineBody" key={item}>✓ {item}</div>)}</div>}
-    {(quickRecall.items.length > 0 || quickRecall.nextTopics.length > 0) && <section className="card noticeCard"><div className="timelineTitle">思い出す</div><div className="quickRecallGrid">{quickRecall.items.map(item => <div key={`${item.label}-${item.value}`}><div className="formHint">{item.label}</div><div className="timelineBody">{item.value}</div></div>)}{quickRecall.nextTopics.length > 0 && <div><div className="formHint">次に話す</div>{quickRecall.nextTopics.map(topic => <div className="timelineBody" key={topic}>・{topic}</div>)}</div>}</div></section>}
+    {recallVisible && <section className="card noticeCard"><div className="timelineTitle">思い出す</div><div className="quickRecallGrid">{quickRecall.items.map(item => <div key={`${item.label}-${item.value}`}><div className="formHint">{item.label}</div><div className="timelineBody">{item.value}</div></div>)}{quickRecall.nextTopics.length > 0 && <div><div className="formHint">次に話す</div>{quickRecall.nextTopics.map(topic => <div className="timelineBody" key={topic}>・{topic}</div>)}</div>}{soonAlert && <div><div className="formHint">そろそろ</div><div className="timelineBody">前回来店から{soonAlert.daysSinceLastVisit}日。いつもは約{soonAlert.averageIntervalDays}日周期です。</div></div>}{urgentNext.length > 0 && <div><div className="formHint">期限付きフォロー</div>{urgentNext.map(action => <div className="timelineBody" key={action.id}>・{action.text}{dueLabel(action.dueAt) ? `（${dueLabel(action.dueAt)}）` : ""}</div>)}</div>}</div></section>}
 
     <div className="sectionTitle customerSectionTitle"><span>登録情報</span><Link className="subtle" href={`/remember?customerId=${customerId}`}>追加・訂正 ›</Link></div>
     {grouped.length > 0 ? <div className="stack memorySummaryGroups">{grouped.map(group => <section className="card memorySummaryGroup" key={group.title}><div className="timelineTitle">{group.title}</div><div className="memoryValueList">{group.values.map(value => { const index = value.indexOf("："); return <div className="memoryValueRow" key={value}><span>{index > 0 ? value.slice(0, index) : "情報"}</span><strong>{index > 0 ? value.slice(index + 1) : value}</strong></div>; })}</div></section>)}</div> : <Link className="card actionLink" href={`/remember?customerId=${customerId}`}>この人について記録する</Link>}
 
-    {followupAllowed ? <><div className="sectionTitle customerSectionTitle"><span>次回</span><Link className="subtle" href={`/people/${customerId}/next-actions`}>追加・管理 ›</Link></div>{openNext.length > 0 ? <div className="card stack">{openNext.map(item => <div className="timelineBody" key={item.id}>・{item.text}</div>)}</div> : <Link className="card actionLink" href={`/people/${customerId}/next-actions`}>次にすることを追加</Link>}</> : <Link className="card actionLink" href="/plans"><div><div className="timelineTitle">次回の約束・フォロー</div><div className="formHint">Proで利用できます</div></div><span>›</span></Link>}
+    {followupAllowed ? <><div className="sectionTitle customerSectionTitle"><span>次回</span><Link className="subtle" href={`/people/${customerId}/next-actions`}>追加・管理 ›</Link></div>{openNext.length > 0 ? <div className="card stack">{openNext.map(item => <div className="timelineBody" key={item.id}>・{item.text}{dueLabel(item.dueAt) ? `（${dueLabel(item.dueAt)}）` : ""}</div>)}</div> : <Link className="card actionLink" href={`/people/${customerId}/next-actions`}>次にすることを追加</Link>}</> : <Link className="card actionLink" href="/plans"><div><div className="timelineTitle">次回の約束・フォロー</div><div className="formHint">Proで利用できます</div></div><span>›</span></Link>}
 
     <div className="sectionTitle customerSectionTitle"><span>画像</span></div>
     {access.imagesAllowed ? <CustomerMediaPanel customerId={customerId} initialItems={mediaItems} /> : <Link className="card actionLink" href="/plans"><div><div className="timelineTitle">画像を保存</div><div className="formHint">Proで利用できます</div></div><span>›</span></Link>}
