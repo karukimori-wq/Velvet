@@ -19,6 +19,7 @@
     "check:auth-boundary": "node scripts/check-auth-boundary.mjs",
     "check:soon-alerts": "node scripts/check-soon-alerts.mjs",
     "check:next-action-due-dates": "node scripts/check-next-action-due-dates.mjs",
+    "check:customer-sorting": "node scripts/check-customer-sorting.mjs",
     "db:migrate": "node scripts/migrate.mjs",
     "cf:build": "opennextjs-cloudflare build",
     "cf:preview": "opennextjs-cloudflare build && opennextjs-cloudflare preview",
