@@ -14,6 +14,8 @@ const checks = [
   [layout.includes("<ClerkProvider>"), "ClerkProvider must be available in Clerk mode"],
   [authPage.includes("無料で登録") && authPage.includes("登録済みの方はこちら（ログイン）"), "Public auth UX must use Velvet-facing Japanese copy"],
   [authPage.includes("8文字以上") && authPage.includes("/[A-Za-z]/") && authPage.includes("/[0-9]/"), "Velvet password UI must enforce the approved 8+ letter/number rule"],
+  [authPage.includes("form_password_length_too_short") && authPage.includes("15文字以上"), "Production Clerk password rejection must explain the current 15-character requirement"],
+  [authPage.includes("captcha_missing_token") && authPage.includes("ページを再読み込み"), "Bot-protection failures must provide an actionable recovery message"],
   [authPage.includes('id="clerk-captcha"'), "Custom sign-up flow must keep the bot-protection mount point"],
   [settings.includes("ログアウト") && settings.includes('redirectUrl="/auth"'), "Clerk mode must provide a logout path back to Velvet auth"],
 ];
