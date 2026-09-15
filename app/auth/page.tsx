@@ -11,6 +11,27 @@ function validVelvetPassword(value: string) {
   return value.length >= 8 && /[A-Za-z]/.test(value) && /[0-9]/.test(value);
 }
 
+function signUpErrorMessage(code: string) {
+  switch (code) {
+    case "form_password_length_too_short":
+      return "現在の認証設定では、パスワードは15文字以上必要です。";
+    case "form_password_pwned":
+    case "form_password_compromised":
+    case "form_password_not_strong_enough":
+      return "安全性のため、このパスワードは使用できません。別のパスワードを入力してください。";
+    case "form_identifier_exists":
+    case "form_identifier_exists__email_address":
+      return "このメールアドレスは登録済みです。ログインしてください。";
+    case "form_param_format_invalid":
+      return "メールアドレスの形式を確認してください。";
+    case "captcha_invalid":
+    case "captcha_missing_token":
+      return "安全確認を完了できませんでした。ページを再読み込みして、もう一度お試しください。";
+    default:
+      return "登録できませんでした。入力内容を確認して、もう一度お試しください。";
+  }
+}
+
 export default function AuthPage() {
   const router = useRouter();
   const { isSignedIn } = useAuth();
@@ -87,7 +108,7 @@ export default function AuthPage() {
 
     const { error } = await signUp.password({ emailAddress, password });
     if (error) {
-      setMessage("登録内容を確認してください。すでに登録済みの場合はログインしてください。");
+      setMessage(signUpErrorMessage(error.code));
       return;
     }
     const verification = await signUp.verifications.sendEmailCode();
