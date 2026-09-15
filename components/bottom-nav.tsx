@@ -1,3 +1,19 @@
-import Link from "next/link";
+"use client";
 
-export function BottomNav(){return <nav className="bottomNav" aria-label="メインメニュー"><Link className="navItem" href="/"><strong>⌂</strong>ホーム</Link><Link className="navItem" href="/people"><strong>◉</strong>お客様</Link><Link className="navItem captureNav" href="/add"><strong>＋</strong>追加</Link><Link className="navItem" href="/schedule"><strong>□</strong>予定</Link><Link className="navItem" href="/settings"><strong>◇</strong>自分</Link></nav>}
+import Link from "next/link";
+import { usePathname } from "next/navigation";
+
+const items = [
+  ["⌂", "ホーム", "/"],
+  ["♙", "顧客", "/people"],
+  ["▤", "記録", "/capture"],
+  ["▣", "予定", "/schedule"],
+] as const;
+
+export function BottomNav(){
+  const pathname=usePathname();
+  return <nav className="bottomNav" aria-label="メインメニュー">{items.map(([icon,label,href])=>{
+    const active=href==="/"?pathname===href:pathname.startsWith(href);
+    return <Link className={`navItem${active?" navActive":""}`} href={href} key={href} aria-current={active?"page":undefined}><strong>{icon}</strong>{label}</Link>;
+  })}</nav>;
+}
