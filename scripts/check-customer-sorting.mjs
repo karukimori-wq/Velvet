@@ -4,7 +4,7 @@ const spec = fs.readFileSync(new URL("../docs/plan-enforcement-spec.md", import.
 const failures = [];
 const assert = (condition, message) => { if (!condition) failures.push(message); };
 
-for (const token of ["soon", "due_followup", "open_followup", "そろそろ順", "期限付きフォローが近い順", "未対応フォローあり順"]) assert(page.includes(token), `Customer list sorting missing: ${token}`);
+for (const token of ["soon", "due_followup", "open_followup", "そろそろ順", "フォロー期限が近い順", "未対応フォロー順"]) assert(page.includes(token), `Customer list sorting missing: ${token}`);
 assert(page.includes("proSortValues") && page.includes("!proDiscoveryAllowed"), "Pro-only sorting must be gated for Free users");
 assert(page.includes("hasVelvetFeature(access,\"followup.manage\")"), "Pro sorting must use plan access, not UI-only assumptions");
 assert(page.includes("buildSoonVisitAlert") && page.includes("getOwnerPreferences"), "Soon sorting must reuse the existing soon-alert policy and user preference");
