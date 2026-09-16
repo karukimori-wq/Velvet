@@ -1,4 +1,7 @@
 /** @type {import('next').NextConfig} */
+const privateNoStore = [{ key: "Cache-Control", value: "private, no-store, max-age=0" }];
+const privateRoutes = ["/", "/auth", "/people/:path*", "/capture/:path*", "/schedule/:path*", "/search", "/remember/:path*", "/import", "/settings/:path*"];
+
 const nextConfig = {
   serverExternalPackages: ["pg", "pg-cloudflare"],
   async headers() {
@@ -12,10 +15,8 @@ const nextConfig = {
           { key: "Permissions-Policy", value: "geolocation=(), camera=()" },
         ],
       },
-      {
-        source: "/api/:path*",
-        headers: [{ key: "Cache-Control", value: "private, no-store, max-age=0" }],
-      },
+      { source: "/api/:path*", headers: privateNoStore },
+      ...privateRoutes.map(source => ({ source, headers: privateNoStore })),
     ];
   },
 };

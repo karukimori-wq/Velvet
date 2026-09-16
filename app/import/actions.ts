@@ -3,11 +3,13 @@
 import { redirect } from "next/navigation";
 import { getRequestIdentity } from "@/lib/auth/request-identity";
 import { importVelvetData, validateImportPayload } from "@/lib/import-export";
+import { INPUT_LIMITS } from "@/lib/input-limits";
 
 export async function importJsonAction(formData: FormData) {
   const { workspaceId, userId } = await getRequestIdentity();
   const raw = String(formData.get("json") ?? "").trim();
   if (!raw) redirect("/import?error=empty");
+  if (raw.length > INPUT_LIMITS.importJson) redirect("/import?error=too_large");
   let parsed: unknown;
   try { parsed = JSON.parse(raw); } catch { redirect("/import?error=json"); }
   const result = validateImportPayload(parsed);

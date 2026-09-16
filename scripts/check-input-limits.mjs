@@ -1,6 +1,6 @@
 import fs from "node:fs";
 const read=path=>fs.readFileSync(path,"utf8");const failures=[];const assert=(condition,message)=>{if(!condition)failures.push(message)};
-const limits=read("lib/input-limits.ts");for(const key of ["capture","professionalNote","nextAction","giftItem","memoryField","memoryTag","memoryTags"])assert(limits.includes(`${key}:`),`Missing shared input limit: ${key}`);
+const limits=read("lib/input-limits.ts");for(const key of ["capture","professionalNote","nextAction","giftItem","memoryField","memoryTag","memoryTags","importJson","importMemories"])assert(limits.includes(`${key}:`),`Missing shared input limit: ${key}`);
 const captureApi=read("app/api/captures/route.ts");assert(captureApi.includes("CAPTURE_TOO_LONG")&&captureApi.includes("INPUT_LIMITS.capture"),"Capture API must reject oversized input");
 const organize=read("app/capture/organize/actions.ts");assert(organize.includes('error: "too_long"')&&organize.includes("INPUT_LIMITS.capture"),"Capture organize action must reject oversized input");
 const composer=read("components/capture-chat-input.tsx");assert(composer.includes("maxLength={INPUT_LIMITS.capture}"),"Capture textarea must expose the same client-side limit");
@@ -8,4 +8,5 @@ const memory=read("app/api/customers/[customerId]/memory/route.ts");assert(memor
 const note=read("app/api/customers/[customerId]/notes/route.ts");assert(note.includes("NOTE_TOO_LONG"),"Professional note API must reject oversized notes");
 const nextAction=read("app/api/customers/[customerId]/next-actions/route.ts");assert(nextAction.includes("NEXT_ACTION_TOO_LONG"),"Next-action API must reject oversized text");
 const gift=read("app/api/gifts/route.ts");assert(gift.includes("GIFT_TOO_LONG")&&gift.includes("INVALID_GIFT_DIRECTION"),"Gift API must validate size and direction");
-if(failures.length){console.error("Input limit guard failed:\n- "+failures.join("\n- "));process.exit(1)}console.log("Input limit guard passed: high-volume user text is bounded consistently across UI and write APIs.");
+const importAction=read("app/import/actions.ts");const importExport=read("lib/import-export.ts");assert(importAction.includes("INPUT_LIMITS.importJson")&&importAction.includes("too_large"),"Import action must reject oversized JSON before parsing");assert(importExport.includes("INPUT_LIMITS.importMemories")&&importExport.includes("INPUT_LIMITS.memoryField")&&importExport.includes("INPUT_LIMITS.memoryTags"),"Import payload must bound item count, fields, and tags");
+if(failures.length){console.error("Input limit guard failed:\n- "+failures.join("\n- "));process.exit(1)}console.log("Input limit guard passed: user text and bulk import payloads are bounded across UI and write paths.");

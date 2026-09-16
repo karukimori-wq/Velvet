@@ -9,6 +9,9 @@ export const INPUT_LIMITS = {
   memoryField: 4000,
   memoryTag: 120,
   memoryTags: 100,
+  importJson: 250000,
+  importMemories: 500,
+  customerId: 200,
 } as const;
 
 export function withinTextLimit(value: unknown, limit: number, required = false) {
