@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useMemo, useState } from "react";
-import type { GrowthCustomerDisplay } from "@/lib/growth-engine-customer";
+import type { GrowthCustomerDisplay, GrowthCustomerListResult } from "@/lib/growth-engine-customer";
 
 const normalize = (value: string) => value.normalize("NFKC").toLocaleLowerCase("ja").replace(/\s+/g, "");
 
@@ -15,7 +15,7 @@ function PersonLink({ customer }: { customer: GrowthCustomerDisplay }) {
   </Link>;
 }
 
-export function CapturePersonPicker({ customers, recentCustomerIds }: { customers: GrowthCustomerDisplay[]; recentCustomerIds: string[] }) {
+export function CapturePersonPicker({ customers, recentCustomerIds, sourceStatus }: { customers: GrowthCustomerDisplay[]; recentCustomerIds: string[]; sourceStatus: GrowthCustomerListResult["status"] }) {
   const [query, setQuery] = useState("");
   const recentSet = useMemo(() => new Set(recentCustomerIds), [recentCustomerIds]);
   const recent = useMemo(() => recentCustomerIds.flatMap(id => {
@@ -29,6 +29,7 @@ export function CapturePersonPicker({ customers, recentCustomerIds }: { customer
     return customers.filter(customer => normalize(customer.displayName ?? "お客様").includes(needle));
   }, [customers, query]);
 
+  if (sourceStatus !== "ok") return <div className="card empty capturePickerEmpty captureSourceError" role="status"><strong>{sourceStatus === "unconfigured" ? "お客様情報の接続を準備中です" : "お客様情報を読み込めませんでした"}</strong><span>{sourceStatus === "unconfigured" ? "Growth Engineとの接続が完了すると、ここから相手を選べます。" : "登録が消えたわけではありません。通信が戻ってから再読み込みしてください。"}</span><Link className="primaryButton actionLink" href="/capture">もう一度読み込む</Link></div>;
   if (!customers.length) return <div className="card empty capturePickerEmpty"><strong>登録済みのお客様がいません</strong><span>まず呼び名だけ登録すれば、そのまま覚え始められます。</span><Link className="primaryButton actionLink" href="/add">＋ お客様を追加</Link></div>;
 
   return <div className="capturePickerBody">
