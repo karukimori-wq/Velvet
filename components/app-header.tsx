@@ -6,10 +6,10 @@ import { usePathname } from "next/navigation";
 
 const menuItems = [
   ["⌂", "ホーム", "/"],
-  ["♙", "顧客管理", "/people"],
-  ["▣", "予定・イベント", "/schedule"],
+  ["♙", "お客様", "/people"],
   ["＋", "覚える", "/capture"],
-  ["⌕", "詳しく探す", "/search"],
+  ["▣", "予定", "/schedule"],
+  ["⌕", "探す", "/search"],
 ] as const;
 
 function isActiveRoute(pathname: string, href: string) {
@@ -47,14 +47,14 @@ export function AppHeader({ title = "Velvet", rightHref, rightLabel }: { title?:
     </header>
     {open && <div className="drawerLayer" role="presentation" onClick={() => setOpen(false)}>
       <aside className="drawer" id="velvet-drawer" aria-label="Velvetメニュー" onClick={event => event.stopPropagation()}>
-        <div className="drawerTop"><div><div className="velvetLogo">Velvet</div><div className="drawerMessage">出会いを、ずっと大切に。</div></div><button className="drawerClose" type="button" aria-label="メニューを閉じる" onClick={() => setOpen(false)}>×</button></div>
+        <div className="drawerTop"><div><div className="velvetLogo">Velvet</div><div className="drawerMessage">覚えて、思い出して、次につなぐ。</div></div><button className="drawerClose" type="button" aria-label="メニューを閉じる" onClick={() => setOpen(false)}>×</button></div>
         <nav className="drawerNav">{menuItems.map(([icon, label, href]) => drawerLink(icon, label, href))}</nav>
         <div className="drawerDivider" />
         <nav className="drawerNav drawerSecondary">
           {drawerLink("♛", "プラン", "/plans")}
           {drawerLink("⚙", "設定", "/settings")}
         </nav>
-        <div className="drawerPlan"><span className="vipMark">♛</span><div><strong>Velvet</strong><small>大切な人との時間を、もっと特別に。</small></div></div>
+        <div className="drawerPlan"><span className="vipMark">♛</span><div><strong>Velvet</strong><small>大切な人との時間を、次の時間へ。</small></div></div>
       </aside>
     </div>}
   </>;
