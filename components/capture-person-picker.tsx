@@ -8,7 +8,7 @@ const normalize = (value: string) => value.normalize("NFKC").toLocaleLowerCase("
 
 function PersonLink({ customer }: { customer: GrowthCustomerDisplay }) {
   const name = customer.displayName ?? "お客様";
-  return <Link className="card personRow capturePersonRow" href={`/capture?customerId=${encodeURIComponent(customer.customerId)}`}>
+  return <Link className="card personRow capturePersonRow" href={`/capture?customerId=${encodeURIComponent(customer.customerId)}`} aria-label={`${name}さんとの出来事を覚える`}>
     <div className="avatar">{name.slice(0, 1)}</div>
     <div className="personMain"><div className="personName">{name}</div><div className="formHint">この人との出来事を覚える</div></div>
     <span aria-hidden="true">›</span>
@@ -32,8 +32,8 @@ export function CapturePersonPicker({ customers, recentCustomerIds }: { customer
   if (!customers.length) return <div className="card empty capturePickerEmpty"><strong>登録済みのお客様がいません</strong><span>まず呼び名だけ登録すれば、そのまま覚え始められます。</span><Link className="primaryButton actionLink" href="/add">＋ お客様を追加</Link></div>;
 
   return <div className="capturePickerBody">
-    <label className="capturePersonSearch"><span className="srOnly">お客様を検索</span><input className="searchBox" value={query} onChange={event => setQuery(event.target.value)} placeholder="名前・呼び名で探す" autoComplete="off" inputMode="search"/><span aria-hidden="true">⌕</span></label>
-    {query ? <section className="capturePickerSection"><div className="capturePickerLabel">検索結果 <span>{matches.length}人</span></div><div className="capturePersonList">{matches.map(customer => <PersonLink customer={customer} key={customer.customerId}/>)}{!matches.length && <div className="capturePickerNoMatch">見つかりませんでした。呼び名を変えて探してみてください。</div>}</div></section> : <>
+    <label className="capturePersonSearch"><input className="searchBox" value={query} onChange={event => setQuery(event.target.value)} placeholder="名前・呼び名で探す" aria-label="お客様を名前・呼び名で検索" autoComplete="off" inputMode="search"/><span aria-hidden="true">⌕</span></label>
+    {query ? <section className="capturePickerSection"><div className="capturePickerLabel">検索結果 <span>{matches.length}人</span></div><div className="capturePersonList">{matches.map(customer => <PersonLink customer={customer} key={customer.customerId}/>)}{!matches.length && <div className="capturePickerNoMatch" role="status">見つかりませんでした。呼び名を変えて探してみてください。</div>}</div></section> : <>
       {recent.length > 0 && <section className="capturePickerSection"><div className="capturePickerLabel">最近覚えた人</div><div className="capturePersonList captureRecentPeople">{recent.map(customer => <PersonLink customer={customer} key={customer.customerId}/>)}</div></section>}
       <section className="capturePickerSection"><div className="capturePickerLabel">{recent.length ? "すべてのお客様" : "お客様"} <span>{customers.length}人</span></div><div className="capturePersonList">{(recent.length ? others : customers).map(customer => <PersonLink customer={customer} key={customer.customerId}/>)}</div></section>
     </>}
