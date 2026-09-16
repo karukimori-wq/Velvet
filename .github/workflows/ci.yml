@@ -47,6 +47,8 @@ jobs:
         run: npm run check:query-efficiency
       - name: Input limits
         run: npm run check:input-limits
+      - name: Capture idempotency
+        run: npm run check:capture-idempotency
       - name: Privacy cache
         run: npm run check:privacy-cache
       - name: Product documentation
