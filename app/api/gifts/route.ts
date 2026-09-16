@@ -1,9 +1,12 @@
 import { NextResponse } from "next/server";
 import { createGift, listGifts, type GiftDirection } from "@/lib/gift-repository";
 import { getRequestIdentity } from "@/lib/auth/request-identity";
+import { getPlanAccess, hasVelvetFeature } from "@/lib/plan-access";
 
 export async function GET(request: Request) {
-  const { workspaceId, userId } = await getRequestIdentity();
+  const { workspaceId, userId, ownerUserId } = await getRequestIdentity();
+  const access = await getPlanAccess(ownerUserId);
+  if (!hasVelvetFeature(access, "history.gifts")) return NextResponse.json({ status: "error", error: { code: "PRO_REQUIRED", message: "Gift history view is available on Pro." }, plan: access.plan }, { status: 403 });
   const { searchParams } = new URL(request.url);
   const customerId = searchParams.get("customerId") || undefined;
   return NextResponse.json({ status: "success", gifts: await listGifts(workspaceId, userId, customerId) });
