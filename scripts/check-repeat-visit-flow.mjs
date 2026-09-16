@@ -10,7 +10,7 @@ const required=[
  [policy,'"replace"','memory policy supports current-state replacement'],
  [policy,'describeMemoryTagChanges','memory changes are described'],
  [organize,'mergeMemoryTags','chat/AI path uses shared merge policy'],
- [organize,'addProfessionalTimelineItem','chat/AI path records timeline changes'],
+ [organize,'addIdempotentProfessionalTimelineItem','chat/AI path records timeline changes without duplicating retries'],
  [remember,'mergeMemoryTags','field-entry path uses shared merge policy'],
  [remember,'addProfessionalTimelineItem','field-entry corrections preserve history'],
  [recall,'timeSensitiveDays','recall defines freshness windows'],
