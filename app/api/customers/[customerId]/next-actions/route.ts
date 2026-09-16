@@ -5,7 +5,8 @@ import { getPlanAccess,hasVelvetFeature } from "@/lib/plan-access";
 
 function observability(request:Request){const traceId=request.headers.get("x-trace-id")??crypto.randomUUID();const correlationId=request.headers.get("x-correlation-id")??traceId;const requestId=request.headers.get("x-request-id")??crypto.randomUUID();return{traceId,correlationId,requestId}}
 async function requireAccess(ownerUserId:string,request:Request){const access=await getPlanAccess(ownerUserId);return hasVelvetFeature(access,"followup.manage")?null:NextResponse.json({status:"error",error:{code:"PRO_REQUIRED",message:"Next Action is available on Pro."},plan:access.plan,...observability(request)},{status:403})}
-function parseDueAt(value:unknown){if(value===undefined||value===null||value==="")return{dueAt:undefined};if(typeof value!=="string")return{error:"dueAt must be an ISO date-time string"};const date=new Date(value);if(!Number.isFinite(date.getTime()))return{error:"dueAt must be a valid ISO date-time string"};return{dueAt:date.toISOString()}}
+type DueAtParse={dueAt?:string;error?:string};
+function parseDueAt(value:unknown):DueAtParse{if(value===undefined||value===null||value==="")return{};if(typeof value!=="string")return{error:"dueAt must be an ISO date-time string"};const date=new Date(value);if(!Number.isFinite(date.getTime()))return{error:"dueAt must be a valid ISO date-time string"};return{dueAt:date.toISOString()}}
 
 export async function GET(request:Request,{params}:{params:Promise<{customerId:string}>}){const {workspaceId,userId,ownerUserId}=await getRequestIdentity();const denied=await requireAccess(ownerUserId,request);if(denied)return denied;const {customerId}=await params;const items=await listNextActions(workspaceId,userId,customerId);return NextResponse.json({status:"success",customerId,items,...observability(request)})}
 
