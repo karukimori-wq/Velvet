@@ -8,6 +8,7 @@ import "./velvet-theme.css";
 import "./capture-polish.css";
 import "./customer-detail-polish.css";
 import "./ux-polish.css";
+import "./surface-polish.css";
 
 export const dynamic = "force-dynamic";
 
