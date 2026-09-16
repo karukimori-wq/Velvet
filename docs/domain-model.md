@@ -1,204 +1,45 @@
-# Velvet Domain Model v0.1
+# Velvet Domain Model v1.0
 
-## Purpose
+See `docs/current-product-contract.md` for current ownership and release rules.
 
-Velvet owns a private, individual-use relationship and visit-memory domain for night-work professionals.
+## Ownership boundary
+Velvet does **not** own a separate Person/Customer master. Growth Engine owns canonical Customer identity. Velvet professional records reference `customerId`; a display-name snapshot may be retained only as a resilience/readability snapshot.
 
-It is intentionally separate from the Growth Engine shared-platform `Customer` domain.
+Growth Engine also owns canonical Reservation / Visit Schedule, Payment, Sales / Revenue, and business-level customer state. Velvet must not persist competing `salesAmount`, `paymentStatus`, payment-method ledger, receivable ledger, or revenue aggregates.
 
-## Aggregate overview
+## CustomerMemory
+Professional remembered context keyed by `workspaceId + userId + customerId`.
 
-### Person
-Represents a private Velvet guest/person known to the user.
+May contain display-name snapshot, personality/preference/caution notes, conversation/last-interaction summaries, next-topic hint, and structured tags. It is private professional memory, not the Customer master.
 
-Core fields:
-- `personId`
-- `workspaceId`
-- `ownerUserId`
-- `displayName`
-- `nickname`
-- `birthday`
-- `rank`
-- contact refs/handles
-- optional Pro image refs
-- `createdAt`
-- `updatedAt`
+## ProfessionalVisit
+A Velvet-owned record of an actual professional interaction. It may reference Growth Engine `reservationId` / `visitScheduleId`.
 
-A Person may exist with only `displayName`.
+Fields include start/end timestamps, duration, service/seating context, conversation/preference/caution/next-action memo, and summary. Missing optional detail never invalidates a Visit. No canonical payment/sales fields belong here.
 
-### Visit
-Represents a single visit occurrence.
+## ProfessionalTimeline
+Chronological Velvet memory keyed to `customerId`. Event types include visit, conversation, note, gift, schedule, relationship, next_action, and media. Timeline content must not become a shadow payment/sales ledger.
 
-Core fields:
-- `visitId`
-- `workspaceId`
-- `ownerUserId`
-- `startedAt`
-- `endedAt`
-- `durationMinutes` derived when both timestamps exist
-- `visitContext`
-- optional `salesAmount`
-- optional `paymentMethod`
-- optional receivable/売掛 note fields
-- optional nomination/指名 fields
-- `createdAt`
-- `updatedAt`
+## Capture
+Raw user-authored input. It is persisted before organization so AI/rule failure never requires re-entry. Organization may propose memory, preference, next-topic, gift, or schedule candidates. Uncertain inferred changes require user confirmation.
 
-`endedAt` may be null. Missing optional details must never invalidate a Visit.
+## Gift
+Professional memory of gifts received/given, keyed to Growth Engine `customerId`. Gift item/occasion/note are memory context. It is not a Sales/Payment record.
 
-### VisitParticipant
-Links one Visit to one or more People.
+## NextAction
+Pro follow-up record with text, open/done status, optional `dueAt`, and completion timestamp. Due dates are display-only in the first release; no push/email notification is implied.
 
-Core fields:
-- `visitParticipantId`
-- `visitId`
-- `personId`
-- optional participant-specific role/context
+## SoonVisitAlert
+Derived, not canonical. It uses Velvet Visit history to estimate a customer's usual visit interval and surface `soon`/`overdue` state. It is Pro-only and controlled by owner preference.
 
-Shared Visit data is stored once rather than copied to every Person.
+## ScheduleEntry
+Velvet-owned display/work-memory schedule entry, optionally linked to `customerId` and/or Growth Engine `visitScheduleId`. Canonical Reservation / Visit Schedule remains Growth Engine-owned.
 
-### Knowledge
-Represents structured remembered information about a Person.
+## Relationship
+Explicit professional relationship memory between customer references. Semantic relationships must not be inferred solely from co-occurrence.
 
-Examples:
-- occupation
-- hobby
-- favorite drink
-- food preference
-- smoking preference
-- pet
-- topic
-- NG topic
-- travel/business-trip fact
-- other user-defined remembered information
+## Media
+Pro images are stored in R2. Authorized metadata/reference is represented through the customer timeline; R2 object keys are not public authorization tokens.
 
-Core fields:
-- `knowledgeId`
-- `personId`
-- `category`
-- `value`
-- optional normalized value
-- optional source Capture reference
-- `effectiveAt`
-- `createdAt`
-- `updatedAt`
-
-Knowledge must remain editable because human context changes over time.
-
-### Relationship
-Represents an explicitly confirmed relationship between two People.
-
-Examples:
-- friend
-- coworker
-- manager/subordinate
-- family
-- spouse/partner
-- business partner/customer
-- referral/introduction
-- other
-
-Core fields:
-- `relationshipId`
-- `fromPersonId`
-- `toPersonId`
-- `relationshipType`
-- optional note
-- `confirmedByUser`
-- `createdAt`
-
-Repeated co-visits alone do not create an asserted Relationship.
-
-### Gift
-Tracks gifts in both directions.
-
-Core fields:
-- `giftId`
-- `personId`
-- optional `visitId`
-- `direction`: `received | given`
-- `item`
-- optional `occasion`
-- optional `estimatedValue`
-- optional Pro image refs
-- `occurredAt`
-
-### ScheduleEntry
-Represents user- or Person-related work-relevant schedule information.
-
-Examples:
-- shift
-- day off
-- planned visit
-- birthday
-- accompaniment/同伴
-- event
-- trip
-- known unavailable weekday/time
-- self-investment appointment
-
-Core fields:
-- `scheduleEntryId`
-- optional `personId`
-- `entryType`
-- `startsAt`
-- optional `endsAt`
-- optional recurrence/availability metadata
-- optional note
-
-### SelfInvestmentEntry
-Represents lightweight self-investment tracking, not accounting.
-
-Core fields:
-- `selfInvestmentEntryId`
-- `category`
-- `amount`
-- `occurredAt`
-- optional note
-
-### Capture
-Universal raw input container.
-
-Core fields:
-- `captureId`
-- optional `personId`
-- optional `visitId`
-- `inputType`: `stamp | suggestion | text | voice`
-- raw text/transcript/value
-- `status`: `raw | processing | confirmation_required | confirmed | failed`
-- `createdAt`
-
-Raw Capture must be retained when structuring fails so the user never has to re-enter the information.
-
-### CaptureCandidate
-Represents one proposed structured update produced from a user-triggered Capture action.
-
-Examples:
-- Knowledge candidate
-- Gift candidate
-- Schedule candidate
-- Visit candidate
-- Relationship candidate
-
-No uncertain AI-derived candidate becomes canonical data until confirmed by the user.
-
-### DictionaryEntry
-Represents reusable learned suggestion values.
-
-Core fields:
-- `dictionaryEntryId`
-- `category`
-- `value`
-- usage count
-- last-used timestamp
-- optional person-specific score/context
-
-Suggestion ranking may combine person-specific history, user frequency/recency and application defaults.
-
-## Cross-app reference rule
-
-Velvet Person is not Growth Engine Customer.
-
-An optional future field such as `growthCustomerRef` may map them only when an explicit contracted workflow and user intent exists.
-
-Velvet Visit sales/payment notes remain personal history and are not Growth Engine canonical Payment/Sales state.
+## Entitlement
+`velvet_owner_entitlements` is a Velvet-local projection used to enforce Free/Pro access. It is not canonical subscription payment state. AI usage remains canonical in AI Platform Core.
