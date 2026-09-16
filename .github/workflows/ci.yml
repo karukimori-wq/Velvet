@@ -43,6 +43,8 @@ jobs:
         run: npm run check:customer-sorting
       - name: Search boundary
         run: npm run check:search-boundary
+      - name: Query efficiency
+        run: npm run check:query-efficiency
       - name: Typecheck
         run: npm run typecheck
       - name: Build
