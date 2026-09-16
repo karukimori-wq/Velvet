@@ -2,11 +2,17 @@ import fs from "node:fs";
 const css=fs.readFileSync("app/mobile-fixes.css","utf8");
 const theme=fs.readFileSync("app/velvet-theme.css","utf8");
 const polish=fs.readFileSync("app/ux-polish.css","utf8");
+const surfacePolish=fs.readFileSync("app/surface-polish.css","utf8");
 const capturePolish=fs.readFileSync("app/capture-polish.css","utf8");
 const nav=fs.readFileSync("components/bottom-nav.tsx","utf8");
+const header=fs.readFileSync("components/app-header.tsx","utf8");
 const home=fs.readFileSync("app/page.tsx","utf8");
 const people=fs.readFileSync("app/people/page.tsx","utf8");
 const detail=fs.readFileSync("app/people/[customerId]/page.tsx","utf8");
+const search=fs.readFileSync("app/search/page.tsx","utf8");
+const add=fs.readFileSync("app/add/page.tsx","utf8");
+const schedule=fs.readFileSync("app/schedule/page.tsx","utf8");
+const settings=fs.readFileSync("app/settings/page.tsx","utf8");
 const composer=fs.readFileSync("components/capture-chat-input.tsx","utf8");
 const organize=fs.readFileSync("app/capture/organize/[captureId]/page.tsx","utf8");
 const organizeAction=fs.readFileSync("app/capture/organize/[captureId]/actions.ts","utf8");
@@ -20,12 +26,24 @@ const checks=[
  [nav,"navActive","active bottom navigation state"],
  [nav,'["＋", "覚える", "/capture"]',"explicit remember action label"],
  [nav,"captureNav","prominent remember action hook"],
+ [header,'["♙", "お客様", "/people"]',"plain-language drawer customer label"],
+ [header,'["＋", "覚える", "/capture"]',"drawer remember action"],
  [polish,".bottomNav .captureNav strong","prominent remember button styling"],
  [home,'className="primaryButton actionLink quickRemember"',"prominent home remember action"],
  [home,">＋ 覚える</Link>","home remember wording"],
  [people,"captureMiniAction","per-customer remember shortcut"],
  [people,"さんのことを覚える","customer remember shortcut accessibility"],
  [polish,".captureMiniAction","customer remember shortcut styling"],
+ [search,'<AppHeader title="探す" />',"search is a first-class app screen"],
+ [search,"誰のことを思い出しますか？","search intent is explicit"],
+ [search,"<BottomNav />","search keeps primary navigation"],
+ [surfacePolish,".searchIntro","search mobile polish"],
+ [add,'<AppHeader title="お客様を追加"',"new-customer screen uses app header"],
+ [add,"登録して、この人を覚える","new customer continues into memory"],
+ [schedule,"scheduleCustomerLink","schedule links back to customer context"],
+ [settings,'<AppHeader title="設定"/>',"settings uses app header"],
+ [settings,"プッシュ通知やメールは送りません","display-only reminder wording"],
+ [settings,"<BottomNav/>","settings keeps primary navigation"],
  [detail,">覚える</span>","customer detail remember action"],
  [detail,">思い出す</span>","customer detail recall action"],
  [detail,">次につなぐ</span>","customer detail next action"],
