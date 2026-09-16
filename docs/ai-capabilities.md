@@ -1,108 +1,36 @@
-# Velvet AI Capabilities v0.1
+# Velvet AI Capabilities v1.0
 
 ## Principle
+Velvet is not AI-first. AI Platform Core is background infrastructure for user-triggered convenience. AI returns interpretations/candidates; Velvet remains responsible for authorized retrieval and confirmed professional memory.
 
-Velvet is not an AI-first user experience. AI Platform Core is used as background infrastructure for user-triggered convenience.
+## Capture organization
+Current capability family structures user-authored Capture into candidate memory. Send only the minimum scoped context needed: authenticated workspace/user attribution, Growth Engine `customerId` reference when relevant, Capture reference/raw text required for the explicit action, and optional Visit reference.
 
-AI must not become the source of truth for Velvet business data. Velvet owns the records; AI returns candidates, structured interpretations, or retrieval assistance.
+Persist raw Capture before invoking AI. On unavailable/invalid AI response, preserve raw input and use deterministic local organization where possible. Uncertain AI-derived changes require confirmation before canonical Velvet memory is mutated.
 
-## Capability: Capture Structure
+## Search
+Prefer deterministic local parsing/search when sufficient. Pro may use AI Platform Core for intent interpretation where it materially improves retrieval. Send the search phrase/minimum references, not the full customer database, timelines, gifts, images or unrelated private context.
 
-Purpose: convert user-provided Capture text/voice transcript into structured candidate updates.
-
-Suggested capability name:
-
-`velvet.capture.structure.v1`
-
-Velvet sends only the minimum scoped context necessary, such as:
-
-```json
-{
-  "workspaceId": "ws_xxx",
-  "userId": "usr_xxx",
-  "sourceApp": "velvet",
-  "capability": "velvet.capture.structure.v1",
-  "inputRef": "capture_xxx",
-  "context": {
-    "personRef": "person_xxx",
-    "visitRef": "visit_xxx"
-  }
-}
-```
-
-The raw text/transcript may be provided only when the user explicitly triggered organization and only as needed for the capability.
-
-Expected result is a candidate structure, not committed records.
-
-Example result:
-
-```json
-{
-  "status": "success",
-  "candidates": [
-    {
-      "type": "knowledge",
-      "category": "favorite_drink",
-      "value": "響"
-    },
-    {
-      "type": "schedule",
-      "subject": "大阪出張",
-      "dateText": "来月"
-    }
-  ]
-}
-```
-
-Velvet validates, previews and receives user confirmation before commit.
-
-## Capability: Natural-language Search
-
-Suggested capability name:
-
-`velvet.search.interpret.v1`
-
-Purpose: interpret a user-entered natural-language query into safe Velvet search filters or references.
-
-Example user query:
-
-`去年誕生日に財布をあげた人`
-
-AI Platform Core should return interpreted filter intent. Velvet performs canonical data retrieval locally/server-side against Velvet-owned records.
-
-Do not send the entire customer dataset to AI Platform Core merely to answer search.
-
-## Capability: Suggestion Ranking
-
-Suggested capability name:
-
-`velvet.suggestion.rank.v1`
-
-This is optional. Prefer deterministic ranking first:
-
-1. person-specific frequency/recency
+## Suggestion ranking
+Prefer deterministic ranking:
+1. customer-specific frequency/recency
 2. user-level frequency/recency
 3. app defaults
 
-AI is only used if it materially reduces interaction and cannot be achieved cheaply/deterministically.
+AI ranking is optional and should exist only when it measurably reduces interaction.
 
-## AI usage and points
+## Usage
+AI Platform Core is canonical for AI activity/usage. Velvet must not create an independent usage ledger.
 
-AI Platform Core remains canonical owner of AI usage accounting.
-
-Velvet owns the commercial presentation of Velvet AI points and plan-specific price display, but must reconcile usage against AI Platform Core usage references.
-
-Free users may purchase AI points at a higher unit price. Pro users may purchase at a lower unit price. Pro does not imply unlimited AI.
+Purchasable AI points do not yet have an approved shared purchase/wallet contract. Do not display/decrement a fabricated point balance or implement local point purchasing until that contract exists.
 
 ## Forbidden patterns
-
-- automatic unsolicited daily coaching as default home content
-- silently changing person/visit/gift/schedule canonical data from an uncertain model inference
-- copying complete contact books to AI Platform Core
-- sending payment/card details to AI Platform Core
-- sending unrelated people when one person context is sufficient
-- using AI Platform Core as Velvet's customer/person source of truth
+- unsolicited AI sales coaching as the default Home experience
+- silent uncertain mutations
+- copying the full customer dataset to AI Platform Core
+- sending payment/card/sales data
+- using AI Platform Core as Customer or Velvet-memory source of truth
+- implementing AI as a reason to bypass Free/Pro history/feature gates
 
 ## Observability
-
-Cross-app calls should preserve platform observability conventions, including traceId/correlationId/requestId where defined by common contracts. Errors use the platform shared error/status conventions.
+Preserve trace/correlation/request identifiers where shared contracts define them. Operational telemetry must not contain raw Capture/private customer content.
