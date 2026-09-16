@@ -33,7 +33,7 @@ const checks = [
 ];
 
 const failed = checks.filter(([, ok]) => !ok);
-for (const [name, ok]) of checks) console.log(`${ok ? "PASS" : "FAIL"} ${name}`);
+for (const [name, ok] of checks) console.log(`${ok ? "PASS" : "FAIL"} ${name}`);
 if (failed.length) {
   console.error(`\nPlan enforcement guard failed: ${failed.length} check(s).`);
   process.exit(1);
