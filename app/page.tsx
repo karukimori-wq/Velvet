@@ -8,7 +8,7 @@ import { listScheduleEntries } from "@/lib/schedule-repository";
 import { visibleNextTopics } from "@/lib/next-topic";
 import { getPlanAccess, hasVelvetFeature } from "@/lib/plan-access";
 import { getOwnerPreferences } from "@/lib/owner-preferences";
-import { listProfessionalTimeline } from "@/lib/professional-timeline-repository";
+import { listVisitTimelinesByCustomer } from "@/lib/professional-timeline-repository";
 import { listDueNextActions } from "@/lib/professional-next-action-repository";
 import { buildSoonVisitAlert, sortSoonVisitAlerts, type SoonVisitAlert } from "@/lib/soon-alerts";
 import { startHomeVisitAction } from "./home-actions";
@@ -23,7 +23,8 @@ export default async function HomePage(){
   const customerById=new Map(customers.map(c=>[c.customerId,c])); const memoryByCustomer=new Map(memories.map(m=>[m.customerId,m])); const now=new Date(); const today=tokyoDate(now);
   const todayEntries=schedule.filter(entry=>tokyoDate(entry.startsAt)===today); const todayVisitors=todayEntries.filter(entry=>entry.kind==="visit"&&entry.customerId).sort((a,b)=>a.startsAt.localeCompare(b.startsAt)); const otherToday=todayEntries.filter(entry=>entry.kind!=="visit").sort((a,b)=>a.startsAt.localeCompare(b.startsAt));
   const allCustomerIds=[...new Set([...customers.map(c=>c.customerId),...memories.map(m=>m.customerId)])];
-  const soonAlerts=access.soonAlertsAllowed&&preferences.soonAlertsEnabled?sortSoonVisitAlerts((await Promise.all(allCustomerIds.map(async customerId=>buildSoonVisitAlert(customerId,await listProfessionalTimeline(workspaceId,userId,customerId))))).filter(isSoonAlert)).slice(0,5):[];
+  const visitByCustomer=access.soonAlertsAllowed&&preferences.soonAlertsEnabled?await listVisitTimelinesByCustomer(workspaceId,userId,allCustomerIds):new Map();
+  const soonAlerts=access.soonAlertsAllowed&&preferences.soonAlertsEnabled?sortSoonVisitAlerts(allCustomerIds.map(customerId=>buildSoonVisitAlert(customerId,visitByCustomer.get(customerId)??[])).filter(isSoonAlert)).slice(0,5):[];
   const followupAllowed=hasVelvetFeature(access,"followup.manage");
   const followupThrough=new Date(now.getTime()+7*24*60*60*1000);
   const dueFollowups=followupAllowed?await listDueNextActions(workspaceId,userId,followupThrough,5):[];
