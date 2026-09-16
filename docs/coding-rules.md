@@ -1,134 +1,51 @@
-# Velvet Coding Rules v0.1
+# Velvet Coding Rules v1.0
 
-## Product-first rule
-
-When implementation convenience conflicts with Velvet's UX principles, preserve the user experience unless doing so would create a material safety, privacy, correctness, or reliability problem.
+## Authority
+Read `docs/current-product-contract.md`, `docs/plan-enforcement-spec.md`, and current code before older design/domain documents. `professional-platform-contracts` is authoritative for cross-app contracts.
 
 ## Architecture
+- domain logic stays outside visual components
+- Growth Engine `customerId` is the customer reference; do not create a competing Velvet Customer/Person master
+- Growth Engine owns Reservation/Visit Schedule, Payment and Sales/Revenue truth
+- Velvet owns professional Visit/memory/timeline/Capture/gift/follow-up/display-schedule data
+- AI Platform Core owns AI runtime/activity/usage
+- Platform Admin receives operational state only
 
-- Keep domain logic independent from UI components.
-- Keep Velvet-owned domain entities separate from Growth Engine Customer/Payment/Sales entities.
-- Cross-app references are IDs/references, not copied canonical business records.
-- AI Platform Core owns AI runtime and usage accounting.
-- Platform Admin receives operational telemetry only.
-- SNS Planner receives only user-selected posting context needed for content creation.
+## Data
+- scope private records server-side by authenticated workspace/user/owner context
+- missing optional data is valid
+- Free history limits are visibility rules, not destructive deletion
+- plan restrictions require server-side enforcement
+- do not persist canonical sales amount, payment status, receivable ledger or revenue aggregates in Velvet
 
-## Naming
+## Capture
+- persist raw Capture before AI/rule processing
+- processing failure must not discard raw input
+- uncertain inferred changes require confirmation
+- retry should reuse stored raw Capture where possible
 
-Use stable domain terms consistently:
-- Person
-- Visit
-- VisitParticipant
-- Knowledge
-- Relationship
-- Gift
-- ScheduleEntry
-- SelfInvestmentEntry
-- Capture
-- CaptureCandidate
-- DictionaryEntry
-- MediaAsset
+## UI
+- mobile-first and one-thumb friendly
+- primary product verbs: 覚える / 思い出す / 次につなぐ
+- common actions target <=3 taps
+- avoid modal chains and unnecessary keyboard opening
+- do not promote pinning as core customer organization
+- do not add UI merely to expose AI
+- Business purchase/integration UI remains unavailable
 
-Do not use `Customer` for Velvet's personal-sales Person entity.
+## Plans
+Free: 30 customers, rolling 3-month history, no integrated full timeline, no Pro voice/follow-up/media/export/message-draft bypass.
 
-## API response status
+Pro: full retained history/integrated timeline plus current Pro capabilities. `business` may be recognized for compatibility but `business.integrations` stays disabled.
 
-Top-level observability/business operation status must use:
-- `success`
-- `warning`
-- `error`
-- `skipped`
+## Persistence
+Cloudflare D1/R2 is the current production path. PostgreSQL/in-memory code is compatibility/development support. New persistence work must verify D1 behavior and production workflow migration implications.
 
-Domain-specific states belong in explicit fields such as `captureStatus`, `visitStatus`, or `importStatus`.
-
-## Observability
-
-Maintain where available:
-- `traceId`
-- `correlationId`
-- `requestId`
-- `sourceApp`
-- `targetApp`
-- `operation`
-- `eventName`
-- `status`
-- `statusCode`
-- `durationMs`
-- `errorCode`
-- `occurredAt`
-
-Never include contact details, raw Capture text, personal notes, payment details, or images in observability payloads.
-
-## Data rules
-
-- All user-owned records must be scoped to authenticated owner/workspace context.
-- Missing optional data is valid.
-- Do not require artificial completeness before persisting a useful record.
-- Prefer soft-delete where recovery is valuable.
-- Free historical limits are query/entitlement rules, not destructive deletion.
-- Server-side enforcement is required for plan restrictions such as image upload.
-
-## Capture rules
-
-- Preserve raw Capture before AI/rules processing.
-- Processing failure must never discard the raw input.
-- Inferred candidates remain in `CaptureCandidate` until accepted.
-- Never silently mutate canonical records from uncertain AI output.
-- A retry must reuse existing raw Capture rather than requiring re-entry.
-
-## Suggestion rules
-
-Rank suggestions using:
-1. person-specific history
-2. user-specific recency/frequency
-3. application defaults
-
-Suggestions may reorder UI choices but must not silently commit a value.
-
-## UI rules
-
-- Mobile-first.
-- Common actions target <= 3 taps.
-- Avoid explicit Save buttons for safe quick actions.
-- Prefer Undo/edit over forcing confirmation for deterministic actions.
-- Prefer chips/stamps/recent values before keyboard input.
-- Avoid modal chains.
-- Do not foreground unsolicited AI sales coaching.
-- Do not add UI solely to expose an AI feature.
-
-## API validation
-
-Validate:
-- authenticated ownership
-- schema/type correctness
-- plan entitlements
-- references belong to same scope
-- import schema version
-- allowed enum values
-
-Return machine-readable error codes.
-
-## Cross-app privacy
-
-Velvet -> AI Platform Core: send minimum necessary scoped context. Do not send unrelated contacts, full person database, full payment history, or image library.
-
-Velvet -> SNS Planner: send only user-selected posting intent/context. Never auto-share private Person/Visit/Gift/Knowledge records.
-
-Velvet -> Platform Admin: operational state only, not canonical personal-sales data.
+## Observability/privacy
+Top-level operational status uses `success | warning | error | skipped`. Preserve trace/correlation/request identifiers where defined. Never log raw Capture, private notes, customer relationship context, images, credentials or payment details.
 
 ## Testing priority
-
-Prioritize tests for:
-- ownership isolation
-- Free/Pro entitlement enforcement
-- Visit start/end and duration
-- multi-person Visit shared fields
-- Capture preservation and candidate confirmation
-- suggestion ranking determinism
-- historical access window
-- JSON import validation/preview
-- cross-app denylist/privacy rules
+Prioritize ownership isolation, plan enforcement, Capture preservation, history-window bypass prevention, media authorization, follow-up/`そろそろ`, mobile UX, D1 migration/readiness and cross-app responsibility guards.
 
 ## Scope discipline
-
-Do not add store management, POS, payroll, proactive sales scoring, health tracking, tax filing, or automatic cross-channel messaging to v1.0 without an explicit requirements change.
+Do not add POS, payroll, tax filing, automatic messaging, proactive sales scoring, canonical billing, or Business features to the Free/Pro release without an explicit approved contract/requirement.
