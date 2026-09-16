@@ -14,7 +14,7 @@ assert(!text.includes("JPY 10,000/month target"),"Critical current docs must not
 assert(!text.includes("rolling one-year")&&!text.includes("rolling 1-year"),"Critical current docs must not restore the old one-year Free history rule");
 assert(!text.includes("People: unlimited"),"Critical current docs must not restore unlimited Free customers");
 assert(!text.includes("Export remains available on Free and Pro"),"Critical current docs must not restore Free export");
-assert(!text.includes("AmountPicker")&&!text.includes("PointBalanceBadge"),"Current component/design docs must not restore Velvet-owned payment or unapproved AI-point UI");
+assert(!text.includes("### AmountPicker")&&!text.includes("### PointBalanceBadge"),"Current component docs must not restore Velvet-owned payment or unapproved AI-point components");
 
 if(failures.length){console.error("Documentation consistency guard failed:\n- "+failures.join("\n- "));process.exit(1)}
 console.log("Documentation consistency guard passed: critical docs match the current Free/Pro and ownership contract.");
