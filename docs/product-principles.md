@@ -1,33 +1,33 @@
-# Velvet Product Principles v1.0
+# Velvet Product Principles v1.1
 
 ## Mission
-Make night-work easier by removing operational friction.
-
-Velvet does not tell users how to conduct sales activity. The user remains in control. AI quietly makes recording, organizing, retrieving, and reusing information easier.
+Make professional customer relationships easier to remember and continue. Velvet should feel valuable because **覚える → 思い出す → 次につなぐ** is faster than notes or spreadsheets.
 
 ## Principles
 1. Convenience first.
-2. User intent first; do not foreground unsolicited daily sales recommendations.
+2. User intent first; no unsolicited sales coaching dashboard.
 3. AI stays backstage.
-4. Never ask twice; reuse entered values as suggestions.
-5. No-form by default.
-6. No-save by default for safe atomic actions; provide undo/edit.
-7. Missing optional data is allowed.
-8. Do not return cleanup work to the user.
-9. Prefer ranked suggestions to autonomous uncertain decisions.
-10. One-thumb mobile UX.
-11. Common actions target three taps or fewer.
-12. Avoid the keyboard through stamps, recent values, learned suggestions and voice.
-13. Zero decision friction: users should not choose a database destination before capturing information.
-14. Pull before push: user-triggered assistance over unsolicited coaching.
-15. Every feature must justify its recurring interaction cost.
+4. Never ask twice when existing context can safely be reused.
+5. No-form by default; optional data stays optional.
+6. Preserve raw Capture before interpretation.
+7. Prefer deterministic behavior and ranked suggestions to uncertain autonomous decisions.
+8. One-thumb mobile UX; common actions target three taps or fewer.
+9. Avoid the keyboard through stamps/recent values/suggestions; Pro voice is a speed feature.
+10. Customer Detail must help the user recall someone in seconds.
+11. Free restrictions hide access, not silently destroy retained history.
+12. Pro value is better memory/recall/search/follow-up, not AI branding.
+13. `そろそろ` and due follow-ups inform the user; they do not become unsolicited push/email in the first release.
+14. Every feature must justify recurring interaction cost.
+15. Respect platform ownership: Velvet never becomes a shadow Customer/Payment/Sales system.
 
 ## UX targets
-- Visit start: <=2 taps from person context.
-- Visit end: 1 tap from active visit.
-- Payment method: 1 tap when the suggested option is correct.
-- Gift record: normally <=3 taps.
-- Quick Capture: normally <=30 seconds per guest after a visit.
-- Common search-to-answer target: <=5 seconds.
-- No explicit Save button for common quick-entry flows.
-- >=80% of common structured actions should be completable without opening the keyboard.
+- Visit start: <=2 taps from customer context
+- Visit end: 1 tap from active Visit
+- customer → Capture: 1 tap from list/detail
+- common Capture: normally <=30 seconds
+- Capture review: one primary confirm action plus easy correction
+- search-to-useful-result: target <=5 seconds for common local queries
+- common structured actions should usually be possible without opening the keyboard
+
+## Product boundary
+Growth Engine owns canonical Customer, Reservation, Payment and Sales/Revenue. AI Platform Core owns AI usage. Velvet owns professional memory and relationship continuity. Business capabilities remain outside the current Free/Pro release.
