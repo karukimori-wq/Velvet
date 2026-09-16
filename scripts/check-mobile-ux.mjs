@@ -13,7 +13,11 @@ const search=fs.readFileSync("app/search/page.tsx","utf8");
 const add=fs.readFileSync("app/add/page.tsx","utf8");
 const schedule=fs.readFileSync("app/schedule/page.tsx","utf8");
 const settings=fs.readFileSync("app/settings/page.tsx","utf8");
+const capture=fs.readFileSync("app/capture/page.tsx","utf8");
+const picker=fs.readFileSync("components/capture-person-picker.tsx","utf8");
 const composer=fs.readFileSync("components/capture-chat-input.tsx","utf8");
+const composerForm=fs.readFileSync("components/capture-composer-form.tsx","utf8");
+const captureAction=fs.readFileSync("app/capture/organize/actions.ts","utf8");
 const organize=fs.readFileSync("app/capture/organize/[captureId]/page.tsx","utf8");
 const organizeAction=fs.readFileSync("app/capture/organize/[captureId]/actions.ts","utf8");
 const checks=[
@@ -52,8 +56,17 @@ const checks=[
  [detail,"scheduleAdded","saved schedule confirmation"],
  [detail,"giftAdded","saved gift confirmation"],
  [detail,"続けて覚える","post-save continuation action"],
+ [capture,"listRecentCaptureCustomerIds","capture picker uses recent customer context"],
+ [picker,"最近覚えた人","recent customer shortcut"],
+ [picker,"名前・呼び名で探す","capture customer search"],
+ [picker,"＋ 新しいお客様を追加","capture picker has no-dead-end add action"],
  [composer,"webkitSpeechRecognition","iPhone/Safari speech fallback"],
  [composer,"stampGrid","stamp palette"],
+ [composerForm,"useActionState","capture save errors stay on the input screen"],
+ [composerForm,"入力した内容はこの画面に残しています","capture failure explicitly preserves draft"],
+ [composerForm,"保存しています…","capture pending feedback"],
+ [captureAction,'return { error: "save_failed" }',"capture persistence failure returns inline state"],
+ [capturePolish,".captureInlineError","capture inline error styling"],
  [organize,"この内容で覚える","clear review confirmation action"],
  [organize,"保存して、続けて覚える","review continuation action"],
  [organize,"入力を直す","review correction action"],
