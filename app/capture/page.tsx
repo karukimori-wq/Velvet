@@ -4,7 +4,7 @@ import { BottomNav } from "@/components/bottom-nav";
 import { CaptureComposerForm } from "@/components/capture-composer-form";
 import { CapturePersonPicker } from "@/components/capture-person-picker";
 import { getRequestIdentity } from "@/lib/auth/request-identity";
-import { getGrowthCustomer,listGrowthCustomers } from "@/lib/growth-engine-customer";
+import { getGrowthCustomer,listGrowthCustomersWithStatus } from "@/lib/growth-engine-customer";
 import { getCustomerMemory } from "@/lib/customer-memory-repository";
 import { listCaptures } from "@/lib/capture-repository";
 import { listRecentCaptureCustomerIds } from "@/lib/recent-capture-customers";
@@ -17,8 +17,8 @@ export default async function CapturePage({searchParams}:{searchParams:Promise<{
   const {customerId,saved,error,fromVisit}=await searchParams;
   const {workspaceId,userId,ownerUserId}=await getRequestIdentity();
   if(!customerId){
-    const [customers,recentCustomerIds]=await Promise.all([listGrowthCustomers(workspaceId,userId),listRecentCaptureCustomerIds(workspaceId,userId,6)]);
-    return <main className="shell captureShell"><AppHeader title="覚える"/><section className="hero capturePickerHero"><h1>誰との時間を覚えておきますか？</h1><p>最近の人からすぐ選ぶか、名前で探せます。</p></section><CapturePersonPicker customers={customers} recentCustomerIds={recentCustomerIds}/><BottomNav/></main>
+    const [customerResult,recentCustomerIds]=await Promise.all([listGrowthCustomersWithStatus(workspaceId,userId),listRecentCaptureCustomerIds(workspaceId,userId,6)]);
+    return <main className="shell captureShell"><AppHeader title="覚える"/><section className="hero capturePickerHero"><h1>誰との時間を覚えておきますか？</h1><p>最近の人からすぐ選ぶか、名前で探せます。</p></section><CapturePersonPicker customers={customerResult.customers} recentCustomerIds={recentCustomerIds} sourceStatus={customerResult.status}/><BottomNav/></main>
   }
   const [customer,memory,captures,access]=await Promise.all([getGrowthCustomer(workspaceId,userId,customerId),getCustomerMemory(workspaceId,userId,customerId),listCaptures(workspaceId,userId,customerId),getPlanAccess(ownerUserId)]);
   const displayName=customer?.displayName??memory?.displayNameSnapshot??"お客様";
