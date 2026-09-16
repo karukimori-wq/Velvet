@@ -1,281 +1,52 @@
-# Velvet Database Schema v0.1
+# Velvet Database Schema v1.0
 
-This schema is implementation-oriented and follows the current domain model. Exact SQL/ORM syntax may vary by stack, but ownership and relationships should remain stable.
+`cloudflare/schema.sql` is the executable Cloudflare D1 schema for current production. PostgreSQL migrations remain compatibility/development assets and must not override the D1 production contract.
 
-## Scope and tenancy
+## Scope
+Customer-related professional data uses `workspace_id`, `user_id`, and Growth Engine `customer_id`. Owner-level settings/entitlements use `owner_user_id`. Every read/write must enforce the authenticated scope server-side.
 
-All records are scoped to the authenticated owner/workspace context.
+## Tables
+### `velvet_customer_memories`
+Professional memory snapshot only. `customer_id` references Growth Engine Customer. `display_name_snapshot` is not a competing Customer master. Legacy `pinned` may remain in storage for compatibility but pinning is not a promoted current UI feature.
 
-Common fields where applicable:
-- `id`
-- `workspaceId`
-- `ownerUserId`
-- `createdAt`
-- `updatedAt`
-- `deletedAt` nullable for soft delete where useful
+### `velvet_professional_visits`
+Velvet-owned interaction history: `visited_at`, optional `ended_at`/duration, service/seating/conversation/preference/caution/next-action/summary fields, plus optional `reservation_id` and `visit_schedule_id` references. No canonical sales/payment columns.
 
-MVP must not require `professionalId`.
+### `velvet_professional_timeline`
+Chronological customer memory with `event_type`, title/body and optional `source_ref`.
 
-## Person
+### `velvet_professional_next_actions`
+Follow-up text/status with optional `due_at` and `completed_at`. Production workflow conditionally adds `due_at` for older D1 databases before applying the schema.
 
-Represents a Velvet-owned personal sales contact. This is not the shared Growth Engine Customer entity.
+### `velvet_professional_captures`
+Raw user input with kind/text/timestamp. Preserve before AI organization.
 
-Fields:
-- `personId`
-- `workspaceId`
-- `ownerUserId`
-- `displayName`
-- `nickname` nullable
-- `birthday` nullable
-- `ageRange` nullable
-- `phone` nullable
-- `email` nullable
-- `lineHandle` nullable
-- `instagramHandle` nullable
-- `xHandle` nullable
-- `tiktokHandle` nullable
-- `otherContactsJson` nullable
-- `occupation` nullable
-- `company` nullable
-- `area` nullable
-- `rank` nullable, user-defined
-- `primaryImageRef` nullable, Pro only
-- `growthCustomerRef` nullable, future explicit opt-in mapping only
-- timestamps
+### `velvet_professional_gifts`
+Gift direction/item/occasion/memo/occurred timestamp as professional memory.
 
-Indexes:
-- `(workspaceId, ownerUserId, displayName)`
-- `(workspaceId, ownerUserId, updatedAt)`
+### `velvet_professional_schedule_entries`
+Velvet display schedule with optional customer and Growth Engine `visit_schedule_id` reference.
 
-## Visit
+### `velvet_capture_dictionary`
+Normalized reusable suggestions with usage count and last-used timestamp.
 
-Fields:
-- `visitId`
-- `workspaceId`
-- `ownerUserId`
-- `visitDate`
-- `arrivalAt` nullable
-- `departureAt` nullable
-- `durationMinutes` nullable, derived
-- `visitContext` nullable
-- `salesAmount` nullable
-- `paymentMethod` nullable
-- `receivableAmount` nullable
-- `receivableStatus` nullable
-- `nominationType` nullable
-- `accompanimentFlag` nullable
-- `afterHoursFlag` nullable
-- `orderSummaryJson` nullable
-- `noteSummary` nullable
-- timestamps
+### `velvet_professional_relationships`
+Explicit relationship memory between two Growth Engine customer references.
 
-Indexes:
-- `(workspaceId, ownerUserId, visitDate desc)`
-- `(workspaceId, ownerUserId, arrivalAt desc)`
+### `velvet_owner_entitlements`
+Local plan projection (`free | pro | business`) and status. Billing/payment truth is external.
 
-## VisitParticipant
+### `velvet_owner_preferences`
+Owner UX preferences, currently including `soon_alerts_enabled`.
 
-Fields:
-- `visitParticipantId`
-- `visitId`
-- `personId`
-- `role` nullable
-- `personSpecificSalesAmount` nullable
-- timestamps
+### `velvet_notes`, `velvet_self_investments`, `velvet_roundtrip_checks`
+Scoped professional notes, lightweight self-investment entries, and operational persistence verification respectively.
 
-Unique:
-- `(visitId, personId)`
+## R2
+Media bytes are not stored in D1. Pro media uses R2 binding `MEDIA`, bucket `velvetmedia`; authorization is checked against owner/customer-scoped metadata before retrieval/deletion.
 
-## Knowledge
+## Excluded schema
+Never add a Velvet Customer master, Payment ledger, Sales/Revenue ledger, receivable ledger, or canonical Reservation table without a new approved platform contract. Growth Engine owns those domains. AI Platform Core owns AI usage/activity.
 
-Small searchable facts about a person.
-
-Fields:
-- `knowledgeId`
-- `workspaceId`
-- `ownerUserId`
-- `personId`
-- `category`
-- `value`
-- `normalizedValue` nullable
-- `sourceType` (`manual`, `capture`, `import`, `system`)
-- `sourceRef` nullable
-- `confidence` nullable; advisory only
-- `occurredAt` nullable
-- timestamps
-
-Examples categories: hobby, favoriteDrink, food, smoking, work, travel, pet, preference, ngTopic, other.
-
-Indexes:
-- `(workspaceId, ownerUserId, personId, category)`
-- search index on `value`/`normalizedValue` as supported by selected database.
-
-## Relationship
-
-Fields:
-- `relationshipId`
-- `workspaceId`
-- `ownerUserId`
-- `fromPersonId`
-- `toPersonId`
-- `relationshipType`
-- `note` nullable
-- `confirmedByUser` boolean default true
-- timestamps
-
-Examples: friend, coworker, boss, subordinate, family, partner, referral, client, other.
-
-Do not auto-create semantic relationships solely from co-visit data.
-
-## Gift
-
-Fields:
-- `giftId`
-- `workspaceId`
-- `ownerUserId`
-- `personId`
-- `direction` (`received`, `given`)
-- `item`
-- `occasion` nullable
-- `estimatedValue` nullable
-- `giftDate`
-- `memo` nullable
-- `imageRef` nullable, Pro only
-- timestamps
-
-## ScheduleEntry
-
-Fields:
-- `scheduleEntryId`
-- `workspaceId`
-- `ownerUserId`
-- `personId` nullable
-- `entryType`
-- `title`
-- `startAt` nullable
-- `endAt` nullable
-- `allDay` boolean default false
-- `recurrenceJson` nullable
-- `memo` nullable
-- timestamps
-
-Examples entryType: shift, dayOff, plannedVisit, birthday, trip, unavailableWindow, appointment, accompaniment, event, selfInvestment.
-
-## SelfInvestmentEntry
-
-Fields:
-- `selfInvestmentEntryId`
-- `workspaceId`
-- `ownerUserId`
-- `entryDate`
-- `category`
-- `amount`
-- `memo` nullable
-- timestamps
-
-## Capture
-
-Raw user-triggered input that must never be lost even if organization fails.
-
-Fields:
-- `captureId`
-- `workspaceId`
-- `ownerUserId`
-- `personId` nullable
-- `visitId` nullable
-- `inputType` (`stamp`, `suggestion`, `text`, `voice`)
-- `rawText` nullable
-- `rawPayloadJson` nullable
-- `status` (`raw`, `processing`, `candidate_ready`, `confirmed`, `failed`)
-- `aiActivityRef` nullable
-- timestamps
-
-## CaptureCandidate
-
-AI- or rules-derived candidate updates awaiting user confirmation.
-
-Fields:
-- `captureCandidateId`
-- `captureId`
-- `candidateType`
-- `targetPersonId` nullable
-- `candidatePayloadJson`
-- `confidence` nullable
-- `status` (`pending`, `accepted`, `rejected`, `edited`)
-- timestamps
-
-No inferred candidate may mutate canonical domain records before acceptance.
-
-## DictionaryEntry
-
-User-level reusable suggestions.
-
-Fields:
-- `dictionaryEntryId`
-- `workspaceId`
-- `ownerUserId`
-- `dictionaryType`
-- `value`
-- `normalizedValue` nullable
-- `usageCount` default 0
-- `lastUsedAt` nullable
-- timestamps
-
-Unique where practical:
-- `(workspaceId, ownerUserId, dictionaryType, normalizedValue)`
-
-## MediaAsset
-
-Pro-only image metadata.
-
-Fields:
-- `mediaAssetId`
-- `workspaceId`
-- `ownerUserId`
-- `personId` nullable
-- `giftId` nullable
-- `assetType`
-- `storageRef`
-- `mimeType`
-- `byteSize`
-- `width` nullable
-- `height` nullable
-- timestamps
-
-Free users must be blocked server-side from creating MediaAsset records.
-
-## SubscriptionSnapshot
-
-Velvet-local entitlement snapshot only. Billing provider state remains canonical in the billing system selected for Velvet.
-
-Fields:
-- `workspaceId`
-- `ownerUserId`
-- `plan` (`free`, `pro`)
-- `historyAccessDays` nullable; Free target 365, Pro null/unlimited
-- `imagesEnabled`
-- `advancedSearchEnabled`
-- `snsPlannerIntegrationEnabled`
-- `updatedAt`
-
-## AI Point Display Cache
-
-AI Platform Core is canonical for AI usage/points accounting. Velvet may cache the current display balance/status.
-
-Fields:
-- `workspaceId`
-- `ownerUserId`
-- `balanceSnapshot`
-- `pricingTierSnapshot`
-- `sourceUpdatedAt`
-- `cachedAt`
-
-This is not an independent usage ledger.
-
-## Retention rule
-
-Free plan historical access is a visibility/entitlement rule, not a destructive deletion rule. Queries should enforce the accessible window while retained records remain stored according to the production retention policy.
-
-## Privacy
-
-Contact data, raw Capture text and personal relationship notes are sensitive application data. They must not be placed in observability events, analytics payloads, URLs, or cross-app messages except where explicitly required and contractually allowed.
+## Plan retention
+Free history visibility is rolling 3 months and non-destructive. Pro can access retained full history. Free image creation/upload and Free export are blocked according to current plan policy.
