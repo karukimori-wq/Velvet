@@ -20,6 +20,9 @@ function invalidSelection(customerId: string | undefined, fromVisit: string | un
   redirect(`/capture?${params.toString()}`);
 }
 function values(formData: FormData, name: string) { return formData.getAll(name).map(String).map(value => value.trim()).filter(Boolean); }
+async function recordDictionaryUseBestEffort(workspaceId: string, userId: string, value: string, category: string) {
+  try { await recordDictionaryUse(workspaceId, userId, value, category); } catch { /* suggestions must never block canonical memory saves */ }
+}
 
 export async function confirmKnowledgeCandidatesAction(captureId: string, fromVisit: string | undefined, formData: FormData) {
   const { workspaceId, userId, ownerUserId } = await getRequestIdentity();
@@ -51,17 +54,14 @@ export async function confirmKnowledgeCandidatesAction(captureId: string, fromVi
     const mergedNextTopics = mergeNextTopics(memory?.nextTopicHint, nextTopics);
     if (tags.length > INPUT_LIMITS.memoryTags || tags.some(tag => tag.length > INPUT_LIMITS.memoryTag) || mergedPreferences.join("、").length > INPUT_LIMITS.memoryField || (mergedNextTopics?.length ?? 0) > INPUT_LIMITS.memoryField) invalidSelection(capture.customerId, fromVisit);
     memoryChangeCount = changes.length;
-    for (const value of [...memoryTags, ...selected]) await recordDictionaryUse(workspaceId, userId, value, "knowledge");
-    for (const value of preferences) await recordDictionaryUse(workspaceId, userId, value, "hobby");
     await upsertCustomerMemory(workspaceId, userId, capture.customerId, { tags, ...(mergedPreferences.length ? { preferenceNote: mergedPreferences.join("、") } : {}), ...(mergedNextTopics ? { nextTopicHint: mergedNextTopics } : {}), lastInteractionSummary: capture.value });
     if (changes.length) {
       const body = changes.map(change => change.kind === "changed" ? `${change.label}：${change.previousValues.join("・")} → ${change.value}` : change.kind === "added" ? `${change.label}：${change.value} を追加` : `${change.label}：${change.value}`).join("\n");
       await addIdempotentProfessionalTimelineItem({ workspaceId, userId, customerId: capture.customerId, eventType: "note", title: "この人について更新", body, sourceRef: capture.id, idempotencyKey: `capture:${capture.id}:memory-change` });
     }
-  } else {
-    for (const value of [...memoryTags, ...selected]) await recordDictionaryUse(workspaceId, userId, value, "knowledge");
-    for (const value of preferences) await recordDictionaryUse(workspaceId, userId, value, "hobby");
   }
+  for (const value of [...memoryTags, ...selected]) await recordDictionaryUseBestEffort(workspaceId, userId, value, "knowledge");
+  for (const value of preferences) await recordDictionaryUseBestEffort(workspaceId, userId, value, "hobby");
 
   let scheduleCount = 0;
   for (let i = 0; i < scheduleValues.length; i += 1) {
@@ -77,7 +77,7 @@ export async function confirmKnowledgeCandidatesAction(captureId: string, fromVi
       const item = String(formData.get(`giftValue-${i}`) ?? "").trim(); const raw = String(formData.get(`giftDirection-${i}`) ?? "skip").trim();
       if (!item || !["received", "given"].includes(raw)) continue;
       await createGift({ workspaceId, userId, customerId: capture.customerId, direction: raw as GiftDirection, item, note: "会話から追加", idempotencyKey: `capture:${capture.id}:gift:${i}` });
-      await recordDictionaryUse(workspaceId, userId, item, "gift"); giftCountSaved += 1;
+      await recordDictionaryUseBestEffort(workspaceId, userId, item, "gift"); giftCountSaved += 1;
     }
   }
 
