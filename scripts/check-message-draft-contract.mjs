@@ -2,6 +2,8 @@ import fs from "node:fs";
 
 const adapter = fs.readFileSync("lib/message-draft.ts", "utf8");
 const action = fs.readFileSync("app/people/[customerId]/message/actions.ts", "utf8");
+const form = fs.readFileSync("components/message-draft-form.tsx", "utf8");
+const page = fs.readFileSync("app/people/[customerId]/message/page.tsx", "utf8");
 const statusRoute = fs.readFileSync("app/api/message-drafts/status/route.ts", "utf8");
 
 const failures = [];
@@ -27,6 +29,13 @@ for (const field of ["messageDraftId", "messageDraftStatus", "eventName", "trace
 
 requireIn(action, 'inputRef: `velvet:customer:${customerId}`', "reference-only inputRef");
 requireIn(action, 'audienceSegment: "individual_customer"', "audience segment");
+requireIn(action, "draftText: result.draftText", "in-page draft result");
+requireIn(form, "useActionState", "private in-page action state");
+requireIn(form, "state.draftText", "draft rendered from action state");
+requireIn(page, "<MessageDraftForm", "message draft page uses private form state");
+forbidIn(action, "URLSearchParams", "message draft URL state");
+forbidIn(action, 'params.set("draftText"', "draft text in URL");
+forbidIn(page, 'value("draftText")', "draft text read from URL");
 
 for (const forbidden of ["paymentStatus", "salesAmount", "stripeSecret", "stripe_secret", "fullMeetingTranscript", "conversationSummary", "preferenceNote", "cautionNote", "lastInteractionSummary"]) {
   forbidIn(action, forbidden, "MessageDraft handoff data");
