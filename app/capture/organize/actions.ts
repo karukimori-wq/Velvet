@@ -4,29 +4,32 @@ import { redirect } from "next/navigation";
 import { getRequestIdentity } from "@/lib/auth/request-identity";
 import { createCapture } from "@/lib/capture-repository";
 
-export async function organizeCaptureAction(customerId: string | undefined, fromVisit: string | undefined, formData: FormData) {
+export type CaptureOrganizeState = { error?: "empty" | "save_failed" };
+
+export async function organizeCaptureAction(
+  customerId: string | undefined,
+  fromVisit: string | undefined,
+  _previousState: CaptureOrganizeState,
+  formData: FormData,
+): Promise<CaptureOrganizeState> {
   const { workspaceId, userId } = await getRequestIdentity();
   const value = String(formData.get("value") ?? "").trim();
-  const captureParams = new URLSearchParams();
-  if (customerId) captureParams.set("customerId", customerId);
-  if (fromVisit) captureParams.set("fromVisit", fromVisit);
 
-  if (!value) {
-    captureParams.set("error", "empty");
-    redirect(`/capture?${captureParams.toString()}`);
-  }
+  if (!value) return { error: "empty" };
 
-  const raw = await createCapture({
-    workspaceId,
-    userId,
-    customerId,
-    kind: customerId ? "conversation_note" : "free_text",
-    value,
-  });
-  if (!raw) {
-    captureParams.set("error", "invalid");
-    redirect(`/capture?${captureParams.toString()}`);
+  let raw;
+  try {
+    raw = await createCapture({
+      workspaceId,
+      userId,
+      customerId,
+      kind: customerId ? "conversation_note" : "free_text",
+      value,
+    });
+  } catch {
+    return { error: "save_failed" };
   }
+  if (!raw) return { error: "empty" };
 
   const organizeParams = new URLSearchParams();
   if (customerId) organizeParams.set("customerId", customerId);
