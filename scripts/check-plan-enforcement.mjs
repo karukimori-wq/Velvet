@@ -7,6 +7,9 @@ const searchPage = fs.readFileSync(new URL("../app/search/page.tsx", import.meta
 const capturesApi = fs.readFileSync(new URL("../app/api/captures/route.ts", import.meta.url), "utf8");
 const giftsApi = fs.readFileSync(new URL("../app/api/gifts/route.ts", import.meta.url), "utf8");
 const visitApi = fs.readFileSync(new URL("../app/api/visits/[visitId]/route.ts", import.meta.url), "utf8");
+const visitPage = fs.readFileSync(new URL("../app/visits/[visitId]/page.tsx", import.meta.url), "utf8");
+const organizePage = fs.readFileSync(new URL("../app/capture/organize/[captureId]/page.tsx", import.meta.url), "utf8");
+const organizeAction = fs.readFileSync(new URL("../app/capture/organize/[captureId]/actions.ts", import.meta.url), "utf8");
 
 const checks = [
   ["Free customer limit is 30", /customerLimit:\s*30/.test(source)],
@@ -27,7 +30,11 @@ const checks = [
   ["Advanced search is gated by plan", /advancedSearchAllowed/.test(searchPage) && /hasVelvetFeature\(access,\s*["']history\.search["']\)/.test(searchPage)],
   ["Free search stays profile-only", /captureResults\s*=\s*advancedSearchAllowed\s*&&\s*terms\.length/.test(searchPage) && /giftResults\s*=\s*advancedSearchAllowed\s*&&\s*terms\.length/.test(searchPage)],
   ["Capture API enforces Free history window", /getPlanAccess\(ownerUserId\)/.test(capturesApi) && /isWithinHistoryWindow\(capture\.createdAt,\s*access\)/.test(capturesApi)],
-  ["Visit detail API enforces Free history window", /getPlanAccess\(ownerUserId\)/.test(visitApi) && /isWithinHistoryWindow\(visit\.visitedAt,\s*access\)/.test(visitApi) && /PRO_REQUIRED/.test(visitApi)],
+  ["Visit detail API enforces completed Free history window", /getPlanAccess\(ownerUserId\)/.test(visitApi) && /visit\.endedAt\s*&&\s*!isWithinHistoryWindow\(visit\.visitedAt,\s*access\)/.test(visitApi) && /PRO_REQUIRED/.test(visitApi)],
+  ["Visit page filters recall captures by Free history window", /visibleCaptures\s*=\s*captures\.filter\(capture\s*=>\s*isWithinHistoryWindow\(capture\.createdAt,\s*access\)\)/.test(visitPage) && /captures:\s*visibleCaptures/.test(visitPage)],
+  ["Visit page locks completed visits outside Free history", /!visit\.endedAt\s*\|\|\s*isWithinHistoryWindow\(visit\.visitedAt,\s*access\)/.test(visitPage)],
+  ["Capture organize page blocks old Free captures before AI", /!isWithinHistoryWindow\(capture\.createdAt,\s*access\)/.test(organizePage) && organizePage.indexOf("history_window") < organizePage.indexOf("structureCapture(capture.value")],
+  ["Capture organize mutation blocks old Free captures", /getPlanAccess\(ownerUserId\)/.test(organizeAction) && /!isWithinHistoryWindow\(capture\.createdAt,\s*access\)/.test(organizeAction)],
   ["Gift history API is Pro gated", /hasVelvetFeature\(access,\s*["']history\.gifts["']\)/.test(giftsApi) && /PRO_REQUIRED/.test(giftsApi)],
   ["Business integrations cannot be enabled", /feature === ["']business\.integrations["']\) return false/.test(source)],
   ["Business remains unavailable", /plan === ["']business["'][\s\S]*?businessAvailable:\s*false/.test(source)],
