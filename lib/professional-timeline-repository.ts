@@ -16,6 +16,7 @@ export type ProfessionalTimelineItem = {
 
 const rows: ProfessionalTimelineItem[] = [];
 const makeId = () => `note_${Date.now().toString(36)}_${Math.random().toString(36).slice(2, 8)}`;
+const D1_ID_CHUNK = 80;
 
 type Row = {
   id: string;
@@ -41,6 +42,18 @@ const map = (row: Row): ProfessionalTimelineItem => ({
   sourceRef: row.source_ref ?? undefined,
 });
 
+function groupByCustomer(customerIds: string[], items: ProfessionalTimelineItem[]) {
+  const result = new Map<string, ProfessionalTimelineItem[]>(customerIds.map(id => [id, []]));
+  for (const item of items) result.get(item.customerId)?.push(item);
+  return result;
+}
+
+function chunks<T>(values: T[], size: number) {
+  const result: T[][] = [];
+  for (let index = 0; index < values.length; index += size) result.push(values.slice(index, index + size));
+  return result;
+}
+
 export async function listProfessionalTimeline(workspaceId: string, userId: string, customerId: string) {
   const db = await getD1Database();
   if (db) {
@@ -51,6 +64,29 @@ export async function listProfessionalTimeline(workspaceId: string, userId: stri
   if (mode !== "postgres") return rows.filter(row => row.workspaceId === workspaceId && row.userId === userId && row.customerId === customerId).sort((a, b) => b.occurredAt.localeCompare(a.occurredAt));
   const result = await dbQuery<Row>(`select id,workspace_id,user_id,customer_id,occurred_at::text,event_type,title,body,source_ref from velvet_professional_timeline where workspace_id=$1 and user_id=$2 and customer_id=$3 order by occurred_at desc`, [workspaceId, userId, customerId]);
   return result.rows.map(map);
+}
+
+/** Batch visit-only reads for Home/People discovery. Avoids one D1 query per customer. */
+export async function listVisitTimelinesByCustomer(workspaceId: string, userId: string, customerIds: string[]) {
+  const uniqueIds = [...new Set(customerIds.filter(Boolean))];
+  if (!uniqueIds.length) return new Map<string, ProfessionalTimelineItem[]>();
+  const allowed = new Set(uniqueIds);
+  const db = await getD1Database();
+  if (db) {
+    const resultRows: Row[] = [];
+    for (const batch of chunks(uniqueIds, D1_ID_CHUNK)) {
+      const placeholders = batch.map(() => "?").join(",");
+      const result = await db.prepare(`select id,workspace_id,user_id,customer_id,occurred_at,event_type,title,body,source_ref from velvet_professional_timeline where workspace_id=? and user_id=? and event_type='visit' and customer_id in (${placeholders}) order by customer_id,occurred_at desc`).bind(workspaceId, userId, ...batch).all<Row>();
+      resultRows.push(...result.results);
+    }
+    return groupByCustomer(uniqueIds, resultRows.map(map));
+  }
+  if (getStorageMode() !== "postgres") {
+    const items = rows.filter(row => row.workspaceId === workspaceId && row.userId === userId && row.eventType === "visit" && allowed.has(row.customerId)).sort((a, b) => a.customerId.localeCompare(b.customerId) || b.occurredAt.localeCompare(a.occurredAt));
+    return groupByCustomer(uniqueIds, items);
+  }
+  const query = await dbQuery<Row>(`select id,workspace_id,user_id,customer_id,occurred_at::text,event_type,title,body,source_ref from velvet_professional_timeline where workspace_id=$1 and user_id=$2 and event_type='visit' and customer_id=any($3::text[]) order by customer_id,occurred_at desc`, [workspaceId, userId, uniqueIds]);
+  return groupByCustomer(uniqueIds, query.rows.map(map));
 }
 
 export async function getProfessionalTimelineItem(workspaceId: string, userId: string, customerId: string, id: string) {
@@ -66,15 +102,19 @@ export async function getProfessionalTimelineItem(workspaceId: string, userId: s
 }
 
 export async function listLatestConversationsByCustomer(workspaceId: string, userId: string, customerIds: string[]) {
+  const uniqueIds = [...new Set(customerIds.filter(Boolean))];
   const result = new Map<string, ProfessionalTimelineItem>();
-  if (!customerIds.length) return result;
-  const allowed = new Set(customerIds);
+  if (!uniqueIds.length) return result;
+  const allowed = new Set(uniqueIds);
   const db = await getD1Database();
   if (db) {
-    for (const id of customerIds) {
-      const items = await listProfessionalTimeline(workspaceId, userId, id);
-      const item = items.find(entry => entry.eventType === "conversation");
-      if (item) result.set(id, item);
+    for (const batch of chunks(uniqueIds, D1_ID_CHUNK)) {
+      const placeholders = batch.map(() => "?").join(",");
+      const query = await db.prepare(`select id,workspace_id,user_id,customer_id,occurred_at,event_type,title,body,source_ref from velvet_professional_timeline where workspace_id=? and user_id=? and event_type='conversation' and customer_id in (${placeholders}) order by customer_id,occurred_at desc`).bind(workspaceId, userId, ...batch).all<Row>();
+      for (const row of query.results) {
+        const item = map(row);
+        if (!result.has(item.customerId)) result.set(item.customerId, item);
+      }
     }
     return result;
   }
@@ -84,7 +124,7 @@ export async function listLatestConversationsByCustomer(workspaceId: string, use
     });
     return result;
   }
-  const query = await dbQuery<Row>(`select distinct on (customer_id) id,workspace_id,user_id,customer_id,occurred_at::text,event_type,title,body,source_ref from velvet_professional_timeline where workspace_id=$1 and user_id=$2 and event_type='conversation' and customer_id=any($3::text[]) order by customer_id,occurred_at desc`, [workspaceId, userId, customerIds]);
+  const query = await dbQuery<Row>(`select distinct on (customer_id) id,workspace_id,user_id,customer_id,occurred_at::text,event_type,title,body,source_ref from velvet_professional_timeline where workspace_id=$1 and user_id=$2 and event_type='conversation' and customer_id=any($3::text[]) order by customer_id,occurred_at desc`, [workspaceId, userId, uniqueIds]);
   return new Map(query.rows.map(row => {
     const item = map(row);
     return [item.customerId, item] as const;
