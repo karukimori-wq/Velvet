@@ -1,49 +1,37 @@
-# Velvet Auth and Permissions v0.2
-
-## Product scope
-Velvet v1.0 is individual-use only. There is no store dashboard, team role hierarchy, shared customer workspace, or staff visibility model.
+# Velvet Auth and Permissions v1.0
 
 ## Identity
-Use the platform MVP identity pattern:
-- `workspaceId`: primary scope
-- `userId`: acting logged-in user
-- `ownerUserId`: workspace owner
+MVP identity is `workspaceId + userId`, with `ownerUserId` for owner-level entitlement/preferences. `professionalId` is not required.
 
-`professionalId` is not mandatory in MVP.
-
-All public reads and writes resolve identity through `lib/auth/request-identity.ts`. Repository calls receive `ownerUserId` explicitly; public forms/query parameters must never choose the owner scope.
+All private reads/writes resolve identity server-side through `lib/auth/request-identity.ts`. Client form/query values cannot choose another user's scope.
 
 ## Auth modes
-- `demo`: local development only.
-- `fixed_owner`: private single-user development/testing only.
-- `session`: public production mode.
+- `clerk`: current public production mode
+- `session`: trusted session-bridge mode
+- `fixed_owner`: development/testing only; forbidden in public production
+- `demo`: local/safe preview only; forbidden in normal production
 
-In `session` mode, Velvet currently accepts identity from a trusted upstream auth/session bridge only when the server-only `VELVET_SESSION_BRIDGE_SECRET` matches. The bridge provides `x-velvet-user-id`, `x-velvet-owner-user-id`, and `x-velvet-workspace-id`. Direct public requests without the trusted bridge are rejected.
+In Clerk mode, ordinary browser identity comes from Clerk. A request carrying the server-only `VELVET_SESSION_BRIDGE_SECRET` may use trusted identity headers for production E2E/service checks. Untrusted public headers do not select identity.
 
-When a final provider such as Auth.js, Clerk, or another platform identity provider is selected, replace the bridge implementation inside the request-identity adapter rather than changing repository contracts.
+## Data access
+Customer-related professional records require the authenticated `workspaceId + userId + customerId` scope. `customerId` references Growth Engine Customer; it does not grant access by itself.
 
-## Access rule
-A user can read and write only Velvet records scoped to the authenticated user's permitted owner/workspace context. Cross-user access is denied by default.
+## Entitlements
+`velvet_owner_entitlements` is a local feature-access projection. Missing/inactive entitlement resolves safely to Free. It is not canonical payment/subscription state.
 
-## Data ownership
-Velvet personal-sales records are private to the individual user unless an explicit future sharing feature is designed and approved. No implicit store/operator access exists.
+## Plan permissions
+Free: 30-customer limit, rolling 3-month history, no integrated full timeline, no voice/message-draft/follow-up/media/export bypass.
+
+Pro: full retained history and current Pro capabilities. Business integration remains disabled even though `business` is recognized as a compatibility PlanId.
+
+## Media
+Free upload is rejected server-side. Pro R2 upload/read/delete requires owner/customer authorization. Object keys are not authorization credentials.
+
+## Export
+JSON export is Pro-only under the current release policy and must remain owner-authorized. Export must not become a hidden bypass for another user's data.
 
 ## Sensitive data
-Contact information, relationship notes, visit history, gifts, Capture text, and personal knowledge must be treated as sensitive application data. Avoid placing them in logs, traces, analytics payloads, or cross-app operational events.
-
-## Plan entitlement
-Free/Pro entitlement is owner-scoped. In PostgreSQL mode the canonical Velvet entitlement record is `velvet_owner_entitlements`. Missing/expired records resolve safely to Free.
-
-## Images
-Free plan cannot upload/store Velvet images. Pro image access must be feature-gated server-side, not merely hidden in UI. Image storage/upload transport is still a separate production task.
-
-## Import/export
-Only the authenticated owner may import into or export from the scoped Velvet workspace. Export remains available on Free and Pro and may include archived records that are outside the Free normal UI history window.
-
-JSON import is validated before mutation. PostgreSQL imports run in one transaction. Duplicate-name behavior is explicitly selected by the user (`skip` or `create_separate`); Velvet does not merge similar names automatically.
-
-## AI calls
-AI capability invocation is user-triggered and scoped to the current owner. Velvet sends only capability-necessary context. AI Platform Core remains the source of truth for AI usage.
+Raw Capture, professional notes, relationship context, visit history, gifts, images and contact/memory data are sensitive. Do not place them in operational logs, analytics, Platform Admin, or cross-app events unless a contract explicitly allows the minimum necessary field.
 
 ## Future sharing
-Any future store/team/shared-customer feature requires a new contract version and explicit permission model; it must not be inferred from the current individual-owner model.
+Team/store/shared-customer access requires a new explicit permission contract. Do not infer shared access from the current individual-owner model.
