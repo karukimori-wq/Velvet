@@ -5,6 +5,7 @@ const proxy = fs.readFileSync("proxy.ts", "utf8");
 const authPage = fs.readFileSync("app/auth/page.tsx", "utf8");
 const layout = fs.readFileSync("app/layout.tsx", "utf8");
 const settings = fs.readFileSync("app/settings/page.tsx", "utf8");
+const nextConfig = fs.readFileSync("next.config.js", "utf8");
 
 const checks = [
   [identity.includes('source: "clerk"') && identity.includes("await auth()"), "Clerk identity must be resolved server-side"],
@@ -18,6 +19,10 @@ const checks = [
   [authPage.includes("captcha_missing_token") && authPage.includes("ページを再読み込み"), "Bot-protection failures must provide an actionable recovery message"],
   [authPage.includes('id="clerk-captcha"'), "Custom sign-up flow must keep the bot-protection mount point"],
   [settings.includes("ログアウト") && settings.includes('redirectUrl="/auth"'), "Clerk mode must provide a logout path back to Velvet auth"],
+  [nextConfig.includes('"X-Content-Type-Options"') && nextConfig.includes('"nosniff"'), "Responses must keep MIME-sniffing protection"],
+  [nextConfig.includes('"X-Frame-Options"') && nextConfig.includes('"DENY"'), "Velvet must not be frameable by arbitrary sites"],
+  [nextConfig.includes('"Referrer-Policy"'), "Velvet must keep an explicit referrer policy"],
+  [nextConfig.includes('source: "/api/:path*"') && nextConfig.includes('"private, no-store, max-age=0"'), "Sensitive API responses must not be cached by shared/public caches"],
 ];
 
 const failed = checks.filter(([ok]) => !ok);
