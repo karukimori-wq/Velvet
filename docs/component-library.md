@@ -1,68 +1,25 @@
-# Velvet Component Library v0.1
+# Velvet Component Guidance v1.0
 
-## Goal
-Reusable components must reinforce Velvet's low-friction mobile UX. Prefer a small number of flexible components over many specialized forms.
+Current implementation is authoritative; prefer existing shared components and scoped CSS over creating parallel design systems.
 
-## Core components
+## Core shared surfaces
+- `AppHeader`: Velvet/page title, drawer, current-route state, Plan/Settings access
+- `BottomNav`: Home / お客様 / 覚える / 予定, with Capture emphasized
+- customer row: identity + recall context + direct `＋ 覚える`
+- customer detail quick actions: 覚える / 思い出す / 次につなぐ / 予定
+- Capture composer: stamps/suggestions/text and Pro voice
+- Capture review: candidate selection/edit/confirm without losing raw input
+- timeline/history rows: Pro integrated timeline; Free event-by-event access inside policy window
+- next-action controls: Pro text + optional due date, display-only reminder state
+- media controls: Pro upload/view/delete through authorized API routes
+- retention/plan gate: explain locked capability without implying retained data was deleted
 
-### BottomNav
-Items: Home, Search, Capture, People, Schedule.
-
-### QuickSearch
-Persistent compact search entry used on Home and People.
-
-### PersonRow
-Compact row with optional photo/initials, name, rank, last visit, next planned visit.
-
-### PersonHeader
-Name, optional photo, rank, contact shortcuts.
-
-### QuickActionBar
-Thumb-reachable actions such as Visit, Capture, Gift, Schedule, More.
-
-### ChipPicker
-One-tap selectable values. Supports learned ordering, recent values, and Other.
-
-### LearnedChipRow
-Context-aware horizontal chips ranked by person-specific history, user history, then defaults.
-
-### AmountPicker
-Common/recent amount chips with Other -> numeric input fallback.
-
-### ActiveVisitBar
-Persistent active-visit status with participant names, start time, elapsed time, and End.
-
-### TimelineItem
-Unified event row for Visit, Gift, Knowledge, Schedule, Relationship and Capture-related records.
-
-### CaptureComposer
-Single capture surface supporting stamps, suggestions, text and voice.
-
-### CandidateConfirmSheet
-Compact list of AI-structured candidate changes. Supports confirm-all, remove item, edit item.
-
-### GiftDirectionPicker
-Received / Given first-step selector.
-
-### PersonPicker
-Fast multi-select people picker for group visits and relationship actions.
-
-### ScheduleQuickAdd
-Compact date/time/context entry with learned suggestions.
-
-### UndoToast
-Short-lived undo for immediately persisted quick actions.
-
-### RetentionGate
-Free-plan historical access message. Never imply data was deleted if it remains archived.
-
-### PointBalanceBadge
-Subtle AI-point balance indicator used only where useful; do not interrupt normal flow for routine consumption.
-
-## Component rules
-- Minimum touch target should follow modern mobile accessibility guidance.
-- Components must support one-handed operation where used frequently.
-- Avoid nested modal-on-modal interaction.
-- Empty/unknown values should not render noisy placeholder rows.
-- Learned suggestions are reorderable by the system but never silently selected.
-- Any component requiring text input must preserve draft state on interruption.
+## Rules
+- no AmountPicker/Payment picker in Velvet Free/Pro; Growth Engine owns Sales/Payment truth
+- no AI point-balance component until an approved point-wallet/purchase contract exists
+- no visible customer pinning dependency
+- minimum touch targets and safe-area-aware controls
+- hide unknown customer fields instead of rendering placeholder rows
+- preserve text/Capture drafts when interrupted where practical
+- avoid nested modal flows
+- learned suggestions may reorder choices but never silently commit uncertain values
