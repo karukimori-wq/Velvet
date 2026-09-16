@@ -6,6 +6,7 @@ const billing = fs.readFileSync(new URL("../lib/billing-readiness.ts", import.me
 const searchPage = fs.readFileSync(new URL("../app/search/page.tsx", import.meta.url), "utf8");
 const capturesApi = fs.readFileSync(new URL("../app/api/captures/route.ts", import.meta.url), "utf8");
 const giftsApi = fs.readFileSync(new URL("../app/api/gifts/route.ts", import.meta.url), "utf8");
+const visitApi = fs.readFileSync(new URL("../app/api/visits/[visitId]/route.ts", import.meta.url), "utf8");
 
 const checks = [
   ["Free customer limit is 30", /customerLimit:\s*30/.test(source)],
@@ -26,6 +27,7 @@ const checks = [
   ["Advanced search is gated by plan", /advancedSearchAllowed/.test(searchPage) && /hasVelvetFeature\(access,\s*["']history\.search["']\)/.test(searchPage)],
   ["Free search stays profile-only", /captureResults\s*=\s*advancedSearchAllowed\s*&&\s*terms\.length/.test(searchPage) && /giftResults\s*=\s*advancedSearchAllowed\s*&&\s*terms\.length/.test(searchPage)],
   ["Capture API enforces Free history window", /getPlanAccess\(ownerUserId\)/.test(capturesApi) && /isWithinHistoryWindow\(capture\.createdAt,\s*access\)/.test(capturesApi)],
+  ["Visit detail API enforces Free history window", /getPlanAccess\(ownerUserId\)/.test(visitApi) && /isWithinHistoryWindow\(visit\.visitedAt,\s*access\)/.test(visitApi) && /PRO_REQUIRED/.test(visitApi)],
   ["Gift history API is Pro gated", /hasVelvetFeature\(access,\s*["']history\.gifts["']\)/.test(giftsApi) && /PRO_REQUIRED/.test(giftsApi)],
   ["Business integrations cannot be enabled", /feature === ["']business\.integrations["']\) return false/.test(source)],
   ["Business remains unavailable", /plan === ["']business["'][\s\S]*?businessAvailable:\s*false/.test(source)],
