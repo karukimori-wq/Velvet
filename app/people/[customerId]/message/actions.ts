@@ -1,16 +1,21 @@
 "use server";
 
-import { redirect } from "next/navigation";
 import { getRequestIdentity } from "@/lib/auth/request-identity";
 import { getPlanAccess } from "@/lib/plan-access";
 import { generateMessageDraft, type MessageDraftChannel } from "@/lib/message-draft";
 
-export async function requestMessageDraftAction(customerId: string, formData: FormData) {
+export type MessageDraftActionState = {
+  status?: "success" | "warning" | "error" | "skipped";
+  channel?: MessageDraftChannel;
+  purpose?: string;
+  draftText?: string;
+  errorCode?: string;
+};
+
+export async function requestMessageDraftAction(customerId: string, _previousState: MessageDraftActionState, formData: FormData): Promise<MessageDraftActionState> {
   const identity = await getRequestIdentity();
   const access = await getPlanAccess(identity.ownerUserId);
-  if (!access.messageDraftAllowed) {
-    redirect(`/people/${customerId}/message?status=pro_required`);
-  }
+  if (!access.messageDraftAllowed) return { status: "error", errorCode: "PRO_REQUIRED" };
   const channelRaw = String(formData.get("channel") ?? "line");
   const channel = (["line", "instagram", "email", "sms", "other"] as const).includes(channelRaw as MessageDraftChannel)
     ? channelRaw as MessageDraftChannel
@@ -30,16 +35,11 @@ export async function requestMessageDraftAction(customerId: string, formData: Fo
     inputRef: `velvet:customer:${customerId}`,
   });
 
-  const params = new URLSearchParams({
+  return {
     status: result.status,
     channel,
     purpose,
-  });
-  if (result.messageDraftId) params.set("messageDraftId", result.messageDraftId);
-  if (result.messageDraftStatus) params.set("messageDraftStatus", result.messageDraftStatus);
-  if (result.eventName) params.set("eventName", result.eventName);
-  if (result.traceId) params.set("traceId", result.traceId);
-  if (result.draftText) params.set("draftText", result.draftText);
-  if (result.errorCode) params.set("errorCode", result.errorCode);
-  redirect(`/people/${customerId}/message?${params.toString()}`);
+    draftText: result.draftText,
+    errorCode: result.errorCode,
+  };
 }
