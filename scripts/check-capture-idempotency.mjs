@@ -4,8 +4,10 @@ const action=read("app/capture/organize/[captureId]/actions.ts");const schedule=
 assert(action.includes("idempotencyKey: `capture:${capture.id}:schedule:${i}`"),"Capture-derived schedules must use stable per-capture keys");
 assert(action.includes("idempotencyKey: `capture:${capture.id}:gift:${i}`"),"Capture-derived gifts must use stable per-capture keys");
 assert(action.includes("capture:${capture.id}:memory-change"),"Capture memory-change timeline must be duplicate-safe");
+assert(action.includes("recordDictionaryUseBestEffort")&&action.includes("suggestions must never block canonical memory saves"),"Dictionary suggestion failures must not block canonical memory saves");
+assert(action.indexOf("await upsertCustomerMemory")<action.indexOf("for (const value of [...memoryTags, ...selected]) await recordDictionaryUseBestEffort"),"Canonical memory must persist before best-effort dictionary learning");
 assert(schedule.includes("INSERT OR IGNORE")&&schedule.includes("on conflict (id) do nothing")&&schedule.includes("addIdempotentProfessionalTimelineItem"),"Schedule repository must suppress duplicate rows and timeline events when keyed");
 assert(gift.includes("INSERT OR IGNORE")&&gift.includes("on conflict (id) do nothing")&&gift.includes("addIdempotentProfessionalTimelineItem"),"Gift repository must suppress duplicate rows and timeline events when keyed");
 assert(timeline.includes("insert or ignore into velvet_professional_timeline")&&timeline.includes("on conflict (id) do nothing"),"Idempotent timeline writes must be conflict-safe in D1 and Postgres");
 assert(helper.includes("makeIdempotentRecordId")&&helper.includes("slice(0, 180)"),"Idempotency keys must map to bounded stable record IDs");
-if(failures.length){console.error("Capture idempotency guard failed:\n- "+failures.join("\n- "));process.exit(1)}console.log("Capture idempotency guard passed: retries reuse deterministic schedule, gift, and timeline records.");
+if(failures.length){console.error("Capture idempotency guard failed:\n- "+failures.join("\n- "));process.exit(1)}console.log("Capture idempotency guard passed: retries reuse deterministic records and auxiliary dictionary failures cannot block core memory saves.");
