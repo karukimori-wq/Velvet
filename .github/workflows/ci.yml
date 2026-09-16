@@ -45,6 +45,8 @@ jobs:
         run: npm run check:search-boundary
       - name: Query efficiency
         run: npm run check:query-efficiency
+      - name: Input limits
+        run: npm run check:input-limits
       - name: Product documentation
         run: npm run check:doc-consistency
       - name: Typecheck

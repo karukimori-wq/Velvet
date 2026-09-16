@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { createCapture, listCaptures, type CaptureKind } from "@/lib/capture-repository";
 import { getRequestIdentity } from "@/lib/auth/request-identity";
 import { getPlanAccess, isWithinHistoryWindow } from "@/lib/plan-access";
+import { INPUT_LIMITS } from "@/lib/input-limits";
 
 const allowedKinds: CaptureKind[] = ["knowledge", "drink", "work", "hobby", "appearance", "accessory", "marital_status", "conversation_note", "free_text"];
 
@@ -16,11 +17,13 @@ export async function GET(request: Request) {
 
 export async function POST(request: Request) {
   const { workspaceId, userId } = await getRequestIdentity();
-  const body = await request.json().catch(() => ({}));
-  const value = typeof body.value === "string" ? body.value : "";
+  const body = await request.json().catch(() => ({})) as Record<string, unknown>;
+  const value = typeof body.value === "string" ? body.value.trim() : "";
   const customerId = typeof body.customerId === "string" ? body.customerId : undefined;
   const rawKind = typeof body.kind === "string" ? body.kind : "free_text";
   if (!allowedKinds.includes(rawKind as CaptureKind)) return NextResponse.json({ status: "error", error: { code: "INVALID_CAPTURE_KIND", message: "Unsupported Capture kind." } }, { status: 400 });
+  if (!value) return NextResponse.json({ status: "error", error: { code: "CAPTURE_REQUIRED", message: "Capture value is required." } }, { status: 400 });
+  if (value.length > INPUT_LIMITS.capture) return NextResponse.json({ status: "error", error: { code: "CAPTURE_TOO_LONG", message: `Capture must be ${INPUT_LIMITS.capture} characters or fewer.` } }, { status: 400 });
   const capture = await createCapture({ workspaceId, userId, customerId, kind: rawKind as CaptureKind, value });
   if (!capture) return NextResponse.json({ status: "error", error: { code: "INVALID_CAPTURE", message: "Capture could not be created." } }, { status: 400 });
   return NextResponse.json({ status: "success", capture }, { status: 201 });

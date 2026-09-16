@@ -3,8 +3,9 @@
 import { redirect } from "next/navigation";
 import { getRequestIdentity } from "@/lib/auth/request-identity";
 import { createCapture } from "@/lib/capture-repository";
+import { INPUT_LIMITS } from "@/lib/input-limits";
 
-export type CaptureOrganizeState = { error?: "empty" | "save_failed" };
+export type CaptureOrganizeState = { error?: "empty" | "too_long" | "save_failed" };
 
 export async function organizeCaptureAction(
   customerId: string | undefined,
@@ -16,6 +17,7 @@ export async function organizeCaptureAction(
   const value = String(formData.get("value") ?? "").trim();
 
   if (!value) return { error: "empty" };
+  if (value.length > INPUT_LIMITS.capture) return { error: "too_long" };
 
   let raw;
   try {
@@ -29,7 +31,7 @@ export async function organizeCaptureAction(
   } catch {
     return { error: "save_failed" };
   }
-  if (!raw) return { error: "empty" };
+  if (!raw) return { error: "save_failed" };
 
   const organizeParams = new URLSearchParams();
   if (customerId) organizeParams.set("customerId", customerId);
