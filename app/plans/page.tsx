@@ -1,4 +1,4 @@
-import Link from "next/link";
+import { AppHeader } from "@/components/app-header";
 import { BottomNav } from "@/components/bottom-nav";
 import { getRequestIdentity } from "@/lib/auth/request-identity";
 import { getPlanAccess } from "@/lib/plan-access";
@@ -27,22 +27,22 @@ export default async function PlansPage() {
   const current = access.plan === "business" ? "Business" : access.plan === "pro" ? "Pro" : "Free";
   const cutoff = access.historyCutoff?.toISOString().slice(0, 10);
 
-  return <main className="shell">
-    <header className="header"><div className="brand">プラン</div><Link className="subtle" href="/settings">閉じる</Link></header>
-    <section className="card noticeCard">
+  return <main className="shell plansShell">
+    <AppHeader title="プラン" />
+    <section className="card noticeCard planCurrentCard">
       <div className="formHint">現在のプラン</div><div className="timelineTitle">{current}</div>
       {access.plan === "free"
         ? <><div className="timelineBody">お客様 {customers.length}/30名</div><div className="formHint">履歴対象：{cutoff ? `${cutoff}以降（直近3か月）` : "直近3か月"}</div></>
         : <div className="timelineBody">お客様人数・履歴期間とも上限なし</div>}
     </section>
 
-    <section className="hero">
+    <section className="hero planHero">
       <h1>次に会うとき、ちゃんと思い出せる。</h1>
       <p>Proは月990円。記録を増やすためではなく、必要なときに思い出し、探し、忘れないためのプランです。</p>
     </section>
 
     <div className="sectionTitle">Proで変わること</div>
-    <div className="stack">
+    <div className="stack planHighlights">
       {proHighlights.map(([title, body]) => <section className="card" key={title}><div className="timelineTitle">{title}</div><div className="timelineBody">{body}</div></section>)}
     </div>
 
