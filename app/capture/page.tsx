@@ -2,10 +2,12 @@ import Link from "next/link";
 import { AppHeader } from "@/components/app-header";
 import { BottomNav } from "@/components/bottom-nav";
 import { CaptureComposerForm } from "@/components/capture-composer-form";
+import { CapturePersonPicker } from "@/components/capture-person-picker";
 import { getRequestIdentity } from "@/lib/auth/request-identity";
 import { getGrowthCustomer,listGrowthCustomers } from "@/lib/growth-engine-customer";
 import { getCustomerMemory } from "@/lib/customer-memory-repository";
 import { listCaptures } from "@/lib/capture-repository";
+import { listRecentCaptureCustomerIds } from "@/lib/recent-capture-customers";
 import { buildCustomerRecall } from "@/lib/customer-recall";
 import { rememberGroups } from "@/lib/remember-fields";
 import { getPlanAccess } from "@/lib/plan-access";
@@ -15,8 +17,8 @@ export default async function CapturePage({searchParams}:{searchParams:Promise<{
   const {customerId,saved,error,fromVisit}=await searchParams;
   const {workspaceId,userId,ownerUserId}=await getRequestIdentity();
   if(!customerId){
-    const customers=await listGrowthCustomers(workspaceId,userId);
-    return <main className="shell captureShell"><AppHeader title="覚える"/><section className="hero capturePickerHero"><h1>誰との時間を覚えておきますか？</h1><p>接客の直後でも、覚えていることをそのまま数十秒でVelvetに残せます。</p></section><div className="capturePersonList">{customers.map(c=>{const name=c.displayName??"お客様";return <Link className="card personRow" href={`/capture?customerId=${encodeURIComponent(c.customerId)}`} key={c.customerId}><div className="avatar">{name.slice(0,1)}</div><div className="personMain"><div className="personName">{name}</div><div className="formHint">この人との出来事を覚える</div></div><span>›</span></Link>})}{customers.length===0&&<div className="card empty"><strong>登録済みのお客様がいません</strong><Link className="secondaryButton actionLink" href="/add">お客様を追加する</Link></div>}</div><BottomNav/></main>
+    const [customers,recentCustomerIds]=await Promise.all([listGrowthCustomers(workspaceId,userId),listRecentCaptureCustomerIds(workspaceId,userId,6)]);
+    return <main className="shell captureShell"><AppHeader title="覚える"/><section className="hero capturePickerHero"><h1>誰との時間を覚えておきますか？</h1><p>最近の人からすぐ選ぶか、名前で探せます。</p></section><CapturePersonPicker customers={customers} recentCustomerIds={recentCustomerIds}/><BottomNav/></main>
   }
   const [customer,memory,captures,access]=await Promise.all([getGrowthCustomer(workspaceId,userId,customerId),getCustomerMemory(workspaceId,userId,customerId),listCaptures(workspaceId,userId,customerId),getPlanAccess(ownerUserId)]);
   const displayName=customer?.displayName??memory?.displayNameSnapshot??"お客様";
