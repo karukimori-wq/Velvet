@@ -1,50 +1,26 @@
-# Velvet Billing and AI Points v0.1
+# Velvet Billing and AI Usage v1.0
+
+See `docs/current-product-contract.md` and `docs/plan-enforcement-spec.md`.
 
 ## Plans
+Free is JPY 0. Current Free limits include 30 customers, rolling 3-month visible history, no integrated all-history timeline, no Pro voice/follow-up/media/export capabilities.
 
-### Free
-- Price: JPY 0/month
-- People: unlimited
-- Core Capture, stamps, learned suggestions: available
-- Basic search: available
-- Historical access for visit/sales/gift/memory: rolling 1 year
-- Images: unavailable
-- JSON import/export: available
-- AI points: purchasable at higher unit price
+Pro target display price is **990 JPY/month**. Pro removes the Velvet customer-count limit, exposes retained full history/integrated timeline, and enables current Pro capabilities including voice capture, advanced search, follow-up/`そろそろ`, message drafts, images and JSON export.
 
-### Pro
-- Target price: JPY 10,000/month
-- People: unlimited
-- Full historical access
-- Images: available subject to storage limits
-- Advanced search/analysis where implemented
-- Eligible SNS Planner integration
-- AI points: purchasable at lower unit price
+Business is future-only and not purchasable/enabled in this release.
 
-## AI point principles
-1. AI is point-metered on both Free and Pro.
-2. Pro does not include unlimited AI by default.
-3. Free users can buy points so the free product remains fully explorable.
-4. Pro receives a better point price, not a fundamentally different AI engine.
-5. Point consumption must be visible but not interrupt every action with a confirmation dialog.
-6. Show a low-balance warning only when useful.
-7. If a capability cannot run because of insufficient points, fail before sending the AI request.
-8. AI usage accounting remains canonical in AI Platform Core.
+## Subscription ownership
+Growth Engine is the intended canonical owner for subscription/payment state. Velvet stores only a local entitlement projection in `velvet_owner_entitlements` for feature enforcement.
 
-## Suggested capability charging model
-Exact prices are not fixed in v0.1. Define relative cost classes first:
+Current runtime explicitly reports the subscription contract as not approved. Until `professional-platform-contracts` and Growth Engine define/implement the shared checkout/subscription contract, Velvet must not create its own Stripe checkout, payment ledger, or canonical subscription state.
 
-- Class S: lightweight structuring/classification
-- Class M: natural-language retrieval or moderate context processing
-- Class L: advanced analysis or larger-context generation
+## AI usage
+AI Platform Core is canonical for AI activity/usage. Velvet may display usage status but must not create an independent usage ledger.
 
-The UI should display the final point cost before an explicitly expensive action where surprise would be material, while routine low-cost Capture organization should avoid repetitive modal confirmation.
+The AI-point purchase contract is also not approved. Do not fabricate a point wallet, decrement local points, or implement a purchase flow until the shared contract exists.
 
-## Storage plan principle
-Free intentionally avoids image storage. Pro image storage must have a documented practical cap and compression policy rather than marketing it as technically unlimited.
+## Product principle
+Paid value is better memory/recall workflow, not unlimited AI. Capture/search should use deterministic local behavior where sufficient and AI Platform Core only where interpretation adds value.
 
-## Historical access
-Free's one-year rule is an access-window rule, not automatic deletion. Older records should remain archived where policy and storage permit, so upgrading to Pro can restore historical access.
-
-## Subscription source of truth
-The billing provider and final subscription ownership model must be documented before implementation. Velvet must not invent payment state in AI Platform Core or Platform Admin.
+## Storage
+Free cannot create/upload customer images. Pro media uses configured R2 storage subject to server-side authorization and practical limits. Downgrade must not silently delete retained media without an explicit retention policy.
