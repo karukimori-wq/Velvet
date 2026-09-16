@@ -23,10 +23,10 @@ export async function GET(request: Request, { params }: { params: Promise<{ visi
     getPlanAccess(ownerUserId),
   ]);
   if (!visit) return NextResponse.json({ status: "error", error: { code: "VISIT_NOT_FOUND", message: "visit not found" }, ...observability }, { status: 404 });
-  if (!isWithinHistoryWindow(visit.visitedAt, access)) {
+  if (visit.endedAt && !isWithinHistoryWindow(visit.visitedAt, access)) {
     return NextResponse.json({
       status: "error",
-      error: { code: "PRO_REQUIRED", message: "This visit is outside the Free history window." },
+      error: { code: "PRO_REQUIRED", message: "This completed visit is outside the Free history window." },
       plan: access.plan,
       historyLimited: true,
       ...observability,
