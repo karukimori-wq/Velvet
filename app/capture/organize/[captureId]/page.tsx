@@ -85,6 +85,8 @@ export default async function OrganizeCapturePage({ params, searchParams }: { pa
       <p>{candidateCount ? "Velvetが整理しました。違うものだけチェックを外せばOKです。" : "入力した内容は保存されています。"}</p>
     </section>
 
+    {structured.mode === "local" && <div className="card noticeCard organizeFallbackNotice" role="status"><strong>簡易整理で確認画面を作りました</strong><div className="formHint">入力した内容はすでに保存されています。自動整理が一時的に使えなくても、そのまま確認・保存できます。</div></div>}
+
     <details className="detailsCard organizeRawInput">
       <summary>入力した内容を見る</summary>
       <div className="detailsBody timelineBody">{capture.value}</div>
