@@ -3,6 +3,7 @@ import { redirect } from "next/navigation";
 import { getCapture } from "@/lib/capture-repository";
 import { getRequestIdentity } from "@/lib/auth/request-identity";
 import { structureCapture } from "@/lib/ai-platform-core";
+import { getPlanAccess, isWithinHistoryWindow } from "@/lib/plan-access";
 import { rememberGroups } from "@/lib/remember-fields";
 import { confirmKnowledgeCandidatesAction } from "./actions";
 
@@ -35,7 +36,10 @@ export default async function OrganizeCapturePage({ params, searchParams }: { pa
   const { captureId } = await params;
   const { fromVisit, customerId } = await searchParams;
   const { workspaceId, userId, ownerUserId } = await getRequestIdentity();
-  const capture = await readCaptureWithRetry(captureId, workspaceId, userId);
+  const [capture, access] = await Promise.all([
+    readCaptureWithRetry(captureId, workspaceId, userId),
+    getPlanAccess(ownerUserId),
+  ]);
   if (!capture) {
     const recovery = new URLSearchParams();
     if (customerId) recovery.set("customerId", customerId);
@@ -43,6 +47,7 @@ export default async function OrganizeCapturePage({ params, searchParams }: { pa
     recovery.set("error", "organize_missing");
     redirect(`/capture?${recovery.toString()}`);
   }
+  if (!isWithinHistoryWindow(capture.createdAt, access)) redirect("/plans?reason=history_window");
 
   const structured = await structureCapture(capture.value, ownerUserId);
   const explicit = extractMemoryTags(capture.value);
