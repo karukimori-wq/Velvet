@@ -1,64 +1,47 @@
-# Velvet Persistence & Auth Setup
+# Velvet Persistence & Auth Setup v1.0
 
-## Current state
-Velvet can run in development with in-memory repositories and the demo owner. This mode is intentionally not production-ready.
+## Production runtime
+Current production target is Cloudflare Workers/OpenNext with:
+- `VELVET_STORAGE_MODE=d1`
+- D1 binding `DB`, database name `velvet`
+- R2 binding `MEDIA`, bucket `velvetmedia`
+- `VELVET_AUTH_MODE=clerk`
+- AI Platform Core service binding/URL as configured
 
-The PostgreSQL connection layer and storage-aware repositories are implemented for the current mutable MVP domains:
-- People
-- Knowledge / personality memory
-- Timeline
-- Visit / VisitParticipant
-- Gift
-- Capture
-- Schedule
-- Relationship
-- JSON Import / Export of People data
+PostgreSQL and in-memory modes remain development/compatibility paths; they are not the current Cloudflare production source of truth.
 
-Repositories switch between memory and PostgreSQL using `VELVET_STORAGE_MODE`.
+## D1 deployment
+`wrangler.jsonc` intentionally keeps a placeholder database UUID in source. `.github/workflows/cloudflare-production.yml` lists/creates the Cloudflare D1 database named `velvet`, resolves its real ID, replaces the placeholder in the workflow workspace, migrates older `due_at` schema when needed, then applies `cloudflare/schema.sql` before deployment.
 
-## Production requirements
-1. Implement a real per-request authentication/session adapter. Fixed-owner mode is not acceptable for a public multi-account deployment.
-2. Set `VELVET_STORAGE_MODE=postgres`.
-3. Set `DATABASE_URL` to the production PostgreSQL connection string.
-4. Apply migrations in order:
-   - `db/001_initial.sql`
-   - `db/002_runtime_fields.sql`
-5. Verify `GET /api/storage/check` returns `status: success`.
-6. Verify `GET /api/readiness` reports database connection success.
-7. Verify every private query includes `owner_user_id`.
-8. Run typecheck/build in the deployment CI environment before public launch.
+Do not commit a private/account-specific D1 database UUID merely to make local source look production-ready.
 
-## Database connection settings
-- `DATABASE_URL`: PostgreSQL connection string.
-- `VELVET_DB_POOL_MAX`: optional pool maximum, default `5`.
-- `VELVET_DB_SSL=disable`: use only when the database explicitly does not require TLS. Otherwise TLS is enabled.
+## R2
+Pro images use R2 binding `MEDIA`. The production bucket is `velvetmedia`. Upload/retrieval/deletion are owner/customer authorized. Free upload is rejected by server-side plan enforcement.
 
-The connection pool is created lazily on the server. Database credentials must never be exposed through `NEXT_PUBLIC_*` variables.
+## Authentication
+Public production uses Clerk. `getRequestIdentity()` resolves the authenticated Clerk user to `userId`, `ownerUserId`, and `workspaceId`. A server-secret trusted session bridge remains available for production E2E/service checks. Demo/fixed-owner modes are forbidden for normal public production.
 
-## Auth rule
-`user_demo_owner` is development-only. `VELVET_OWNER_USER_ID` is a fixed-owner testing seam only. It is useful for private single-user testing but unsafe for a public multi-account service because every request would resolve to the same owner.
+Never trust identity from ordinary form/query fields or untrusted headers.
 
-Public production readiness requires a real authenticated session that resolves `ownerUserId` per request. Client form fields/query parameters must never be trusted as owner identity.
+## Production workflow verification
+The Cloudflare Production workflow verifies:
+- required Cloudflare/Clerk/session-bridge configuration
+- D1 existence and schema application
+- OpenNext build/deploy
+- health/version/contracts/persistence status
+- D1 roundtrip and owner isolation
+- professional memory/visit/next-action flow
+- R2 media lifecycle
 
-## Repository rule
-UI, Server Actions and Route Handlers pass `ownerUserId` into repository methods. Repositories also filter by owner. This creates two boundaries: caller context and data query scope.
+A successful CI run on `main` is not the same as a Production workflow run. Only the latter proves the deployed Cloudflare revision.
 
-## Data model
-PostgreSQL tables are defined in `db/001_initial.sql`. Runtime columns added after the initial schema are in `db/002_runtime_fields.sql`.
-
-## Migration behavior
-The demo seed data does not need to be migrated to production unless explicitly desired. JSON Import/Export is the preferred user-facing migration mechanism for existing customer lists.
-
-## Verification endpoints
-- `/api/storage/status`: configured storage mode.
-- `/api/storage/check`: live PostgreSQL connectivity.
-- `/api/readiness`: launch readiness; fixed-owner/demo authentication deliberately does not pass public production readiness.
+## Local/development modes
+In-memory/demo mode is acceptable only for local/preview work. PostgreSQL support may be used where explicitly configured, but new production work should verify D1 behavior first.
 
 ## Release blockers
-Do not treat Velvet as public-production-ready when any of the following is true:
-- no real per-request session authentication
-- PostgreSQL is not configured
-- PostgreSQL cannot be reached
-- migrations are not applied
-- owner-scoped access can be bypassed
-- typecheck/build has not passed in CI/deployment environment
+- Clerk public authentication not working for ordinary browser sessions
+- D1 unreachable or schema migration failure
+- owner/workspace isolation bypass
+- R2 authorization/plan bypass
+- typecheck/build/policy guard failure
+- current main not production-verified when a release decision requires deployment evidence
