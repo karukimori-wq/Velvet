@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { getRequestIdentity } from "@/lib/auth/request-identity";
+import { getPlanAccess, isWithinHistoryWindow } from "@/lib/plan-access";
 import {
   endProfessionalVisit,
   getProfessionalVisit,
@@ -14,12 +15,24 @@ function ids(request: Request) {
 }
 
 export async function GET(request: Request, { params }: { params: Promise<{ visitId: string }> }) {
-  const { workspaceId, userId } = await getRequestIdentity();
+  const { workspaceId, userId, ownerUserId } = await getRequestIdentity();
   const { visitId } = await params;
   const observability = ids(request);
-  const visit = await getProfessionalVisit(visitId, workspaceId, userId);
+  const [visit, access] = await Promise.all([
+    getProfessionalVisit(visitId, workspaceId, userId),
+    getPlanAccess(ownerUserId),
+  ]);
   if (!visit) return NextResponse.json({ status: "error", error: { code: "VISIT_NOT_FOUND", message: "visit not found" }, ...observability }, { status: 404 });
-  return NextResponse.json({ status: "success", visit, ...observability });
+  if (!isWithinHistoryWindow(visit.visitedAt, access)) {
+    return NextResponse.json({
+      status: "error",
+      error: { code: "PRO_REQUIRED", message: "This visit is outside the Free history window." },
+      plan: access.plan,
+      historyLimited: true,
+      ...observability,
+    }, { status: 403 });
+  }
+  return NextResponse.json({ status: "success", visit, historyLimited: !access.fullHistory, ...observability });
 }
 
 export async function PATCH(request: Request, { params }: { params: Promise<{ visitId: string }> }) {
