@@ -3,7 +3,7 @@ import { AppHeader } from "@/components/app-header";
 import { BottomNav } from "@/components/bottom-nav";
 import { getRequestIdentity } from "@/lib/auth/request-identity";
 import { listCustomerMemories } from "@/lib/customer-memory-repository";
-import { listGrowthCustomers } from "@/lib/growth-engine-customer";
+import { listGrowthCustomersWithStatus } from "@/lib/growth-engine-customer";
 import { listScheduleEntries } from "@/lib/schedule-repository";
 import { visibleNextTopics } from "@/lib/next-topic";
 import { getPlanAccess, hasVelvetFeature } from "@/lib/plan-access";
@@ -19,7 +19,7 @@ const isSoonAlert=(value:SoonVisitAlert|undefined):value is SoonVisitAlert=>Bool
 
 export default async function HomePage(){
   const {workspaceId,userId,ownerUserId}=await getRequestIdentity();
-  const [customers,memories,schedule,access,preferences]=await Promise.all([listGrowthCustomers(workspaceId,userId),listCustomerMemories(workspaceId,userId),listScheduleEntries(workspaceId,userId),getPlanAccess(ownerUserId),getOwnerPreferences(ownerUserId)]);
+  const [customerResult,memories,schedule,access,preferences]=await Promise.all([listGrowthCustomersWithStatus(workspaceId,userId),listCustomerMemories(workspaceId,userId),listScheduleEntries(workspaceId,userId),getPlanAccess(ownerUserId),getOwnerPreferences(ownerUserId)]); const customers=customerResult.customers;
   const customerById=new Map(customers.map(c=>[c.customerId,c])); const memoryByCustomer=new Map(memories.map(m=>[m.customerId,m])); const now=new Date(); const today=tokyoDate(now);
   const todayEntries=schedule.filter(entry=>tokyoDate(entry.startsAt)===today); const todayVisitors=todayEntries.filter(entry=>entry.kind==="visit"&&entry.customerId).sort((a,b)=>a.startsAt.localeCompare(b.startsAt)); const otherToday=todayEntries.filter(entry=>entry.kind!=="visit").sort((a,b)=>a.startsAt.localeCompare(b.startsAt));
   const allCustomerIds=[...new Set([...customers.map(c=>c.customerId),...memories.map(m=>m.customerId)])];
@@ -33,6 +33,7 @@ export default async function HomePage(){
   return <main className="shell homeShell">
     <AppHeader rightHref="/schedule" rightLabel="◷" />
     <div className="homeGreeting"><strong>今日</strong><span>必要なことだけ、ここからすぐに。</span></div>
+    {customerResult.status!=="ok"&&<div className="card noticeCard sourceStatusNotice" role="status"><strong>{customerResult.status==="unconfigured"?"お客様情報の接続を準備中です":"お客様情報を一時的に同期できません"}</strong><div className="formHint">Velvetに保存済みの内容と予定はそのまま使えます。登録が消えたわけではありません。</div></div>}
     <section className="metricGrid" aria-label="今日の概要">
       <Link className="metricCard" href="/schedule"><span className="metricIcon">▣</span><span><span className="metricLabel">今日の予定</span><span className="metricValue">{todayEntries.length}<small>件</small></span></span></Link>
       {followupAllowed?<Link className="metricCard" href="/people?sort=due_followup"><span className="metricIcon">♡</span><span><span className="metricLabel">要フォロー</span><span className="metricValue">{dueFollowups.length}<small>件</small></span></span></Link>:<Link className="metricCard" href="/people"><span className="metricIcon">○</span><span><span className="metricLabel">お客様</span><span className="metricValue">{allCustomerIds.length}<small>名</small></span></span></Link>}
