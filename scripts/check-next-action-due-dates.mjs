@@ -4,6 +4,7 @@ const repo = fs.readFileSync(new URL("../lib/professional-next-action-repository
 const page = fs.readFileSync(new URL("../app/people/[customerId]/next-actions/page.tsx", import.meta.url), "utf8");
 const home = fs.readFileSync(new URL("../app/page.tsx", import.meta.url), "utf8");
 const actions = fs.readFileSync(new URL("../app/people/[customerId]/next-actions/actions.ts", import.meta.url), "utf8");
+const api = fs.readFileSync(new URL("../app/api/customers/[customerId]/next-actions/route.ts", import.meta.url), "utf8");
 const schema = fs.readFileSync(new URL("../cloudflare/schema.sql", import.meta.url), "utf8");
 const migration = fs.readFileSync(new URL("../db/013_next_action_due_at.sql", import.meta.url), "utf8");
 const productionWorkflow = fs.readFileSync(new URL("../.github/workflows/cloudflare-production.yml", import.meta.url), "utf8");
@@ -14,6 +15,8 @@ const checks = [
   ["Repository orders open due followups first", /due_at asc/.test(repo)],
   ["Repository can list due followups across customers", /listDueNextActions/.test(repo) && /status='open' and due_at is not null/.test(repo)],
   ["Create action accepts due date", /dueAtFromForm/.test(actions) && /createNextAction\(workspaceId,userId,customerId,text,dueAtFromForm\(formData\)\)/.test(actions)],
+  ["API validates dueAt", /INVALID_DUE_AT/.test(api) && /parseDueAt\(body\.dueAt\)/.test(api)],
+  ["API persists dueAt", /createNextAction\(workspaceId,userId,customerId,text,due\.dueAt\)/.test(api) && /dueAt:item\.dueAt/.test(api)],
   ["UI exposes due date input", /name=\"dueDate\"/.test(page) && /期限付きフォロー/.test(page)],
   ["UI states no notification", /通知は送らず/.test(page)],
   ["Home shows Pro due followups", /hasVelvetFeature\(access,\s*"followup\.manage"\)/.test(home) && /listDueNextActions/.test(home) && /dueFollowups/.test(home) && /今、気にしたいこと/.test(home)],
