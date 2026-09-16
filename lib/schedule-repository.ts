@@ -2,6 +2,8 @@ import { getStorageMode } from "@/lib/storage/config";
 import { dbQuery } from "@/lib/storage/postgres";
 import { getD1Database, makeD1Id } from "@/lib/storage/d1";
 import { addProfessionalTimelineItem } from "@/lib/professional-timeline-repository";
+import { addIdempotentProfessionalTimelineItem } from "@/lib/idempotent-timeline";
+import { makeIdempotentRecordId } from "@/lib/idempotency";
 
 export type ScheduleKind = "shift" | "visit" | "birthday" | "unavailable" | "self_investment" | "other";
 export type ScheduleEntry = { id:string; workspaceId:string; userId:string; customerId?:string; visitScheduleId?:string; kind:ScheduleKind; title:string; startsAt:string; note?:string; createdAt:string };
@@ -22,15 +24,25 @@ export async function listScheduleEntries(workspaceId:string,userId:string){
   return rows.rows.map(mapRow);
 }
 
-export async function createScheduleEntry(values:{workspaceId:string;userId:string;customerId?:string;visitScheduleId?:string;kind:ScheduleKind;title:string;startsAt?:string;note?:string}){
+export async function createScheduleEntry(values:{workspaceId:string;userId:string;customerId?:string;visitScheduleId?:string;kind:ScheduleKind;title:string;startsAt?:string;note?:string;idempotencyKey?:string}){
   const title=values.title.trim(); if(!title) return undefined;
   const mode=getStorageMode();
-  const entry:ScheduleEntry={id:mode==="d1"?makeD1Id("schedule"):makeId(),workspaceId:values.workspaceId,userId:values.userId,customerId:values.customerId,visitScheduleId:values.visitScheduleId,kind:values.kind,title,startsAt:values.startsAt??new Date().toISOString(),note:values.note?.trim()||undefined,createdAt:new Date().toISOString()};
+  const id=values.idempotencyKey?makeIdempotentRecordId("schedule",values.idempotencyKey):mode==="d1"?makeD1Id("schedule"):makeId();
+  const entry:ScheduleEntry={id,workspaceId:values.workspaceId,userId:values.userId,customerId:values.customerId,visitScheduleId:values.visitScheduleId,kind:values.kind,title,startsAt:values.startsAt??new Date().toISOString(),note:values.note?.trim()||undefined,createdAt:new Date().toISOString()};
   if(mode==="d1"){
     const db=await getD1Database(); if(!db) throw new Error("D1_NOT_CONFIGURED");
-    await db.prepare("INSERT INTO velvet_professional_schedule_entries (id,workspace_id,user_id,customer_id,visit_schedule_id,entry_type,title,starts_at,note,created_at) VALUES (?,?,?,?,?,?,?,?,?,?)").bind(entry.id,entry.workspaceId,entry.userId,entry.customerId??null,entry.visitScheduleId??null,entry.kind,entry.title,entry.startsAt,entry.note??null,entry.createdAt).run();
-  } else if(mode!=="postgres") entries.push(entry);
-  else await dbQuery(`insert into velvet_professional_schedule_entries (id,workspace_id,user_id,customer_id,visit_schedule_id,entry_type,title,starts_at,note,created_at) values ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10)`,[entry.id,entry.workspaceId,entry.userId,entry.customerId??null,entry.visitScheduleId??null,entry.kind,entry.title,entry.startsAt,entry.note??null,entry.createdAt]);
-  if(entry.customerId) await addProfessionalTimelineItem({workspaceId:entry.workspaceId,userId:entry.userId,customerId:entry.customerId,eventType:"schedule",title:`予定 · ${entry.title}`,body:entry.note,sourceRef:entry.visitScheduleId??entry.id});
+    const verb=values.idempotencyKey?"INSERT OR IGNORE":"INSERT";
+    await db.prepare(`${verb} INTO velvet_professional_schedule_entries (id,workspace_id,user_id,customer_id,visit_schedule_id,entry_type,title,starts_at,note,created_at) VALUES (?,?,?,?,?,?,?,?,?,?)`).bind(entry.id,entry.workspaceId,entry.userId,entry.customerId??null,entry.visitScheduleId??null,entry.kind,entry.title,entry.startsAt,entry.note??null,entry.createdAt).run();
+  } else if(mode!=="postgres") {
+    if(!entries.some(existing=>existing.id===entry.id&&existing.workspaceId===entry.workspaceId&&existing.userId===entry.userId)) entries.push(entry);
+  } else {
+    const conflict=values.idempotencyKey?" on conflict (id) do nothing":"";
+    await dbQuery(`insert into velvet_professional_schedule_entries (id,workspace_id,user_id,customer_id,visit_schedule_id,entry_type,title,starts_at,note,created_at) values ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10)${conflict}`,[entry.id,entry.workspaceId,entry.userId,entry.customerId??null,entry.visitScheduleId??null,entry.kind,entry.title,entry.startsAt,entry.note??null,entry.createdAt]);
+  }
+  if(entry.customerId){
+    const timeline={workspaceId:entry.workspaceId,userId:entry.userId,customerId:entry.customerId,eventType:"schedule",title:`予定 · ${entry.title}`,body:entry.note,sourceRef:entry.visitScheduleId??entry.id};
+    if(values.idempotencyKey) await addIdempotentProfessionalTimelineItem({...timeline,idempotencyKey:`schedule:${values.idempotencyKey}`});
+    else await addProfessionalTimelineItem(timeline);
+  }
   return entry;
 }

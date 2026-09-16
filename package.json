@@ -23,6 +23,7 @@
     "check:search-boundary": "node scripts/check-search-boundary.mjs",
     "check:query-efficiency": "node scripts/check-query-efficiency.mjs",
     "check:input-limits": "node scripts/check-input-limits.mjs",
+    "check:capture-idempotency": "node scripts/check-capture-idempotency.mjs",
     "check:privacy-cache": "node scripts/check-privacy-cache.mjs",
     "check:doc-consistency": "node scripts/check-doc-consistency.mjs",
     "db:migrate": "node scripts/migrate.mjs",

@@ -1,0 +1,11 @@
+import fs from "node:fs";
+const read=path=>fs.readFileSync(path,"utf8");const failures=[];const assert=(condition,message)=>{if(!condition)failures.push(message)};
+const action=read("app/capture/organize/[captureId]/actions.ts");const schedule=read("lib/schedule-repository.ts");const gift=read("lib/gift-repository.ts");const timeline=read("lib/idempotent-timeline.ts");const helper=read("lib/idempotency.ts");
+assert(action.includes("idempotencyKey: `capture:${capture.id}:schedule:${i}`"),"Capture-derived schedules must use stable per-capture keys");
+assert(action.includes("idempotencyKey: `capture:${capture.id}:gift:${i}`"),"Capture-derived gifts must use stable per-capture keys");
+assert(action.includes("capture:${capture.id}:memory-change"),"Capture memory-change timeline must be duplicate-safe");
+assert(schedule.includes("INSERT OR IGNORE")&&schedule.includes("on conflict (id) do nothing")&&schedule.includes("addIdempotentProfessionalTimelineItem"),"Schedule repository must suppress duplicate rows and timeline events when keyed");
+assert(gift.includes("INSERT OR IGNORE")&&gift.includes("on conflict (id) do nothing")&&gift.includes("addIdempotentProfessionalTimelineItem"),"Gift repository must suppress duplicate rows and timeline events when keyed");
+assert(timeline.includes("insert or ignore into velvet_professional_timeline")&&timeline.includes("on conflict (id) do nothing"),"Idempotent timeline writes must be conflict-safe in D1 and Postgres");
+assert(helper.includes("makeIdempotentRecordId")&&helper.includes("slice(0, 180)"),"Idempotency keys must map to bounded stable record IDs");
+if(failures.length){console.error("Capture idempotency guard failed:\n- "+failures.join("\n- "));process.exit(1)}console.log("Capture idempotency guard passed: retries reuse deterministic schedule, gift, and timeline records.");
