@@ -1,14 +1,17 @@
 import { NextResponse } from "next/server";
 import { createCapture, listCaptures, type CaptureKind } from "@/lib/capture-repository";
 import { getRequestIdentity } from "@/lib/auth/request-identity";
+import { getPlanAccess, isWithinHistoryWindow } from "@/lib/plan-access";
 
 const allowedKinds: CaptureKind[] = ["knowledge", "drink", "work", "hobby", "appearance", "accessory", "marital_status", "conversation_note", "free_text"];
 
 export async function GET(request: Request) {
-  const { workspaceId, userId } = await getRequestIdentity();
+  const { workspaceId, userId, ownerUserId } = await getRequestIdentity();
   const { searchParams } = new URL(request.url);
   const customerId = searchParams.get("customerId") || undefined;
-  return NextResponse.json({ status: "success", captures: await listCaptures(workspaceId, userId, customerId) });
+  const [captures, access] = await Promise.all([listCaptures(workspaceId, userId, customerId), getPlanAccess(ownerUserId)]);
+  const visibleCaptures = captures.filter(capture => isWithinHistoryWindow(capture.createdAt, access));
+  return NextResponse.json({ status: "success", captures: visibleCaptures, historyLimited: !access.fullHistory });
 }
 
 export async function POST(request: Request) {
