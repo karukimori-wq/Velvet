@@ -1,135 +1,46 @@
-# Velvet API Specification v0.1
+# Velvet API Specification v1.0
+
+Current route handlers are authoritative. This document defines the API boundary rather than inventing unused Person/Sales endpoints.
 
 ## Conventions
-- Base path: `/api`
-- JSON only
-- All application responses use top-level `status`: `success | warning | error | skipped`
-- Preserve `traceId`, `correlationId`, and `requestId` where applicable
-- MVP identity scope: `workspaceId`, `userId`, `ownerUserId`
-- `professionalId` is not required in MVP
+- base path `/api`
+- top-level operational status: `success | warning | error | skipped`
+- identity resolved server-side; `workspaceId/userId/ownerUserId` from ordinary request bodies are not trusted
+- `professionalId` not required in MVP
+- preserve trace/correlation/request identifiers where shared contracts define them
 
-## People
-### POST /api/people
-Create a Velvet-owned Person/Guest record.
+## Customer professional memory
+Customer routes use Growth Engine `customerId` references.
 
-Minimum input:
-```json
-{
-  "workspaceId": "ws_x",
-  "userId": "user_x",
-  "name": "山田"
-}
-```
-
-### GET /api/people
-List/search people within the current user scope.
-
-### GET /api/people/:personId
-Fetch person summary, contact backup, accessible knowledge, relationships and timeline references.
-
-### PATCH /api/people/:personId
-Update explicit user-managed fields only. AI-derived changes are committed through confirmed Capture candidates, not silently through this endpoint.
+Current families include customer memory, timeline, notes and next-actions. These APIs read/write Velvet professional memory only. They must not expose or create canonical Growth Engine Payment/Sales/Reservation state.
 
 ## Visits
-### POST /api/visits/start
-Starts a visit and captures server time as `arrivedAt` unless an explicit allowed override is supplied.
-
-```json
-{
-  "workspaceId": "ws_x",
-  "userId": "user_x",
-  "participantPersonIds": ["person_1"],
-  "visitContext": "solo"
-}
-```
-
-### POST /api/visits/:visitId/end
-Sets `departedAt` and calculates duration. Departure may remain unknown if the user never ends the visit.
-
-### PATCH /api/visits/:visitId
-Optional details: participants, visitContext, salesAmount, paymentMethod, receivable metadata, nomination, bottle/drink/food notes, accompaniment, after-hours flags.
-
-## Gifts
-### POST /api/gifts
-Creates a received/given gift record.
-
-## Knowledge
-### POST /api/knowledge
-For explicit user-entered structured knowledge only.
-
-### PATCH /api/knowledge/:knowledgeId
-Edit or archive explicit knowledge.
-
-## Relationships
-### POST /api/relationships
-Creates an explicit user-confirmed relationship between two people.
-
-## Schedule
-### POST /api/schedule-entries
-Creates user or person-related schedule entry.
-
-## Self-investment
-### POST /api/self-investments
-Creates lightweight self-investment record.
+Velvet Visit APIs create/read/update/end professional Visit history. A Visit may reference Growth Engine reservation/schedule IDs. Visit endpoints do not accept canonical sales/payment state as Velvet truth.
 
 ## Capture
-### POST /api/captures
-Persists raw capture first. Raw content must survive downstream AI failure.
-
-Input supports `stamp`, `text`, `voice_text`, or a combination.
-
-### POST /api/captures/:captureId/organize
-User-triggered organization request. Calls AI Platform Core and returns candidate updates only.
-
-### POST /api/captures/:captureId/confirm
-Commits selected candidate updates after user confirmation.
+Raw Capture is persisted before organization. User-triggered organization may call AI Platform Core and returns/proposes structured memory; uncertain inferred changes require confirmation. AI failure must preserve raw input and permit deterministic fallback/retry.
 
 ## Search
-### GET /api/search
-Deterministic/basic search. No AI points required unless implementation explicitly delegates to AI.
+Free basic search respects the rolling 3-month visibility policy. Pro may search retained full history and use deterministic natural-language-like parsing or AI Platform Core where useful. AI never becomes the customer database.
 
-### POST /api/search/natural
-User-triggered natural-language retrieval. May consume AI points.
+## Media
+Pro media APIs provide status/upload/authenticated retrieval/deletion against R2. Free direct upload bypass attempts return a plan error. Media access must verify owner/customer scope.
 
 ## Import/export
-### POST /api/imports/validate
-Validates JSON payload against current schema without writing.
+Import is owner-scoped and validated. Current JSON export is Pro-only. Do not expose protected history or cross-owner records through an alternate export/search route.
 
-### POST /api/imports/preview
-Returns import diff/preview.
-
-### POST /api/imports/commit
-Writes confirmed valid import.
-
-### GET /api/export
-Exports the user's own Velvet data. Available to Free and Pro.
-
-## Subscription and AI points
-### GET /api/billing/plan
-Returns current Velvet plan and feature access.
-
-### GET /api/ai-points/balance
-Returns point balance and pricing tier.
-
-Velvet does not maintain an independent canonical AI usage ledger; detailed usage accounting belongs to AI Platform Core.
+## Entitlement/billing
+Velvet exposes plan/readiness information but does not own canonical subscription payment. Growth Engine is the intended payment/subscription owner; shared checkout contract is not yet approved. AI Platform Core owns AI usage.
 
 ## Operational endpoints
-### GET /health
-### GET /version
-### GET /contracts/status
-Required for Platform Admin integration.
+Current production verification relies on endpoints including:
+- `/api/health`
+- `/api/version`
+- `/api/contracts/status`
+- `/api/persistence/status`
+- `/api/persistence/roundtrip`
 
-## Error shape
-```json
-{
-  "status": "error",
-  "error": {
-    "code": "VALIDATION_ERROR",
-    "message": "...",
-    "retryable": false
-  },
-  "traceId": "...",
-  "correlationId": "...",
-  "requestId": "..."
-}
-```
+Operational responses must not contain private customer content.
+
+## Errors
+Use stable machine-readable codes for validation, authorization, plan restrictions and integration failures. Do not leak whether another owner's private record exists.
