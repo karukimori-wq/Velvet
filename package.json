@@ -21,6 +21,7 @@
     "check:next-action-due-dates": "node scripts/check-next-action-due-dates.mjs",
     "check:customer-sorting": "node scripts/check-customer-sorting.mjs",
     "check:search-boundary": "node scripts/check-search-boundary.mjs",
+    "check:query-efficiency": "node scripts/check-query-efficiency.mjs",
     "db:migrate": "node scripts/migrate.mjs",
     "cf:build": "opennextjs-cloudflare build",
     "cf:preview": "opennextjs-cloudflare build && opennextjs-cloudflare preview",
