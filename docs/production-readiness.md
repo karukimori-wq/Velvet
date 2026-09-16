@@ -1,86 +1,67 @@
-# Velvet MVP Production Readiness
-
-Velvet is ready for public MVP only when all applicable items below pass.
+# Velvet Free / Pro Production Readiness v1.0
 
 ## Product
-- Core UX remains user-directed; no unsolicited daily-sales coaching becomes the home focus.
-- People, Visit, Capture, Search, Schedule work on smartphone layouts.
-- Common actions meet the interaction targets defined in `product-principles.md` where practical.
+- mobile Home / お客様 / 覚える / 予定 flow is coherent on representative iPhone widths
+- Search is reachable and useful without AI chat
+- Capture preserves customer context through review/save and returns with confirmation
+- Customer Detail supports fast recall without exposing unknown/noisy fields
+- no visible pinning dependency
 
-## Data ownership
-- Velvet personal Person/Guest domain is distinct from Growth Engine Customer.
-- No independent AI usage ledger is treated as canonical in Velvet.
-- SNS Planner receives no automatic private guest dataset.
-- Platform Admin stores only operational snapshots.
-
-## Privacy and security
-- Every private record is owner-scoped server-side.
-- Cross-owner ID access returns not-found/forbidden without leaking existence.
-- Raw Capture, contact details, private relationships, payment/receivable details and images are excluded from operational events/logs.
-- Secrets/API keys never ship to client bundles.
-- Image access uses authenticated/authorized paths.
-- Export is owner-authorized.
+## Ownership
+- Growth Engine remains canonical for Customer, Reservation/Visit Schedule, Payment and Sales/Revenue
+- Velvet stores only professional memory/Visit/timeline/Capture/gift/follow-up/display schedule data keyed to Growth Engine `customerId`
+- AI Platform Core owns AI usage
+- Platform Admin receives operational state only
 
 ## Plans
-- People unlimited on Free and Pro.
-- Free historical UI access is rolling one year and enforced across direct fetch, timeline, search and AI-assisted search.
-- Free cannot upload images.
-- Pro has full historical access and image entitlement.
-- Downgrade policy is documented before launch.
+- Free 31st customer is rejected server-side
+- Free history is rolling 3 months and cannot be bypassed by direct history/search/timeline APIs
+- Free has no integrated all-history timeline
+- Free cannot use Pro voice/message-draft/follow-up/media/export capabilities
+- Pro has full retained history, integrated timeline and current Pro capabilities
+- Business purchase/integrations remain unavailable
+
+## Auth/privacy
+- public production uses Clerk
+- trusted bridge is limited to secret-authenticated E2E/service checks
+- cross-owner/customer access is denied without existence leaks
+- secrets never ship in client bundles
+- private Capture/notes/relationships/images are excluded from logs/operational analytics
+
+## Persistence/media
+- D1 `velvet` database resolves and `cloudflare/schema.sql` applies
+- existing D1 `due_at` migration succeeds
+- persistence status and roundtrip are green
+- R2 `velvetmedia` upload/read/delete lifecycle is owner/customer authorized
+- failed media metadata persistence attempts clean up R2 where possible; known non-transactional edge cases remain documented
 
 ## AI
-- AI actions are user-triggered.
-- Capture raw input survives AI failure.
-- AI-derived mutations require confirmation when inference is involved.
-- AI Platform Core owns usage accounting.
-- Free/Pro point pricing differences are server-enforced.
-- Insufficient points fail safely without losing user input.
+- user-triggered Capture organization preserves raw input before AI
+- AI Platform Core failure degrades without losing Capture
+- no fabricated AI point wallet/purchase contract
 
-## Import/export
-- JSON schema is versioned.
-- Import has validation and preview.
-- Invalid import is atomic or safely rollback-capable.
-- Duplicate handling is explicit.
-- Export works for Free and Pro under documented policy.
+## Billing
+Release checkout remains blocked until the shared subscription contract and Growth Engine implementation are approved. Velvet must not solve this by adding local Stripe/payment truth.
 
-## Observability
-- `/health`, `/version`, `/contracts/status` are public/operationally accessible as intended.
-- `status` uses only success/warning/error/skipped at the observability level.
-- traceId/correlationId/requestId are propagated/generated consistently.
-- CORS/OPTIONS works for required cross-app integrations.
-- Error responses use stable error codes.
+## Automated verification
+`main` CI must pass responsibility, message draft, recall, memory input, repeat visit, mobile UX, plan, media, auth, soon-alert, due-followup, sorting, search, typecheck and build checks.
 
-## Integration
-- professional-platform-contracts includes Velvet ownership boundary.
-- AI Platform Core capability contracts are compatible.
-- SNS Planner handoff is reference/minimum-context based.
-- Platform Admin recognizes Velvet health/contracts surfaces.
+Cloudflare Production must separately pass deployment, health/version/contracts/persistence, D1 isolation/professional-memory flow, and R2 lifecycle checks. CI success alone does not prove the latest main revision is deployed.
 
-## UX regression checks
-Before release, manually test on representative smartphone widths:
-- create Person with name only
-- search Person
-- start/end Visit
-- multi-person Visit
-- payment quick choice
-- gift received/given
-- short Capture
-- voice/self-memo Capture where supported
-- AI organization confirmation
-- timeline
-- Schedule entry
-- Free archive boundary
-- Pro image upload
-- JSON import preview
-- data export
+## Manual release verification
+Before public launch, verify on a real iPhone:
+- sign up/sign in/sign out
+- add customer and capture first memory
+- repeat customer capture → review → save → recall
+- Free 3-month locked-history experience
+- Pro integrated timeline/search/voice/follow-up/`そろそろ`
+- Pro image upload/view/delete
+- due follow-up display (no push/email)
+- drawer/bottom-nav/safe-area/keyboard behavior
 
-## Launch blockers
-Any of these block release:
-- cross-user data access
-- destructive plan downgrade without explicit policy
-- AI mutation without required confirmation
-- source-of-truth conflict with platform contracts
-- private guest content in Platform Admin/logs/events
-- Free history restriction bypass through alternate API/search path
-- image entitlement bypass
-- import capable of silent malformed partial writes
+## Remaining blockers/debt
+- approved subscription checkout/payment contract
+- real-device UX sign-off
+- current-main Production verification after the next release batch
+- final downgrade/media retention policy
+- continued query/performance hardening for large Pro customer sets
