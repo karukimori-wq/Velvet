@@ -49,7 +49,7 @@ export default async function SearchPage({ searchParams }: { searchParams: Promi
   const totalResults = customerResults.length + giftResults.length + captureResults.length;
 
   return <main className="shell searchShell">
-    <AppHeader title="探す" />
+    <AppHeader title="思い出す" />
     <section className="searchIntro"><strong>誰のことを思い出しますか？</strong><small>{advancedSearchAllowed ? "名前だけでなく、話したことや贈り物からも探せます。" : "名前・特徴・趣味・タグから探せます。"}</small></section>
     <form action="/search" method="get" className="stack searchMainForm">
       <input className="searchBox" name="q" defaultValue={q} placeholder={advancedSearchAllowed ? "例：ゴルフが好きでロレックスの人" : "例：ゴルフ ロレックス"} autoComplete="off" enterKeyHint="search" />
