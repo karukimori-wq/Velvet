@@ -6,10 +6,10 @@ import { usePathname } from "next/navigation";
 
 const menuItems = [
   ["⌂", "ホーム", "/"],
-  ["♙", "お客様", "/people"],
+  ["♙", "顧客", "/people"],
   ["＋", "覚える", "/capture"],
+  ["⌕", "思い出す", "/search"],
   ["▣", "予定", "/schedule"],
-  ["⌕", "探す", "/search"],
 ] as const;
 
 function isActiveRoute(pathname: string, href: string) {
