@@ -5,7 +5,7 @@ const failures = [];
 const assert = (condition, message) => { if (!condition) failures.push(message); };
 
 for (const token of ["soon", "due_followup", "open_followup", "そろそろ順", "フォロー期限が近い順", "未対応フォロー順"]) assert(page.includes(token), `Customer list sorting missing: ${token}`);
-assert(page.includes("proSortValues") && page.includes("!proDiscoveryAllowed"), "Pro-only sorting must be gated for Free users");
+assert(page.includes("isSortAllowed") && page.includes("soonSortAllowed") && page.includes("followupSortAllowed"), "Pro-only sorting must be gated by the capability it actually uses");
 assert(page.includes("hasVelvetFeature(access,\"followup.manage\")"), "Pro sorting must use plan access, not UI-only assumptions");
 assert(page.includes("buildSoonVisitAlert") && page.includes("getOwnerPreferences"), "Soon sorting must reuse the existing soon-alert policy and user preference");
 assert(page.includes("listNextActions") && page.includes("openFollowupCount") && page.includes("nextDueAt"), "Follow-up sorting must use open next actions and due dates");
