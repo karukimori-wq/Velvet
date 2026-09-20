@@ -24,6 +24,8 @@ const organizeAction=fs.readFileSync("app/capture/organize/[captureId]/actions.t
 const checks=[
  [css,"safe-area-inset-bottom","safe-area bottom spacing"],
  [css,"grid-template-columns:repeat(5,1fr)","five-item daily bottom navigation"],
+ [theme,":focus-visible","visible keyboard focus"],
+ [theme,"prefers-reduced-motion:reduce","reduced-motion accessibility"],
  [css,"touch-action:manipulation","tap responsiveness"],
  [css,"font-size:16px!important","iOS datetime zoom prevention"],
  [css,"min-height:48px","composer touch target"],
