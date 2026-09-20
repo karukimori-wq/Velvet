@@ -9,7 +9,7 @@ import { visibleNextTopics } from "@/lib/next-topic";
 import { getPlanAccess, hasVelvetFeature } from "@/lib/plan-access";
 import { getOwnerPreferences } from "@/lib/owner-preferences";
 import { listVisitTimelinesByCustomer } from "@/lib/professional-timeline-repository";
-import { listDueNextActions } from "@/lib/professional-next-action-repository";
+import { countDueNextActions, listDueNextActions } from "@/lib/professional-next-action-repository";
 import { buildSoonVisitAlert, sortSoonVisitAlerts, type SoonVisitAlert } from "@/lib/soon-alerts";
 import { startHomeVisitAction } from "./home-actions";
 
@@ -24,10 +24,10 @@ export default async function HomePage(){
   const todayEntries=schedule.filter(entry=>tokyoDate(entry.startsAt)===today); const todayVisitors=todayEntries.filter(entry=>entry.kind==="visit"&&entry.customerId).sort((a,b)=>a.startsAt.localeCompare(b.startsAt)); const otherToday=todayEntries.filter(entry=>entry.kind!=="visit").sort((a,b)=>a.startsAt.localeCompare(b.startsAt));
   const allCustomerIds=[...new Set([...customers.map(c=>c.customerId),...memories.map(m=>m.customerId)])];
   const visitByCustomer=access.soonAlertsAllowed&&preferences.soonAlertsEnabled?await listVisitTimelinesByCustomer(workspaceId,userId,allCustomerIds):new Map();
-  const soonAlerts=access.soonAlertsAllowed&&preferences.soonAlertsEnabled?sortSoonVisitAlerts(allCustomerIds.map(customerId=>buildSoonVisitAlert(customerId,visitByCustomer.get(customerId)??[])).filter(isSoonAlert)).slice(0,5):[];
+  const allSoonAlerts=access.soonAlertsAllowed&&preferences.soonAlertsEnabled?sortSoonVisitAlerts(allCustomerIds.map(customerId=>buildSoonVisitAlert(customerId,visitByCustomer.get(customerId)??[])).filter(isSoonAlert)):[]; const soonAlertCount=allSoonAlerts.length; const soonAlerts=allSoonAlerts.slice(0,5);
   const followupAllowed=hasVelvetFeature(access,"followup.manage");
   const followupThrough=new Date(now.getTime()+7*24*60*60*1000);
-  const dueFollowups=followupAllowed?await listDueNextActions(workspaceId,userId,followupThrough,5):[];
+  const [dueFollowups,dueFollowupCount]=followupAllowed?await Promise.all([listDueNextActions(workspaceId,userId,followupThrough,5),countDueNextActions(workspaceId,userId,followupThrough)]):[[],0];
   const monthKey=today.slice(0,7); const monthEvents=schedule.filter(entry=>tokyoDate(entry.startsAt).startsWith(monthKey)&&entry.kind!=="visit").length;
   const nameFor=(customerId:string)=>customerById.get(customerId)?.displayName??memoryByCustomer.get(customerId)?.displayNameSnapshot??"お客様";
   return <main className="shell homeShell">
@@ -36,9 +36,9 @@ export default async function HomePage(){
     {customerResult.status!=="ok"&&<div className="card noticeCard sourceStatusNotice" role="status"><strong>{customerResult.status==="unconfigured"?"お客様情報の接続を準備中です":"お客様情報を一時的に同期できません"}</strong><div className="formHint">Velvetに保存済みの内容と予定はそのまま使えます。登録が消えたわけではありません。</div></div>}
     <section className="metricGrid" aria-label="今日の概要">
       <Link className="metricCard" href="/schedule"><span className="metricIcon">▣</span><span><span className="metricLabel">今日の予定</span><span className="metricValue">{todayEntries.length}<small>件</small></span></span></Link>
-      {followupAllowed?<Link className="metricCard" href="/people?sort=due_followup"><span className="metricIcon">♡</span><span><span className="metricLabel">要フォロー</span><span className="metricValue">{dueFollowups.length}<small>件</small></span></span></Link>:<Link className="metricCard" href="/people"><span className="metricIcon">○</span><span><span className="metricLabel">お客様</span><span className="metricValue">{allCustomerIds.length}<small>名</small></span></span></Link>}
+      {followupAllowed?<Link className="metricCard" href="/people?sort=due_followup"><span className="metricIcon">♡</span><span><span className="metricLabel">要フォロー</span><span className="metricValue">{dueFollowupCount}<small>件</small></span></span></Link>:<Link className="metricCard" href="/people"><span className="metricIcon">○</span><span><span className="metricLabel">お客様</span><span className="metricValue">{allCustomerIds.length}<small>名</small></span></span></Link>}
       <Link className="metricCard" href="/schedule"><span className="metricIcon">♢</span><span><span className="metricLabel">今月のイベント</span><span className="metricValue">{monthEvents}<small>件</small></span></span></Link>
-      {access.soonAlertsAllowed?<Link className="metricCard" href="/people?sort=soon"><span className="metricIcon">⌛</span><span><span className="metricLabel">そろそろ</span><span className="metricValue">{soonAlerts.length}<small>名</small></span></span></Link>:<Link className="metricCard metricRemember" href="/capture"><span className="metricIcon">＋</span><span><span className="metricLabel">覚える</span><span className="metricWord">今日のこと</span></span></Link>}
+      {access.soonAlertsAllowed?<Link className="metricCard" href="/people?sort=soon"><span className="metricIcon">⌛</span><span><span className="metricLabel">そろそろ</span><span className="metricValue">{soonAlertCount}<small>名</small></span></span></Link>:<Link className="metricCard metricRemember" href="/capture"><span className="metricIcon">＋</span><span><span className="metricLabel">覚える</span><span className="metricWord">今日のこと</span></span></Link>}
     </section>
 
     <section className={`card actionPanel${dueFollowups.length===0&&soonAlerts.length===0?" actionPanelQuiet":""}`}>
