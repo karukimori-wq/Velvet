@@ -10,6 +10,8 @@ const visitApi = fs.readFileSync(new URL("../app/api/visits/[visitId]/route.ts",
 const visitPage = fs.readFileSync(new URL("../app/visits/[visitId]/page.tsx", import.meta.url), "utf8");
 const organizePage = fs.readFileSync(new URL("../app/capture/organize/[captureId]/page.tsx", import.meta.url), "utf8");
 const organizeAction = fs.readFileSync(new URL("../app/capture/organize/[captureId]/actions.ts", import.meta.url), "utf8");
+const nextActionsApi = fs.readFileSync(new URL("../app/api/customers/[customerId]/next-actions/route.ts", import.meta.url), "utf8");
+const nextActionItemApi = fs.readFileSync(new URL("../app/api/customers/[customerId]/next-actions/[nextActionId]/route.ts", import.meta.url), "utf8");
 
 const checks = [
   ["Free customer limit is 30", /customerLimit:\s*30/.test(source)],
@@ -36,6 +38,8 @@ const checks = [
   ["Capture organize page blocks old Free captures before AI", /!isWithinHistoryWindow\(capture\.createdAt,\s*access\)/.test(organizePage) && organizePage.indexOf("history_window") < organizePage.indexOf("structureCapture(capture.value")],
   ["Capture organize mutation blocks old Free captures", /getPlanAccess\(ownerUserId\)/.test(organizeAction) && /!isWithinHistoryWindow\(capture\.createdAt,\s*access\)/.test(organizeAction)],
   ["Gift history API is Pro gated", /hasVelvetFeature\(access,\s*["']history\.gifts["']\)/.test(giftsApi) && /PRO_REQUIRED/.test(giftsApi)],
+  ["Next Action list/create API is Pro gated", /hasVelvetFeature\\(access,\\s*["\']followup\\.manage["\']\\)/.test(nextActionsApi) && /PRO_REQUIRED/.test(nextActionsApi)],
+  ["Next Action mutation API is Pro gated", /hasVelvetFeature\\(access,\\s*["\']followup\\.manage["\']\\)/.test(nextActionItemApi) && /PRO_REQUIRED/.test(nextActionItemApi)],
   ["Business integrations cannot be enabled", /feature === ["']business\.integrations["']\) return false/.test(source)],
   ["Business remains unavailable", /plan === ["']business["'][\s\S]*?businessAvailable:\s*false/.test(source)],
   ["Plan spec says Business is not purchasable", /Business[\s\S]{0,300}(not purchasable|購入不可)/i.test(spec)],
