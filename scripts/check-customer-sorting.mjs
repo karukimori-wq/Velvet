@@ -9,7 +9,7 @@ assert(page.includes("proSortValues") && page.includes("!proDiscoveryAllowed"), 
 assert(page.includes("hasVelvetFeature(access,\"followup.manage\")"), "Pro sorting must use plan access, not UI-only assumptions");
 assert(page.includes("buildSoonVisitAlert") && page.includes("getOwnerPreferences"), "Soon sorting must reuse the existing soon-alert policy and user preference");
 assert(page.includes("listNextActions") && page.includes("openFollowupCount") && page.includes("nextDueAt"), "Follow-up sorting must use open next actions and due dates");
-assert(page.includes("disabled={proSortValues.has(value)&&!proDiscoveryAllowed}"), "Free users must not be able to select Pro-only sort options from the UI");
+assert(page.includes("disabled={!isSortAllowed(value)}"), "Unavailable sort options must be disabled in the UI");
 assert(/MVP sorting:[\s\S]*latest visit first[\s\S]*most visits first/.test(spec), "Plan spec must preserve MVP non-money sorting boundary");
 assert(/Money-based sorting[\s\S]*Growth Engine/.test(spec), "Money-based sorting must stay behind Growth Engine/Business boundary");
 
@@ -17,4 +17,4 @@ if (failures.length) {
   console.error("Customer sorting guard failed:\n- " + failures.join("\n- "));
   process.exit(1);
 }
-console.log("Customer sorting guard passed: Pro discovery sorts are gated and money sorts remain out of Velvet.");
+console.log("Customer sorting guard passed: capability-specific discovery sorts are gated and money sorts remain out of Velvet.");
