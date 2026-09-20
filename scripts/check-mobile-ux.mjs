@@ -22,7 +22,7 @@ const organize=fs.readFileSync("app/capture/organize/[captureId]/page.tsx","utf8
 const organizeAction=fs.readFileSync("app/capture/organize/[captureId]/actions.ts","utf8");
 const checks=[
  [css,"safe-area-inset-bottom","safe-area bottom spacing"],
- [theme,"grid-template-columns:repeat(4,1fr)","four-item daily bottom navigation"],
+ [css,"grid-template-columns:repeat(5,1fr)","five-item daily bottom navigation"],
  [css,"touch-action:manipulation","tap responsiveness"],
  [css,"font-size:16px!important","iOS datetime zoom prevention"],
  [css,"min-height:48px","composer touch target"],
@@ -30,7 +30,7 @@ const checks=[
  [nav,"navActive","active bottom navigation state"],
  [nav,'["＋", "覚える", "/capture"]',"explicit remember action label"],
  [nav,"captureNav","prominent remember action hook"],
- [header,'["♙", "お客様", "/people"]',"plain-language drawer customer label"],
+ [header,'["♙", "顧客", "/people"]',"plain-language drawer customer label"],
  [header,'["＋", "覚える", "/capture"]',"drawer remember action"],
  [polish,".bottomNav .captureNav strong","prominent remember button styling"],
  [home,'className="primaryButton actionLink quickRemember"',"prominent home remember action"],
@@ -38,7 +38,7 @@ const checks=[
  [people,"captureMiniAction","per-customer remember shortcut"],
  [people,"さんのことを覚える","customer remember shortcut accessibility"],
  [polish,".captureMiniAction","customer remember shortcut styling"],
- [search,'<AppHeader title="探す" />',"search is a first-class app screen"],
+ [search,'<AppHeader title="思い出す" />',"recall search is a first-class app screen"],
  [search,"誰のことを思い出しますか？","search intent is explicit"],
  [search,"<BottomNav />","search keeps primary navigation"],
  [surfacePolish,".searchIntro","search mobile polish"],
