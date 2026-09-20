@@ -6,7 +6,7 @@ Updated for the Free / Pro release work in September 2026. When an older Velvet 
 Velvet is a mobile-first professional customer-memory app. Its core loop is **覚える → 思い出す → 次につなぐ**. AI stays in the background and may reduce typing, organization, and search effort; it is not the product itself.
 
 ## Canonical ownership
-Growth Engine is canonical for Customer, Reservation / Visit Schedule, Payment, Sales / Revenue, and business-level customer state. Velvet references Growth Engine `customerId` and may keep a display-name snapshot for resilience, but must not create a competing Customer master or payment/sales ledger.
+Growth Engine is canonical for Customer, Reservation / Visit Schedule, Payment, Sales / Revenue, and business-level customer state. Velvet references Growth Engine `customerId` and may keep a display-name snapshot for resilience, but must not create a competing Customer master or payment/sales ledger. Velvet may initiate the shared `Customer.Create` bridge command from its registration UI; Growth Engine performs and audits the canonical create. The shared contract is `professional-platform-contracts/docs/contracts/velvet-growth-customer-bridge.md`.
 
 Velvet is canonical for professional Visit history, service/conversation notes, preferences/cautions, Capture, confirmed professional memory, customer-specific professional timeline, gifts recorded as professional memory, follow-up/next-action records, and Velvet-owned display schedule entries.
 
@@ -60,7 +60,7 @@ Current Cloudflare production architecture:
 `wrangler.jsonc` contains a placeholder D1 database UUID in source; the production workflow resolves the actual `velvet` D1 database and replaces the placeholder before deployment.
 
 ## UX
-Primary mobile navigation is Home / お客様 / 覚える / 予定. Search is available as a first-class screen and from the drawer/customer surfaces. Capture is the emphasized action.
+Primary mobile navigation is Home / 顧客 / 覚える / 思い出す / 予定. Capture is the emphasized center action; recall/search is a first-class bottom-navigation screen.
 
 Customer Detail is one vertical recall surface: identity, quick actions, recall, known memory, follow-ups, images when entitled, then history/timeline. Unknown fields are hidden. Pinning is not a promoted UI concept.
 
