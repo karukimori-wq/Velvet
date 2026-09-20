@@ -12,6 +12,8 @@ const organizePage = fs.readFileSync(new URL("../app/capture/organize/[captureId
 const organizeAction = fs.readFileSync(new URL("../app/capture/organize/[captureId]/actions.ts", import.meta.url), "utf8");
 const nextActionsApi = fs.readFileSync(new URL("../app/api/customers/[customerId]/next-actions/route.ts", import.meta.url), "utf8");
 const nextActionItemApi = fs.readFileSync(new URL("../app/api/customers/[customerId]/next-actions/[nextActionId]/route.ts", import.meta.url), "utf8");
+const historyItemPage = fs.readFileSync(new URL("../app/people/[customerId]/history/[timelineId]/page.tsx", import.meta.url), "utf8");
+const nextActionsPage = fs.readFileSync(new URL("../app/people/[customerId]/next-actions/page.tsx", import.meta.url), "utf8");
 
 const checks = [
   ["Free customer limit is 30", /customerLimit:\s*30/.test(source)],
@@ -40,6 +42,8 @@ const checks = [
   ["Gift history API is Pro gated", /hasVelvetFeature\(access,\s*["']history\.gifts["']\)/.test(giftsApi) && /PRO_REQUIRED/.test(giftsApi)],
   ["Next Action list/create API is Pro gated", /hasVelvetFeature\(access,\s*["\']followup\.manage["\']\)/.test(nextActionsApi) && /PRO_REQUIRED/.test(nextActionsApi)],
   ["Next Action mutation API is Pro gated", /hasVelvetFeature\(access,\s*["\']followup\.manage["\']\)/.test(nextActionItemApi) && /PRO_REQUIRED/.test(nextActionItemApi)],
+  ["Direct timeline item page enforces Free history window", /isWithinHistoryWindow\\(item\\.occurredAt,\\s*access\\)/.test(historyItemPage) && /Freeで確認できるのは直近3か月/.test(historyItemPage)],
+  ["Next Action page is Pro gated", /hasVelvetFeature\\(access,\\s*["\']followup\\.manage["\']\\)/.test(nextActionsPage) && /次回アクションはProで利用できます/.test(nextActionsPage)],
   ["Business integrations cannot be enabled", /feature === ["']business\.integrations["']\) return false/.test(source)],
   ["Business remains unavailable", /plan === ["']business["'][\s\S]*?businessAvailable:\s*false/.test(source)],
   ["Plan spec says Business is not purchasable", /Business[\s\S]{0,300}(not purchasable|購入不可)/i.test(spec)],
