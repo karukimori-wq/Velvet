@@ -14,6 +14,9 @@ assert(people.includes("listNextActionsByCustomer"),"People must batch Pro follo
 assert(!/ids\.map\([\s\S]{0,180}listProfessionalTimeline/.test(people),"People must not issue one full timeline query per customer");
 assert(!/ids\.map\([\s\S]{0,180}listNextActions\(/.test(people),"People must not issue one next-action query per customer");
 assert(home.includes("listVisitTimelinesByCustomer"),"Home must batch visit cadence reads");
+assert(home.includes("countDueNextActions")&&home.includes("dueFollowupCount"),"Home follow-up metric must use an exact count instead of a capped preview length");
+assert(home.includes("allSoonAlerts")&&home.includes("soonAlertCount=allSoonAlerts.length"),"Home soon metric must count the full alert set before slicing its preview");
+assert(nextActions.includes("select count(*) as count")&&nextActions.includes("count(*)::text as count"),"Due follow-up repository must count in persistent storage instead of loading all matching rows");
 assert(!/allCustomerIds\.map\([\s\S]{0,220}listProfessionalTimeline/.test(home),"Home must not issue one timeline query per customer");
 assert(timeline.includes("D1_ID_CHUNK")&&timeline.includes("customer_id in (${placeholders})"),"Timeline repository must chunk D1 customer-id batches");
 assert(nextActions.includes("D1_ID_CHUNK")&&nextActions.includes("customer_id in (${placeholders})"),"Next-action repository must chunk D1 customer-id batches");
