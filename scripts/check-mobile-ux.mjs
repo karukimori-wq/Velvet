@@ -11,6 +11,7 @@ const people=fs.readFileSync("app/people/page.tsx","utf8");
 const detail=fs.readFileSync("app/people/[customerId]/page.tsx","utf8");
 const search=fs.readFileSync("app/search/page.tsx","utf8");
 const add=fs.readFileSync("app/add/page.tsx","utf8");
+const addForm=fs.readFileSync("components/add-customer-form.tsx","utf8");
 const schedule=fs.readFileSync("app/schedule/page.tsx","utf8");
 const settings=fs.readFileSync("app/settings/page.tsx","utf8");
 const capture=fs.readFileSync("app/capture/page.tsx","utf8");
@@ -43,7 +44,9 @@ const checks=[
  [search,"<BottomNav />","search keeps primary navigation"],
  [surfacePolish,".searchIntro","search mobile polish"],
  [add,'<AppHeader title="お客様を追加"',"new-customer screen uses app header"],
- [add,"登録して、この人を覚える","new customer continues into memory"],
+ [addForm,"登録して、この人を覚える","new customer continues into memory"],
+ [addForm,"useActionState","customer registration failures stay in-page"],
+ [addForm,"入力内容はこの画面に残っています","customer registration preserves the entered name on upstream failure"],
  [schedule,"scheduleCustomerLink","schedule links back to customer context"],
  [settings,'<AppHeader title="設定"/>',"settings uses app header"],
  [settings,"プッシュ通知やメールは送りません","display-only reminder wording"],
