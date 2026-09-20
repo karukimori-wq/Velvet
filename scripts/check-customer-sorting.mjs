@@ -11,8 +11,8 @@ assert(page.includes("access.soonAlertsAllowed&&preferences.soonAlertsEnabled"),
 assert(page.includes("buildSoonVisitAlert") && page.includes("getOwnerPreferences"), "Soon sorting must reuse the existing soon-alert policy and user preference");
 assert(page.includes("listNextActions") && page.includes("openFollowupCount") && page.includes("nextDueAt"), "Follow-up sorting must use open next actions and due dates");
 assert(page.includes("disabled={!isSortAllowed(value)}"), "Unavailable sort options must be disabled in the UI");
-assert(/MVP sorting:[\\s\\S]*latest visit first[\\s\\S]*most visits first/.test(spec), "Plan spec must preserve MVP non-money sorting boundary");
-assert(/Money-based sorting[\\s\\S]*Growth Engine/.test(spec), "Money-based sorting must stay behind Growth Engine/Business boundary");
+assert(/MVP sorting:[\s\S]*latest visit first[\s\S]*most visits first/.test(spec), "Plan spec must preserve MVP non-money sorting boundary");
+assert(/Money-based sorting[\s\S]*Growth Engine/.test(spec), "Money-based sorting must stay behind Growth Engine/Business boundary");
 
 if (failures.length) {
   console.error("Customer sorting guard failed:\\n- " + failures.join("\\n- "));
