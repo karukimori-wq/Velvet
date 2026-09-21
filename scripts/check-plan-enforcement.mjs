@@ -14,6 +14,8 @@ const nextActionsApi = fs.readFileSync(new URL("../app/api/customers/[customerId
 const nextActionItemApi = fs.readFileSync(new URL("../app/api/customers/[customerId]/next-actions/[nextActionId]/route.ts", import.meta.url), "utf8");
 const historyItemPage = fs.readFileSync(new URL("../app/people/[customerId]/history/[timelineId]/page.tsx", import.meta.url), "utf8");
 const nextActionsPage = fs.readFileSync(new URL("../app/people/[customerId]/next-actions/page.tsx", import.meta.url), "utf8");
+const exportApi = fs.readFileSync(new URL("../app/api/export/route.ts", import.meta.url), "utf8");
+const importPage = fs.readFileSync(new URL("../app/import/page.tsx", import.meta.url), "utf8");
 
 const checks = [
   ["Free customer limit is 30", /customerLimit:\s*30/.test(source)],
@@ -44,6 +46,8 @@ const checks = [
   ["Next Action mutation API is Pro gated", /hasVelvetFeature\(access,\s*["\']followup\.manage["\']\)/.test(nextActionItemApi) && /PRO_REQUIRED/.test(nextActionItemApi)],
   ["Direct timeline item page enforces Free history window", /isWithinHistoryWindow\(item\.occurredAt,\s*access\)/.test(historyItemPage) && /Freeで確認できるのは直近3か月/.test(historyItemPage)],
   ["Next Action page is Pro gated", /hasVelvetFeature\(access,\s*["\']followup\.manage["\']\)/.test(nextActionsPage) && /次回アクションはProで利用できます/.test(nextActionsPage)],
+  ["JSON export API is Pro gated", /hasVelvetFeature\\(access,\\s*["\']export\\.data["\']\\)/.test(exportApi) && /PRO_REQUIRED/.test(exportApi)],
+  ["JSON export UI reflects entitlement", /hasVelvetFeature\\(access,\\s*["\']export\\.data["\']\\)/.test(importPage) && /Proで利用できます/.test(importPage)],
   ["Business integrations cannot be enabled", /feature === ["']business\.integrations["']\) return false/.test(source)],
   ["Business remains unavailable", /plan === ["']business["'][\s\S]*?businessAvailable:\s*false/.test(source)],
   ["Plan spec says Business is not purchasable", /Business[\s\S]{0,300}(not purchasable|購入不可)/i.test(spec)],
