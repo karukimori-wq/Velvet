@@ -31,6 +31,8 @@ const checks=[
  [css,"min-height:48px","composer touch target"],
  [css,"-webkit-overflow-scrolling:touch","horizontal stamp scrolling"],
  [nav,"navActive","active bottom navigation state"],
+ [nav,'className="navLabel"',"balanced five-item navigation labels"],
+ [polish,".navLabel","compact non-wrapping navigation labels"],
  [nav,'["＋", "覚える", "/capture"]',"explicit remember action label"],
  [nav,"captureNav","prominent remember action hook"],
  [header,'["♙", "顧客", "/people"]',"plain-language drawer customer label"],
