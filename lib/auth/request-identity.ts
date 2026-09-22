@@ -18,13 +18,6 @@ function authMode() {
   return "demo" as const;
 }
 
-function isSafeVercelPreviewDemo() {
-  const onVercel = process.env.VERCEL === "1";
-  const hasDatabase = Boolean(process.env.DATABASE_URL?.trim());
-  const explicitPostgres = process.env.VELVET_STORAGE_MODE?.trim().toLowerCase() === "postgres";
-  return onVercel && !hasDatabase && !explicitPostgres;
-}
-
 function secretMatches(expected: string, supplied: string | null) {
   if (!supplied) return false;
   const expectedBuffer = Buffer.from(expected);
@@ -53,7 +46,7 @@ export async function getRequestIdentity(): Promise<RequestIdentity> {
   const mode = authMode();
 
   if (mode === "demo") {
-    if (process.env.NODE_ENV === "production" && !isSafeVercelPreviewDemo()) throw new Error("AUTH_DEMO_FORBIDDEN_IN_PRODUCTION");
+    if (process.env.NODE_ENV === "production") throw new Error("AUTH_DEMO_FORBIDDEN_IN_PRODUCTION");
     return { userId: DEMO_OWNER_USER_ID, ownerUserId: DEMO_OWNER_USER_ID, workspaceId: "workspace_demo", source: "demo" };
   }
 
