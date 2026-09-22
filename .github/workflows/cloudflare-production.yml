@@ -9,7 +9,7 @@ env:
   VELVET_SESSION_BRIDGE_SECRET: ${{ secrets.VELVET_SESSION_BRIDGE_SECRET }}
   NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY: ${{ secrets.NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY }}
   CLERK_SECRET_KEY: ${{ secrets.CLERK_SECRET_KEY }}
-  PRODUCTION_URL: https://velvet.karukimori.workers.dev
+  PRODUCTION_URL: https://velvet-aitec.jp
   E2E_WORKSPACE_ID: ws_velvet_e2e
   E2E_USER_ID: user_velvet_e2e
 jobs:
