@@ -1,0 +1,99 @@
+name: External Intelligence Production Result
+
+on:
+  workflow_run:
+    workflows:
+      - Cloudflare Production
+    types:
+      - completed
+
+permissions:
+  contents: read
+
+jobs:
+  record:
+    if: ${{ github.event.workflow_run.conclusion == 'success' }}
+    runs-on: ubuntu-latest
+    steps:
+      - name: Record verified production workflow result in EIS
+        env:
+          EIS_BASE_URL: ${{ vars.EXTERNAL_INTELLIGENCE_BASE_URL }}
+          EIS_WORKSPACE_ID: ${{ vars.EXTERNAL_INTELLIGENCE_WORKSPACE_ID }}
+          EIS_TOKEN: ${{ secrets.EXTERNAL_INTELLIGENCE_TOKEN }}
+          SOURCE_REPOSITORY: ${{ github.event.workflow_run.head_repository.full_name }}
+          SOURCE_COMMIT: ${{ github.event.workflow_run.head_sha }}
+          SOURCE_RUN_ID: ${{ github.event.workflow_run.id }}
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          if [ -z "$EIS_BASE_URL" ] || [ -z "$EIS_WORKSPACE_ID" ] || [ -z "$EIS_TOKEN" ]; then
+            echo 'External Intelligence: NOT CONNECTED (configuration missing)'
+            exit 0
+          fi
+
+          EVIDENCE_URI="${{ github.server_url }}/${{ github.repository }}/actions/runs/$SOURCE_RUN_ID"
+          payload="$(jq -n \
+            --arg workspaceId "$EIS_WORKSPACE_ID" \
+            --arg projectId "Velvet" \
+            --arg appId "velvet" \
+            --arg componentId "web" \
+            --arg repository "$SOURCE_REPOSITORY" \
+            --arg commitSha "$SOURCE_COMMIT" \
+            --arg evidenceUri "$EVIDENCE_URI" \
+            '{
+              workspaceId: $workspaceId,
+              projectId: $projectId,
+              appId: $appId,
+              componentId: $componentId,
+              repository: $repository,
+              commitSha: $commitSha,
+              taskType: "production-deploy",
+              summary: "Velvet Cloudflare Production workflow completed its configured type checks, contract checks, deployment, public endpoint verification, D1 roundtrip, customer-memory isolation, Professional Memory production flow, and R2 media lifecycle verification.",
+              outcome: "implementation_result",
+              success: true,
+              source: "github_actions",
+              knowledgeTitle: "Velvet production workflow completed",
+              knowledgeStatement: "The current Velvet commit passed the configured Production API and persistence E2E checks, including D1 roundtrip, workspace isolation, Professional Memory flow, and R2 lifecycle. This remains implementation_result until intended-user UI reachability and human verification are confirmed.",
+              evidenceUri: $evidenceUri,
+              fingerprint: {
+                runtime: "cloudflare-workers",
+                framework: "nextjs-opennext",
+                database: "cloudflare-d1",
+                auth: "clerk",
+                environment: "production",
+                planModel: "free-pro",
+                appRole: "professional-memory",
+                contractVersion: "professional-platform-contracts@abf17744",
+                nodeVersion: "22"
+              },
+              verification: {
+                productionDeployed: true,
+                uiReachable: false,
+                permissionVerified: true,
+                requiresPersistence: true,
+                persistenceVerified: true,
+                requiresIntegration: false,
+                integrationVerified: false,
+                humanVerified: false
+              }
+            }')"
+
+          endpoint="${EIS_BASE_URL%/}/api/development/results"
+          http_code="$(curl --silent --show-error \
+            --output /tmp/eis-response.json \
+            --write-out '%{http_code}' \
+            --request POST "$endpoint" \
+            --header 'content-type: application/json' \
+            --header "authorization: Bearer $EIS_TOKEN" \
+            --data "$payload" || true)"
+
+          if [[ "$http_code" =~ ^2 ]]; then
+            echo 'External Intelligence: RECORDED'
+            cat /tmp/eis-response.json
+            exit 0
+          fi
+
+          echo "External Intelligence: NOT CONNECTED (HTTP $http_code)" >&2
+          if [ -f /tmp/eis-response.json ]; then cat /tmp/eis-response.json >&2; fi
+          exit 0
