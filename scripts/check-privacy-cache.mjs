@@ -3,6 +3,7 @@ const config=fs.readFileSync("next.config.js","utf8");
 const addAction=fs.readFileSync("app/add/actions.ts","utf8");
 const addPage=fs.readFileSync("app/add/page.tsx","utf8");
 const addForm=fs.readFileSync("components/add-customer-form.tsx","utf8");
+const analytics=fs.readFileSync("components/privacy-safe-analytics.tsx","utf8");
 const failures=[];
 const assert=(condition,message)=>{if(!condition)failures.push(message)};
 
@@ -12,6 +13,10 @@ for(const header of ["X-Content-Type-Options","X-Frame-Options","Referrer-Policy
 assert(!addAction.includes("name=${encodeURIComponent(displayName)}"),"Customer names must not be placed in failure query strings");
 assert(!addPage.includes("searchParams")&&!addPage.includes("name?:"),"Customer add page must not recover private names from URL parameters");
 assert(addForm.includes("useActionState")&&addForm.includes("useState"),"Customer registration errors must preserve private input in page state instead of the URL");
+assert(analytics.includes("screenFromPathname"),"Analytics must map routes to sanitized screen names");
+assert(!analytics.includes("useSearchParams"),"Analytics must not read query strings");
+assert(!analytics.includes("window.location.href")&&!analytics.includes("document.location"),"Analytics must not emit raw URLs");
+for(const forbidden of ["customerId","displayName","phone","email","note","captureText","paymentStatus","salesAmount"])assert(!analytics.includes(forbidden),`Analytics must not mention or emit private field ${forbidden}`);
 
 const appFiles=[];
 const walk=dir=>{for(const entry of fs.readdirSync(dir,{withFileTypes:true})){const path=`${dir}/${entry.name}`;if(entry.isDirectory())walk(path);else if(/\.(ts|tsx)$/.test(entry.name))appFiles.push(path)}};
