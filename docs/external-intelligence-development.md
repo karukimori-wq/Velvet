@@ -6,6 +6,7 @@ Velvet uses External Intelligence System (EIS) only as development intelligence.
 
 At the start of a development task, a connected development agent should call EIS `development_start` through HTTP or MCP with:
 
+- `workspaceId`: `professional-platform-dev`
 - `appId`: `velvet`
 - `componentId`: `web`
 - `projectId`: `Velvet`
@@ -21,13 +22,14 @@ If EIS communication does not succeed, report `External Intelligence: NOT CONNEC
 
 `.github/workflows/external-intelligence-production-result.yml` listens for successful completion of the `Cloudflare Production` workflow and records the exact source commit from `workflow_run.head_sha`.
 
-Repository configuration required for recording:
+GitHub Actions authenticates to EIS with a short-lived GitHub OIDC token. No long-lived EIS repository secret or EIS repository variables are required. EIS validates the GitHub issuer, EIS audience, repository owner identity, and source repository before accepting the development result.
 
-- Repository Variable `EXTERNAL_INTELLIGENCE_BASE_URL`
-- Repository Variable `EXTERNAL_INTELLIGENCE_WORKSPACE_ID`
-- Repository Secret `EXTERNAL_INTELLIGENCE_TOKEN`
+The recorder uses:
 
-Missing EIS configuration or an EIS outage does not fail Velvet Production deployment.
+- EIS Production: `https://external-intelligence-system.vercel.app`
+- workspace: `professional-platform-dev`
+
+An EIS outage does not fail Velvet Production deployment.
 
 The automated result records the Production API/persistence evidence that the workflow actually checks: public endpoints, D1 readiness and roundtrip, workspace isolation, Professional Memory flow, and R2 lifecycle. It remains `implementation_result` because intended-user UI reachability and human verification are not established by that workflow.
 
