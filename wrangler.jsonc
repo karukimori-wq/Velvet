@@ -9,7 +9,8 @@
     "VELVET_STORAGE_MODE": "d1",
     "VELVET_AUTH_MODE": "clerk",
     "AI_PLATFORM_CORE_URL": "https://ai-platform-core.karukimori.workers.dev",
-    "AI_PLATFORM_CORE_CLIENT_ID": "velvet"
+    "AI_PLATFORM_CORE_CLIENT_ID": "velvet",
+    "GROWTH_ENGINE_BASE_URL": "https://growth-engine.karukimori.workers.dev"
   },
   "d1_databases": [
     { "binding": "DB", "database_name": "velvet", "database_id": "00000000-0000-0000-0000-000000000000" }
