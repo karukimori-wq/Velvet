@@ -52,6 +52,7 @@ export async function organizeCaptureAction(
   const organizeParams = new URLSearchParams();
   if (customerId) organizeParams.set("customerId", customerId);
   if (fromVisit) organizeParams.set("fromVisit", fromVisit);
+  organizeParams.set("saved", "今日の内容を保存しました");
   const query = organizeParams.toString();
-  redirect(`/capture/organize/${raw.id}${query ? `?${query}` : ""}`);
+  redirect(`/capture?${query ? `?${query}` : ""}`);
 }
