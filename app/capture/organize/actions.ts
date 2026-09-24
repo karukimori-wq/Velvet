@@ -5,6 +5,7 @@ import { getRequestIdentity } from "@/lib/auth/request-identity";
 import { createCapture } from "@/lib/capture-repository";
 import { INPUT_LIMITS } from "@/lib/input-limits";
 import { createNextAction } from "@/lib/professional-next-action-repository";
+import { createConversationEpisode, type ConversationEpisodeState } from "@/lib/conversation-episode-repository";
 
 export type CaptureOrganizeState = { error?: "empty" | "too_long" | "save_failed" };
 
@@ -39,6 +40,13 @@ export async function organizeCaptureAction(
   if (!raw) return { error: "save_failed" };
 
   if (customerId) {
+    const conversationItems = structured.filter(item => item.sectionId === "conversation" && !item.topicId.startsWith("conversation.status."));
+    const stateItem = structured.find(item => item.sectionId === "conversation" && item.topicId.startsWith("conversation.status."));
+    const stateByTopic: Record<string,ConversationEpisodeState> = {"conversation.status.new":"new","conversation.status.continued":"continued","conversation.status.changed":"changed","conversation.status.done":"done"};
+    const episodeState = stateItem ? stateByTopic[stateItem.topicId] ?? "new" : "new";
+    for (const item of conversationItems) {
+      try { await createConversationEpisode({workspaceId,userId,customerId,visitId:fromVisit,captureId:raw.id,topicId:item.topicId,label:item.label,content:item.content,state:episodeState,occurredAt:raw.createdAt}); } catch { return { error: "save_failed" }; }
+    }
     const nextActions = structured.filter(item => item.sectionId === "next_action" && !item.topicId.startsWith("action.meta."));
     const timing = structured.some(item => item.topicId === "action.meta.next_visit") ? "next_visit" as const : structured.some(item => item.topicId === "action.meta.date" || item.topicId === "action.meta.deadline") ? "date" as const : undefined;
     const dueValue = structured.find(item => item.topicId === "action.meta.date" || item.topicId === "action.meta.deadline")?.content;
