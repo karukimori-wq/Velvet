@@ -68,7 +68,7 @@ const checks=[
  [picker,"名前・呼び名で探す","capture customer search"],
  [picker,"＋ 新しいお客様を追加","capture picker has no-dead-end add action"],
  [composer,"webkitSpeechRecognition","iPhone/Safari speech fallback"],
- [composer,"stampGrid","stamp palette"],
+ [composer,"stampChoiceRow","stamp field choice flow"],
  [composerForm,"useActionState","capture save errors stay on the input screen"],
  [composerForm,"入力した内容はこの画面に残しています","capture failure explicitly preserves draft"],
  [composerForm,"保存しています…","capture pending feedback"],
