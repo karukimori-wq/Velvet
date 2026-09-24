@@ -9,7 +9,7 @@ import { getCustomerMemory } from "@/lib/customer-memory-repository";
 import { listCaptures } from "@/lib/capture-repository";
 import { listRecentCaptureCustomerIds } from "@/lib/recent-capture-customers";
 import { buildCustomerRecall } from "@/lib/customer-recall";
-import { rememberGroups } from "@/lib/remember-fields";
+import { getRememberSections,rememberGroups } from "@/lib/remember-fields";
 import { getPlanAccess } from "@/lib/plan-access";
 import { organizeCaptureAction } from "./organize/actions";
 
@@ -24,6 +24,7 @@ export default async function CapturePage({searchParams}:{searchParams:Promise<{
   const displayName=customer?.displayName??memory?.displayNameSnapshot??"お客様";
   const recall=buildCustomerRecall(memory,{maxItems:4,maxNextTopics:2,captures});
   const phase:"first"|"repeat"=((memory?.tags?.length??0)===0&&!memory?.lastInteractionSummary)?"first":"repeat";
+  const rememberSections=getRememberSections(phase);
   const composerAction=organizeCaptureAction.bind(null,customerId,fromVisit);
   return <main className="shell captureShell">
     <header className="velvetHeader"><Link className="menuButton actionLink" href={`/people/${encodeURIComponent(customerId)}`} aria-label={`${displayName}さんの顧客詳細へ戻る`}>‹</Link><div className="pageTitle">覚える</div><span className="headerSpacer"/></header>
@@ -31,7 +32,7 @@ export default async function CapturePage({searchParams}:{searchParams:Promise<{
     {phase==="repeat"&&(recall.items.length>0||recall.nextTopics.length>0)&&<details className="detailsCard captureRecall" open={!fromVisit}><summary>前回を思い出す</summary><div className="stack detailsBody">{recall.items.map(item=><div key={`${item.label}-${item.value}`}><div className="formHint">{item.label}{item.freshness==="aging"?" · 少し前":""}</div><div className="timelineBody">{item.value}</div></div>)}{recall.nextTopics.length>0&&<div><div className="formHint">次に話す</div>{recall.nextTopics.map(topic=><div className="timelineBody" key={topic}>・{topic}</div>)}</div>}</div></details>}
     {saved&&<div className="card successCard"><strong>覚えました</strong><div className="formHint">{saved}</div></div>}
     {error==="organize_missing"?<div className="card noticeCard"><strong>入力内容をもう一度確認してください</strong><div className="formHint">保存直後の読み込みに失敗しました。元の内容は保存されている可能性があります。顧客詳細の「出来事」を確認してから、必要な場合だけもう一度入力してください。</div></div>:error&&<div className="formError">入力内容を確認してください。</div>}
-    <section className="captureFocusCard"><div className="captureFocusHeading"><strong>今日、覚えておくこと</strong><span>短いメモでも大丈夫です</span></div><CaptureComposerForm action={composerAction} groups={rememberGroups} knownTags={memory?.tags??[]} phase={phase} voiceAllowed={access.voiceCaptureAllowed} placeholder={phase==="first"?"仕事、趣味、好みなど。分かったことをそのまま入力。":"今日話したこと、変わったこと、気づいたことを入力。"}/></section>
+    <section className="captureFocusCard"><div className="captureFocusHeading"><strong>{phase==="first"?"この人について":"今日、覚えておくこと"}</strong><span>{phase==="first"?"人物情報から始めて、会話と次につなげます":"前回の続き、今日の話、次にすること"}</span></div><CaptureComposerForm action={composerAction} groups={rememberGroups} sections={rememberSections} knownTags={memory?.tags??[]} phase={phase} voiceAllowed={access.voiceCaptureAllowed} placeholder={phase==="first"?"仕事、趣味、好みなど。分かったことをそのまま入力。":"今日話したこと、変わったこと、気づいたことを入力。"}/></section>
     <Link className="captureFieldLink" href={`/remember?customerId=${encodeURIComponent(customerId)}`}>項目を選んで詳しく覚える <span>›</span></Link>
     <BottomNav/>
   </main>
