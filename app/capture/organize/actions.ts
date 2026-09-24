@@ -40,8 +40,12 @@ export async function organizeCaptureAction(
 
   if (customerId) {
     const nextActions = structured.filter(item => item.sectionId === "next_action" && !item.topicId.startsWith("action.meta."));
+    const timing = structured.some(item => item.topicId === "action.meta.next_visit") ? "next_visit" as const : undefined;
+    const priorityValue = structured.find(item => item.topicId === "action.meta.priority")?.content;
+    const priority = priorityValue === "高" ? "high" as const : priorityValue === "低" ? "low" as const : priorityValue === "中" ? "normal" as const : undefined;
     for (const item of nextActions) {
-      try { await createNextAction(workspaceId, userId, customerId, item.content); } catch { return { error: "save_failed" }; }
+      const actionType = item.topicId.startsWith("action.") ? item.topicId.split(".").slice(0, 2).join(".") : "action.follow_up";
+      try { await createNextAction(workspaceId, userId, customerId, item.content, undefined, { actionType, topicId: item.topicId, timing, priority, sourceCaptureId: raw.id, sourceTopicId: item.topicId }); } catch { return { error: "save_failed" }; }
     }
   }
 
