@@ -40,12 +40,14 @@ export async function organizeCaptureAction(
 
   if (customerId) {
     const nextActions = structured.filter(item => item.sectionId === "next_action" && !item.topicId.startsWith("action.meta."));
-    const timing = structured.some(item => item.topicId === "action.meta.next_visit") ? "next_visit" as const : undefined;
+    const timing = structured.some(item => item.topicId === "action.meta.next_visit") ? "next_visit" as const : structured.some(item => item.topicId === "action.meta.date" || item.topicId === "action.meta.deadline") ? "date" as const : undefined;
+    const dueValue = structured.find(item => item.topicId === "action.meta.date" || item.topicId === "action.meta.deadline")?.content;
+    const dueAt = dueValue && /^\\d{4}-\\d{2}-\\d{2}$/.test(dueValue) ? new Date(`${dueValue}T09:00:00+09:00`).toISOString() : undefined;
     const priorityValue = structured.find(item => item.topicId === "action.meta.priority")?.content;
     const priority = priorityValue === "高" ? "high" as const : priorityValue === "低" ? "low" as const : priorityValue === "中" ? "normal" as const : undefined;
     for (const item of nextActions) {
       const actionType = item.topicId.startsWith("action.") ? item.topicId.split(".").slice(0, 2).join(".") : "action.follow_up";
-      try { await createNextAction(workspaceId, userId, customerId, item.content, undefined, { actionType, topicId: item.topicId, timing, priority, sourceCaptureId: raw.id, sourceTopicId: item.topicId }); } catch { return { error: "save_failed" }; }
+      try { await createNextAction(workspaceId, userId, customerId, item.content, dueAt, { actionType, topicId: item.topicId, timing, priority, sourceCaptureId: raw.id, sourceTopicId: item.topicId }); } catch { return { error: "save_failed" }; }
     }
   }
 
