@@ -9,7 +9,7 @@ const required=[
  [repo,"listOngoingTopics","active topic reader"],
  [capture,"upsertOngoingTopicFromEpisode(episode)","capture wiring"],
  [page,"listOngoingTopics","remember flow reads topics"],
- [page,"続いている話","ongoing topics visible"],
+ [page,"presentation.title","ongoing topics phase-aware title"],
  [schema,"velvet_ongoing_topics","D1 schema"],
  [migration,"velvet_ongoing_topics","Postgres migration"]
 ];
