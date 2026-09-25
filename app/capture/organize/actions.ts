@@ -49,6 +49,7 @@ export async function organizeCaptureAction(
       try { const episode=await createConversationEpisode({workspaceId,userId,customerId,visitId:fromVisit,captureId:raw.id,topicId:item.topicId,label:item.label,content:item.content,state:episodeState,occurredAt:raw.createdAt}); if(episode) await upsertOngoingTopicFromEpisode(episode); } catch { return { error: "save_failed" }; }
     }
     const nextActions = structured.filter(item => item.sectionId === "next_action" && !item.topicId.startsWith("action.meta."));
+    const conversationTopicIds = [...new Set(conversationItems.map(item => item.topicId))];
     const timing = structured.some(item => item.topicId === "action.meta.next_visit") ? "next_visit" as const : structured.some(item => item.topicId === "action.meta.date" || item.topicId === "action.meta.deadline") ? "date" as const : undefined;
     const dueValue = structured.find(item => item.topicId === "action.meta.date" || item.topicId === "action.meta.deadline")?.content;
     const dueAt = dueValue && /^\\d{4}-\\d{2}-\\d{2}$/.test(dueValue) ? new Date(`${dueValue}T09:00:00+09:00`).toISOString() : undefined;
@@ -56,7 +57,8 @@ export async function organizeCaptureAction(
     const priority = priorityValue === "高" ? "high" as const : priorityValue === "低" ? "low" as const : priorityValue === "中" ? "normal" as const : undefined;
     for (const item of nextActions) {
       const actionType = item.topicId.startsWith("action.") ? item.topicId.split(".").slice(0, 2).join(".") : "action.follow_up";
-      try { await createNextAction(workspaceId, userId, customerId, item.content, dueAt, { actionType, topicId: item.topicId, timing, priority, sourceCaptureId: raw.id, sourceTopicId: item.topicId }); } catch { return { error: "save_failed" }; }
+      const sourceTopicId = conversationTopicIds.includes(item.topicId) ? item.topicId : conversationTopicIds.length === 1 ? conversationTopicIds[0] : undefined;
+      try { await createNextAction(workspaceId, userId, customerId, item.content, dueAt, { actionType, topicId: item.topicId, timing, priority, sourceCaptureId: raw.id, sourceTopicId }); } catch { return { error: "save_failed" }; }
     }
   }
 
