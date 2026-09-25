@@ -35,7 +35,7 @@ function groupByCustomer(customerIds:string[],items:ProfessionalNextAction[]){co
 export async function listNextActions(workspaceId: string, userId: string, customerId: string) {
   if (getStorageMode() === "d1") {
     const db = await getD1Database(); if (!db) return [];
-    const r = await db.prepare("select id,workspace_id,user_id,customer_id,text,status,created_at,due_at,completed_at from velvet_professional_next_actions where workspace_id=? and user_id=? and customer_id=? order by case when status='open' then 0 else 1 end,case when due_at is null then 1 else 0 end,due_at asc,created_at desc").bind(workspaceId,userId,customerId).all<Row>();
+    const r = await db.prepare("select id,workspace_id,user_id,customer_id,text,status,created_at,due_at,completed_at,action_type,topic_id,timing,priority,source_capture_id,source_topic_id from velvet_professional_next_actions where workspace_id=? and user_id=? and customer_id=? order by case when status='open' then 0 else 1 end,case when due_at is null then 1 else 0 end,due_at asc,created_at desc").bind(workspaceId,userId,customerId).all<Row>();
     return r.results.map(map);
   }
   if (getStorageMode() !== "postgres") return rows.filter(r => r.workspaceId === workspaceId && r.userId === userId && r.customerId === customerId).sort(order);
@@ -48,7 +48,7 @@ export async function listNextActionsByCustomer(workspaceId:string,userId:string
   const uniqueIds=[...new Set(customerIds.filter(Boolean))];if(!uniqueIds.length)return new Map<string,ProfessionalNextAction[]>();const allowed=new Set(uniqueIds);
   if(getStorageMode()==="d1"){
     const db=await getD1Database();if(!db)return groupByCustomer(uniqueIds,[]);const resultRows:Row[]=[];
-    for(const batch of chunks(uniqueIds,D1_ID_CHUNK)){const placeholders=batch.map(()=>"?").join(",");const result=await db.prepare(`select id,workspace_id,user_id,customer_id,text,status,created_at,due_at,completed_at from velvet_professional_next_actions where workspace_id=? and user_id=? and customer_id in (${placeholders}) order by customer_id,case when status='open' then 0 else 1 end,case when due_at is null then 1 else 0 end,due_at asc,created_at desc`).bind(workspaceId,userId,...batch).all<Row>();resultRows.push(...result.results)}
+    for(const batch of chunks(uniqueIds,D1_ID_CHUNK)){const placeholders=batch.map(()=>"?").join(",");const result=await db.prepare(`select id,workspace_id,user_id,customer_id,text,status,created_at,due_at,completed_at,action_type,topic_id,timing,priority,source_capture_id,source_topic_id from velvet_professional_next_actions where workspace_id=? and user_id=? and customer_id in (${placeholders}) order by customer_id,case when status='open' then 0 else 1 end,case when due_at is null then 1 else 0 end,due_at asc,created_at desc`).bind(workspaceId,userId,...batch).all<Row>();resultRows.push(...result.results)}
     return groupByCustomer(uniqueIds,resultRows.map(map));
   }
   if(getStorageMode()!=="postgres")return groupByCustomer(uniqueIds,rows.filter(r=>r.workspaceId===workspaceId&&r.userId===userId&&allowed.has(r.customerId)));
@@ -60,7 +60,7 @@ export async function listDueNextActions(workspaceId: string, userId: string, th
   const throughIso = through.toISOString();
   if (getStorageMode() === "d1") {
     const db = await getD1Database(); if (!db) return [];
-    const r = await db.prepare("select id,workspace_id,user_id,customer_id,text,status,created_at,due_at,completed_at from velvet_professional_next_actions where workspace_id=? and user_id=? and status='open' and due_at is not null and due_at<=? order by due_at asc,created_at desc limit ?").bind(workspaceId,userId,throughIso,limit).all<Row>();
+    const r = await db.prepare("select id,workspace_id,user_id,customer_id,text,status,created_at,due_at,completed_at,action_type,topic_id,timing,priority,source_capture_id,source_topic_id from velvet_professional_next_actions where workspace_id=? and user_id=? and status='open' and due_at is not null and due_at<=? order by due_at asc,created_at desc limit ?").bind(workspaceId,userId,throughIso,limit).all<Row>();
     return r.results.map(map);
   }
   if (getStorageMode() !== "postgres") return rows.filter(r => r.workspaceId === workspaceId && r.userId === userId && r.status === "open" && r.dueAt && r.dueAt <= throughIso).sort(order).slice(0,limit);
