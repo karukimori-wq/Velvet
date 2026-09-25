@@ -27,6 +27,18 @@ jobs:
         run: npm run check:memory-inputs
       - name: Repeat visit flow
         run: npm run check:repeat-visits
+      - name: Conversation episodes
+        run: npm run check:conversation-episodes
+      - name: Ongoing topics
+        run: npm run check:ongoing-topics
+      - name: Conversation to next actions
+        run: npm run check:conversation-next-actions
+      - name: Recall weighting
+        run: npm run check:recall-weighting
+      - name: Remember discovery
+        run: npm run check:remember-discovery
+      - name: Remember analytics privacy
+        run: npm run check:remember-analytics
       - name: Mobile UX guard
         run: npm run check:mobile-ux
       - name: Plan enforcement
