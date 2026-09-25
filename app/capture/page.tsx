@@ -11,6 +11,7 @@ import { listRecentCaptureCustomerIds } from "@/lib/recent-capture-customers";
 import { buildCustomerRecall } from "@/lib/customer-recall";
 import { getRememberSections,rememberGroups } from "@/lib/remember-fields";
 import { getPlanAccess } from "@/lib/plan-access";
+import { listOngoingTopics } from "@/lib/ongoing-topic-repository";
 import { organizeCaptureAction } from "./organize/actions";
 
 export default async function CapturePage({searchParams}:{searchParams:Promise<{customerId?:string;saved?:string;error?:string;fromVisit?:string}>}){
@@ -20,7 +21,7 @@ export default async function CapturePage({searchParams}:{searchParams:Promise<{
     const [customerResult,recentCustomerIds]=await Promise.all([listGrowthCustomersWithStatus(workspaceId,userId),listRecentCaptureCustomerIds(workspaceId,userId,6)]);
     return <main className="shell captureShell"><AppHeader title="覚える"/><section className="hero capturePickerHero"><h1>誰との時間を覚えておきますか？</h1><p>最近の人からすぐ選ぶか、名前で探せます。</p></section><CapturePersonPicker customers={customerResult.customers} recentCustomerIds={recentCustomerIds} sourceStatus={customerResult.status}/><BottomNav/></main>
   }
-  const [customer,memory,captures,access]=await Promise.all([getGrowthCustomer(workspaceId,userId,customerId),getCustomerMemory(workspaceId,userId,customerId),listCaptures(workspaceId,userId,customerId),getPlanAccess(ownerUserId)]);
+  const [customer,memory,captures,access,ongoingTopics]=await Promise.all([getGrowthCustomer(workspaceId,userId,customerId),getCustomerMemory(workspaceId,userId,customerId),listCaptures(workspaceId,userId,customerId),getPlanAccess(ownerUserId),listOngoingTopics(workspaceId,userId,customerId)]);
   const displayName=customer?.displayName??memory?.displayNameSnapshot??"お客様";
   const recall=buildCustomerRecall(memory,{maxItems:4,maxNextTopics:2,captures});
   const phase:"first"|"repeat"=((memory?.tags?.length??0)===0&&!memory?.lastInteractionSummary)?"first":"repeat";
@@ -30,6 +31,7 @@ export default async function CapturePage({searchParams}:{searchParams:Promise<{
     <header className="velvetHeader"><Link className="menuButton actionLink" href={`/people/${encodeURIComponent(customerId)}`} aria-label={`${displayName}さんの顧客詳細へ戻る`}>‹</Link><div className="pageTitle">覚える</div><span className="headerSpacer"/></header>
     <section className="detailIdentity captureIdentity"><div className="avatar">{displayName.slice(0,1)}</div><h1>{displayName}</h1><div className="formHint">{phase==="first"?"この人のことを、少しずつ覚えていきましょう。":"今日の大切なことだけ、気軽に覚えておきましょう。"}</div></section>
     {phase==="repeat"&&(recall.items.length>0||recall.nextTopics.length>0)&&<details className="detailsCard captureRecall" open={!fromVisit}><summary>前回を思い出す</summary><div className="stack detailsBody">{recall.items.map(item=><div key={`${item.label}-${item.value}`}><div className="formHint">{item.label}{item.freshness==="aging"?" · 少し前":""}</div><div className="timelineBody">{item.value}</div></div>)}{recall.nextTopics.length>0&&<div><div className="formHint">次に話す</div>{recall.nextTopics.map(topic=><div className="timelineBody" key={topic}>・{topic}</div>)}</div>}</div></details>}
+    {phase==="repeat"&&ongoingTopics.length>0&&<section className="card captureRecall"><div className="row"><strong>続いている話</strong><span className="formHint">{ongoingTopics.length}件</span></div><div className="stack detailsBody">{ongoingTopics.slice(0,3).map(topic=><div key={topic.id}><div className="formHint">{topic.label} · {topic.state==="changed"?"変化あり":topic.state==="continued"?"継続":"NEW"}</div><div className="timelineBody">{topic.latestContent}</div></div>)}</div></section>}
     {saved&&<div className="card successCard"><strong>覚えました</strong><div className="formHint">{saved}</div></div>}
     {error==="organize_missing"?<div className="card noticeCard"><strong>入力内容をもう一度確認してください</strong><div className="formHint">保存直後の読み込みに失敗しました。元の内容は保存されている可能性があります。顧客詳細の「出来事」を確認してから、必要な場合だけもう一度入力してください。</div></div>:error&&<div className="formError">入力内容を確認してください。</div>}
     <section className="captureFocusCard"><div className="captureFocusHeading"><strong>{phase==="first"?"この人について":"今日、覚えておくこと"}</strong><span>{phase==="first"?"人物情報から始めて、会話と次につなげます":"前回の続き、今日の話、次にすること"}</span></div><CaptureComposerForm action={composerAction} groups={rememberGroups} sections={rememberSections} knownTags={memory?.tags??[]} phase={phase} voiceAllowed={access.voiceCaptureAllowed} placeholder={phase==="first"?"仕事、趣味、好みなど。分かったことをそのまま入力。":"今日話したこと、変わったこと、気づいたことを入力。"}/></section>
