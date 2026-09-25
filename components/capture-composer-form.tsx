@@ -14,6 +14,6 @@ export function CaptureComposerForm({ action, groups, sections, knownTags, phase
   return <form action={formAction} className="stack captureForm">
     <CaptureChatInput groups={groups} sections={sections} knownTags={knownTags} phase={phase} voiceAllowed={voiceAllowed} placeholder={placeholder}/>
     {state.error && <div className="captureInlineError" role="alert" aria-live="polite"><strong>{title}</strong><span>{detail}</span></div>}
-    <button className="primaryButton" type="submit" disabled={pending} aria-disabled={pending}>{pending ? "保存しています…" : "整理して確認"}</button>
+    <button className="primaryButton" type="submit" disabled={pending} aria-disabled={pending}>{pending ? "保存しています…" : "覚える"}</button>
   </form>;
 }
