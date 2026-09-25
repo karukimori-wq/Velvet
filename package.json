@@ -13,6 +13,7 @@
     "check:memory-inputs": "node scripts/check-memory-input-paths.mjs",
     "check:repeat-visits": "node scripts/check-repeat-visit-flow.mjs",
     "check:conversation-episodes": "node scripts/check-conversation-episodes.mjs",
+    "check:ongoing-topics": "node scripts/check-ongoing-topics.mjs",
     "check:mobile-ux": "node scripts/check-mobile-ux.mjs",
     "check:feedback-hub": "node scripts/check-feedback-hub-boundary.mjs",
     "check:plan-enforcement": "node scripts/check-plan-enforcement.mjs",
