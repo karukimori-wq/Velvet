@@ -16,6 +16,7 @@
     "check:ongoing-topics": "node scripts/check-ongoing-topics.mjs",
     "check:conversation-next-actions": "node scripts/check-conversation-next-actions.mjs",
     "check:recall-weighting": "node scripts/check-recall-weighting.mjs",
+    "check:remember-analytics": "node scripts/check-remember-analytics.mjs",
     "check:mobile-ux": "node scripts/check-mobile-ux.mjs",
     "check:feedback-hub": "node scripts/check-feedback-hub-boundary.mjs",
     "check:plan-enforcement": "node scripts/check-plan-enforcement.mjs",
