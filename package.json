@@ -16,6 +16,7 @@
     "check:ongoing-topics": "node scripts/check-ongoing-topics.mjs",
     "check:conversation-next-actions": "node scripts/check-conversation-next-actions.mjs",
     "check:recall-weighting": "node scripts/check-recall-weighting.mjs",
+    "check:remember-discovery": "node scripts/check-remember-discovery.mjs",
     "check:remember-analytics": "node scripts/check-remember-analytics.mjs",
     "check:mobile-ux": "node scripts/check-mobile-ux.mjs",
     "check:feedback-hub": "node scripts/check-feedback-hub-boundary.mjs",
@@ -37,5 +38,5 @@
     "cf:deploy": "opennextjs-cloudflare build && opennextjs-cloudflare deploy"
   },
   "dependencies": { "@clerk/nextjs": "^7.9.2", "next": "^16.0.0", "pg": "^8.13.1", "react": "^19.2.0", "react-dom": "^19.2.0" },
-  "devDependencies": { "@opennextjs/cloudflare": "^1.20.2", "@types/node": "^22.0.0", "@types/pg": "^8.11.10", "@types/react": "^19.0.0", "@types/react-dom": "^19.0.0", "typescript": "^5.9.0", "wrangler": "^4.126.0" }
+  "devDependencies": { "@opennextjs-cloudflare": "^1.20.2", "@types/node": "^22.0.0", "@types/pg": "^8.11.10", "@types/react": "^19.0.0", "@types/react-dom": "^19.0.0", "typescript": "^5.9.0", "wrangler": "^4.126.0" }
 }
