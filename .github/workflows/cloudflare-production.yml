@@ -31,6 +31,12 @@ jobs:
       - run: npm run check:recall
       - run: npm run check:memory-inputs
       - run: npm run check:repeat-visits
+      - run: npm run check:conversation-episodes
+      - run: npm run check:ongoing-topics
+      - run: npm run check:conversation-next-actions
+      - run: npm run check:recall-weighting
+      - run: npm run check:remember-discovery
+      - run: npm run check:remember-analytics
       - run: npm run check:mobile-ux
       - run: npm run check:feedback-hub
       - run: npm run check:plan-enforcement
@@ -59,25 +65,44 @@ jobs:
           echo "D1_DATABASE_ID=$DB_ID" >> "$GITHUB_ENV"
           node -e 'const fs=require("fs");const p="wrangler.jsonc";const s=fs.readFileSync(p,"utf8").replace("00000000-0000-0000-0000-000000000000",process.argv[1]);fs.writeFileSync(p,s)' "$DB_ID"
           npx wrangler d1 info velvet
-      - name: Migrate existing D1 schema
-        run: |
-          npx wrangler d1 execute velvet --remote --yes --json --command="SELECT EXISTS(SELECT 1 FROM sqlite_master WHERE type='table' AND name='velvet_professional_next_actions') AS table_exists, EXISTS(SELECT 1 FROM pragma_table_info('velvet_professional_next_actions') WHERE name='due_at') AS column_exists;" > /tmp/due-at-column.json
-          MIGRATION_STATE=$(node - <<'NODE'
-          const fs = require('node:fs');
-          const payload = JSON.parse(fs.readFileSync('/tmp/due-at-column.json', 'utf8'));
-          const rows = Array.isArray(payload) ? payload.flatMap(item => item?.results ?? []) : (payload?.results ?? []);
-          const row = rows[0];
-          if (row?.table_exists === undefined || row?.column_exists === undefined) {
-            throw new Error('Unable to inspect next-actions schema');
-          }
-          process.stdout.write(Number(row.table_exists) === 0 ? 'missing_table' : Number(row.column_exists) === 0 ? 'missing_column' : 'ready');
-          NODE
-          )
-          if [ "$MIGRATION_STATE" = "missing_column" ]; then
-            npx wrangler d1 execute velvet --remote --yes --command="ALTER TABLE velvet_professional_next_actions ADD COLUMN due_at TEXT;"
-          fi
       - name: Apply D1 schema
         run: npx wrangler d1 execute velvet --remote --file=cloudflare/schema.sql --yes
+      - name: Migrate existing D1 next action columns
+        run: |
+          npx wrangler d1 execute velvet --remote --yes --json --command="SELECT name FROM pragma_table_info('velvet_professional_next_actions');" > /tmp/next-action-columns.json
+          for COLUMN_DEF in \
+            "due_at TEXT" \
+            "action_type TEXT" \
+            "topic_id TEXT" \
+            "timing TEXT" \
+            "priority TEXT" \
+            "source_capture_id TEXT" \
+            "source_topic_id TEXT"
+          do
+            COLUMN="${COLUMN_DEF%% *}"
+            HAS_COLUMN=$(COLUMN="$COLUMN" node - <<'NODE'
+          const fs=require('node:fs');
+          const payload=JSON.parse(fs.readFileSync('/tmp/next-action-columns.json','utf8'));
+          const rows=Array.isArray(payload)?payload.flatMap(item=>item?.results??[]):(payload?.results??[]);
+          process.stdout.write(rows.some(row=>row?.name===process.env.COLUMN)?'1':'0');
+          NODE
+            )
+            if [ "$HAS_COLUMN" != "1" ]; then
+              npx wrangler d1 execute velvet --remote --yes --command="ALTER TABLE velvet_professional_next_actions ADD COLUMN $COLUMN_DEF;"
+            fi
+          done
+      - name: Verify remember redesign D1 schema
+        run: |
+          npx wrangler d1 execute velvet --remote --yes --json --command="SELECT (SELECT COUNT(*) FROM pragma_table_info('velvet_professional_next_actions') WHERE name IN ('due_at','action_type','topic_id','timing','priority','source_capture_id','source_topic_id')) AS next_action_columns, EXISTS(SELECT 1 FROM sqlite_master WHERE type='table' AND name='velvet_conversation_episodes') AS conversation_episodes, EXISTS(SELECT 1 FROM sqlite_master WHERE type='table' AND name='velvet_ongoing_topics') AS ongoing_topics;" > /tmp/remember-schema.json
+          node - <<'NODE'
+          const fs=require('node:fs');
+          const payload=JSON.parse(fs.readFileSync('/tmp/remember-schema.json','utf8'));
+          const rows=Array.isArray(payload)?payload.flatMap(item=>item?.results??[]):(payload?.results??[]);
+          const row=rows[0]??{};
+          if(Number(row.next_action_columns)!==7||Number(row.conversation_episodes)!==1||Number(row.ongoing_topics)!==1){
+            throw new Error(`Remember redesign D1 schema incomplete: ${JSON.stringify(row)}`);
+          }
+          NODE
       - name: Seed Pro entitlement for production E2E
         run: |
           npx wrangler d1 execute velvet --remote --yes --command="INSERT INTO velvet_owner_entitlements(owner_user_id,plan,status,updated_at) VALUES ('$E2E_USER_ID','pro','active',strftime('%Y-%m-%dT%H:%M:%fZ','now')) ON CONFLICT(owner_user_id) DO UPDATE SET plan='pro',status='active',updated_at=excluded.updated_at;"
