@@ -1,0 +1,1 @@
+"use client";import { useEffect } from "react";import { trackVelvetEvent } from "@/lib/client-analytics";export function AnalyticsEvent({event,properties}:{event:string;properties?:Record<string,string|number|boolean|undefined>}){useEffect(()=>{trackVelvetEvent(event,properties)},[event,properties]);return null}

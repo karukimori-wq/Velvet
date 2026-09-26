@@ -8,7 +8,7 @@ CREATE TABLE IF NOT EXISTS velvet_professional_visits (id TEXT PRIMARY KEY,works
 CREATE INDEX IF NOT EXISTS idx_velvet_professional_visits_scope ON velvet_professional_visits(workspace_id,user_id,customer_id,visited_at DESC);
 CREATE TABLE IF NOT EXISTS velvet_professional_timeline (id TEXT PRIMARY KEY,workspace_id TEXT NOT NULL,user_id TEXT NOT NULL,customer_id TEXT NOT NULL,occurred_at TEXT NOT NULL,event_type TEXT NOT NULL,title TEXT NOT NULL,body TEXT,source_ref TEXT);
 CREATE INDEX IF NOT EXISTS idx_velvet_timeline_scope ON velvet_professional_timeline(workspace_id,user_id,customer_id,occurred_at DESC);
-CREATE TABLE IF NOT EXISTS velvet_professional_next_actions (id TEXT PRIMARY KEY,workspace_id TEXT NOT NULL,user_id TEXT NOT NULL,customer_id TEXT NOT NULL,text TEXT NOT NULL,status TEXT NOT NULL DEFAULT 'open',created_at TEXT NOT NULL,due_at TEXT,completed_at TEXT);
+CREATE TABLE IF NOT EXISTS velvet_professional_next_actions (id TEXT PRIMARY KEY,workspace_id TEXT NOT NULL,user_id TEXT NOT NULL,customer_id TEXT NOT NULL,text TEXT NOT NULL,status TEXT NOT NULL DEFAULT 'open',created_at TEXT NOT NULL,due_at TEXT,completed_at TEXT,action_type TEXT,topic_id TEXT,timing TEXT,priority TEXT,source_capture_id TEXT,source_topic_id TEXT);
 CREATE INDEX IF NOT EXISTS idx_velvet_next_actions_scope ON velvet_professional_next_actions(workspace_id,user_id,customer_id,status,created_at DESC);
 CREATE INDEX IF NOT EXISTS idx_velvet_next_actions_due ON velvet_professional_next_actions(workspace_id,user_id,status,due_at);
 CREATE TABLE IF NOT EXISTS velvet_professional_captures (id TEXT PRIMARY KEY,workspace_id TEXT NOT NULL,user_id TEXT NOT NULL,customer_id TEXT,kind TEXT NOT NULL,raw_text TEXT NOT NULL,created_at TEXT NOT NULL);
@@ -25,3 +25,11 @@ CREATE TABLE IF NOT EXISTS velvet_self_investments (id TEXT PRIMARY KEY,owner_us
 CREATE INDEX IF NOT EXISTS idx_velvet_self_investments_owner ON velvet_self_investments(owner_user_id,occurred_at DESC);
 CREATE TABLE IF NOT EXISTS velvet_professional_relationships (id TEXT PRIMARY KEY,workspace_id TEXT NOT NULL,user_id TEXT NOT NULL,customer_a_id TEXT NOT NULL,customer_b_id TEXT NOT NULL,relation_type TEXT NOT NULL,note TEXT,created_at TEXT NOT NULL);
 CREATE INDEX IF NOT EXISTS idx_velvet_professional_relationships_scope ON velvet_professional_relationships(workspace_id,user_id,created_at DESC);
+
+CREATE TABLE IF NOT EXISTS velvet_conversation_episodes (id TEXT PRIMARY KEY,workspace_id TEXT NOT NULL,user_id TEXT NOT NULL,customer_id TEXT NOT NULL,visit_id TEXT,capture_id TEXT NOT NULL,topic_id TEXT NOT NULL,label TEXT NOT NULL,content TEXT NOT NULL,state TEXT NOT NULL DEFAULT 'new',occurred_at TEXT NOT NULL,created_at TEXT NOT NULL);
+CREATE INDEX IF NOT EXISTS idx_velvet_conversation_episodes_customer ON velvet_conversation_episodes(workspace_id,user_id,customer_id,occurred_at DESC);
+CREATE INDEX IF NOT EXISTS idx_velvet_conversation_episodes_topic ON velvet_conversation_episodes(workspace_id,user_id,customer_id,topic_id,occurred_at DESC);
+CREATE UNIQUE INDEX IF NOT EXISTS idx_velvet_conversation_episode_capture_topic ON velvet_conversation_episodes(capture_id,topic_id,label,content);
+
+CREATE TABLE IF NOT EXISTS velvet_ongoing_topics (id TEXT PRIMARY KEY,workspace_id TEXT NOT NULL,user_id TEXT NOT NULL,customer_id TEXT NOT NULL,topic_id TEXT NOT NULL,label TEXT NOT NULL,latest_content TEXT NOT NULL,state TEXT NOT NULL DEFAULT 'new',first_episode_id TEXT NOT NULL,latest_episode_id TEXT NOT NULL,first_seen_at TEXT NOT NULL,last_seen_at TEXT NOT NULL,completed_at TEXT,created_at TEXT NOT NULL,updated_at TEXT NOT NULL,UNIQUE(workspace_id,user_id,customer_id,topic_id));
+CREATE INDEX IF NOT EXISTS idx_velvet_ongoing_topics_customer ON velvet_ongoing_topics(workspace_id,user_id,customer_id,state,last_seen_at DESC);

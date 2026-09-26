@@ -1,0 +1,1 @@
+"use client";import { trackVelvetEvent } from "@/lib/client-analytics";export function SuggestedActionButton({actionType,label}:{actionType:string;label:string}){return <button className="secondaryButton" type="submit" onClick={()=>trackVelvetEvent("next_action_suggestion_used",{actionType})}>＋ {label}</button>}

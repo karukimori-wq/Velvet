@@ -18,6 +18,7 @@ const capture=fs.readFileSync("app/capture/page.tsx","utf8");
 const picker=fs.readFileSync("components/capture-person-picker.tsx","utf8");
 const composer=fs.readFileSync("components/capture-chat-input.tsx","utf8");
 const composerForm=fs.readFileSync("components/capture-composer-form.tsx","utf8");
+const rememberFields=fs.readFileSync("lib/remember-fields.ts","utf8");
 const captureAction=fs.readFileSync("app/capture/organize/actions.ts","utf8");
 const organize=fs.readFileSync("app/capture/organize/[captureId]/page.tsx","utf8");
 const organizeAction=fs.readFileSync("app/capture/organize/[captureId]/actions.ts","utf8");
@@ -68,10 +69,18 @@ const checks=[
  [picker,"名前・呼び名で探す","capture customer search"],
  [picker,"＋ 新しいお客様を追加","capture picker has no-dead-end add action"],
  [composer,"webkitSpeechRecognition","iPhone/Safari speech fallback"],
- [composer,"stampGrid","stamp palette"],
+ [composer,"stampChoiceRow","stamp field choice flow"],
+ [composer,"stampSectionChoices","three remember entry areas"],
+ [rememberFields,"人物情報","profile remember entry label"],
+ [rememberFields,"今日の会話","conversation remember entry label"],
+ [rememberFields,"次のアクション","next action remember entry label"],
  [composerForm,"useActionState","capture save errors stay on the input screen"],
  [composerForm,"入力した内容はこの画面に残しています","capture failure explicitly preserves draft"],
  [composerForm,"保存しています…","capture pending feedback"],
+ [rememberFields,"getRememberSections","visit phase remember ordering"],
+ [rememberFields,"conversation.status.new","conversation status topic continuity"],
+ [rememberFields,"nextActionRememberGroups","next action taxonomy"],
+ [rememberFields,"topic.travel","shared topic id for duplicate UI entry"],
  [captureAction,'return { error: "save_failed" }',"capture persistence failure returns inline state"],
  [capturePolish,".captureInlineError","capture inline error styling"],
  [organize,"この内容で覚える","clear review confirmation action"],
