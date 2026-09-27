@@ -1,8 +1,8 @@
-import type { SVGProps } from "react";
+import type { ReactNode, SVGProps } from "react";
 
 export type VelvetIconName = "home"|"people"|"plus"|"search"|"calendar"|"sparkle"|"history"|"check"|"heart"|"hourglass"|"plan"|"settings";
 
-const paths: Record<VelvetIconName, React.ReactNode> = {
+const paths: Record<VelvetIconName, ReactNode> = {
   home:<><path d="M3.5 10.5 12 3.8l8.5 6.7"/><path d="M5.5 9.5v10h13v-10"/><path d="M9.5 19.5v-6h5v6"/></>,
   people:<><circle cx="9" cy="8" r="3"/><circle cx="17" cy="9.5" r="2.4"/><path d="M3.8 20c.5-4.1 2.5-6.2 5.2-6.2s4.7 2.1 5.2 6.2"/><path d="M14.7 14.5c3.2-.5 5.1 1.4 5.5 4.5"/></>,
   plus:<><path d="M12 5v14"/><path d="M5 12h14"/></>,
