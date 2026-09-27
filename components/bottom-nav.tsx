@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { usePathname } from "next/navigation";
+import { usePathname } from "next/navigation";\nimport { VelvetIcon, type VelvetIconName } from "@/components/velvet-icon";
 
 const items = [
   ["⌂", "ホーム", "/"],
@@ -16,6 +16,6 @@ export function BottomNav(){
   return <nav className="bottomNav" aria-label="メインメニュー">{items.map(([icon,label,href])=>{
     const active=href==="/"?pathname===href:pathname.startsWith(href);
     const capture=href==="/capture";
-    return <Link className={`navItem${capture?" captureNav":""}${active?" navActive":""}`} href={href} key={href} aria-current={active?"page":undefined} aria-label={capture?"新しいことを覚える":undefined}><strong aria-hidden="true">{icon}</strong><span className="navLabel">{label}</span></Link>;
+    return <Link className={`navItem${capture?" captureNav":""}${active?" navActive":""}`} href={href} key={href} aria-current={active?"page":undefined} aria-label={capture?"新しいことを覚える":undefined}><strong aria-hidden="true"><VelvetIcon name={icon as VelvetIconName} /></strong><span className="navLabel">{label}</span></Link>;
   })}</nav>;
 }
