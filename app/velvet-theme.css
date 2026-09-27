@@ -19,3 +19,6 @@ body{font-family:-apple-system,BlinkMacSystemFont,"Hiragino Sans","Yu Gothic UI"
 
 :where(a,button,input,textarea,select,summary):focus-visible{outline:3px solid var(--wine)!important;outline-offset:3px}
 @media(prefers-reduced-motion:reduce){*,*::before,*::after{scroll-behavior:auto!important;transition-duration:.01ms!important;animation-duration:.01ms!important;animation-iteration-count:1!important}}
+
+/* Cohesive line icons: preserve existing layout and surfaces. */
+.metricIcon svg{width:22px;height:22px;display:block}.headerAction{display:grid;place-items:center}.headerAction svg{width:23px;height:23px;display:block}.drawerNav a span{display:grid;place-items:center}.drawerNav a span svg{width:20px;height:20px;display:block}.bottomNav .navItem strong>svg{width:21px;height:21px;display:block}.bottomNav .captureNav strong>svg{width:28px;height:28px}.actionDot svg{width:13px;height:13px}.actionEmpty>span svg{width:20px;height:20px}.homeEmpty>span svg{width:24px;height:24px;margin:0 auto}
