@@ -43,7 +43,7 @@ export function AppHeader({ title = "Velvet", rightHref, rightLabel }: { title?:
     <header className="velvetHeader">
       <button className="menuButton" type="button" aria-label="メニューを開く" aria-expanded={open} aria-controls="velvet-drawer" onClick={() => setOpen(true)}>☰</button>
       <div className={title === "Velvet" ? "velvetLogo" : "pageTitle"}>{title}</div>
-      {rightHref && rightLabel ? <Link className="headerAction" href={rightHref}>{rightLabel}</Link> : <span className="headerSpacer" />}
+      {rightHref && rightLabel ? <Link className="headerAction" href={rightHref}>{rightLabel === "history" ? <VelvetIcon name="history" /> : rightLabel}</Link> : <span className="headerSpacer" />}
     </header>
     {open && <div className="drawerLayer" role="presentation" onClick={() => setOpen(false)}>
       <aside className="drawer" id="velvet-drawer" aria-label="Velvetメニュー" onClick={event => event.stopPropagation()}>
