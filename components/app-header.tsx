@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useEffect, useState } from "react";
-import { usePathname } from "next/navigation";
+import { usePathname } from "next/navigation";\nimport { VelvetIcon, type VelvetIconName } from "@/components/velvet-icon";
 
 const menuItems = [
   ["⌂", "ホーム", "/"],
@@ -34,9 +34,9 @@ export function AppHeader({ title = "Velvet", rightHref, rightLabel }: { title?:
     };
   }, [open]);
 
-  const drawerLink = (icon: string, label: string, href: string) => {
+  const drawerLink = (icon: VelvetIconName, label: string, href: string) => {
     const active = isActiveRoute(pathname, href);
-    return <Link className={active ? "drawerActive" : undefined} href={href} key={href} aria-current={active ? "page" : undefined} onClick={() => setOpen(false)}><span>{icon}</span>{label}</Link>;
+    return <Link className={active ? "drawerActive" : undefined} href={href} key={href} aria-current={active ? "page" : undefined} onClick={() => setOpen(false)}><span><VelvetIcon name={icon} /></span>{label}</Link>;
   };
 
   return <>
@@ -51,8 +51,8 @@ export function AppHeader({ title = "Velvet", rightHref, rightLabel }: { title?:
         <nav className="drawerNav">{menuItems.map(([icon, label, href]) => drawerLink(icon, label, href))}</nav>
         <div className="drawerDivider" />
         <nav className="drawerNav drawerSecondary">
-          {drawerLink("♛", "プラン", "/plans")}
-          {drawerLink("⚙", "設定", "/settings")}
+          {drawerLink("plan", "プラン", "/plans")}
+          {drawerLink("settings", "設定", "/settings")}
         </nav>
         <div className="drawerPlan"><span className="vipMark">♛</span><div><strong>Velvet</strong><small>大切な人との時間を、次の時間へ。</small></div></div>
       </aside>
