@@ -13,6 +13,7 @@ const people=fs.readFileSync("app/people/page.tsx","utf8");
 const detail=fs.readFileSync("app/people/[customerId]/page.tsx","utf8");
 const search=fs.readFileSync("app/search/page.tsx","utf8");
 const add=fs.readFileSync("app/add/page.tsx","utf8");
+const newCustomerDetails=fs.readFileSync("components/new-customer-details.tsx","utf8");
 const addForm=fs.readFileSync("components/add-customer-form.tsx","utf8");
 const schedule=fs.readFileSync("app/schedule/page.tsx","utf8");
 const settings=fs.readFileSync("app/settings/page.tsx","utf8");
@@ -36,7 +37,8 @@ const checks=[
  [nav,"navActive","active bottom navigation state"],
  [nav,'className="navLabel"',"balanced five-item navigation labels"],
  [polish,".navLabel","compact non-wrapping navigation labels"],
- [nav,'["plus", "覚える", "/capture"]',"explicit remember action label"],
+ [nav,'["plus", "覚える", "/add"]',"remember navigation opens the remember hub"],
+ [nav,'pathname.startsWith("/capture")',"remember navigation stays active during capture"],
  [nav,"captureNav","prominent remember action hook"],
  [header,'drawerLink("plan", "プラン", "/plans")',"drawer keeps secondary plan navigation"],
  [header,'drawerLink("settings", "設定", "/settings")',"drawer keeps secondary settings navigation"],
@@ -59,7 +61,14 @@ const checks=[
  [search,"recallExamples","recall provides search examples"],
  [search,"<BottomNav />","search keeps primary navigation"],
  [surfacePolish,".searchIntro","search mobile polish"],
- [add,'<AppHeader title="お客様を追加"',"new-customer screen uses app header"],
+ [add,'<AppHeader title="覚える"',"remember hub uses the remember title"],
+ [add,"何を覚えますか？","remember hub explains its purpose"],
+ [add,'href="/capture"',"customer choice continues to capture picker"],
+ [add,"お客様から選ぶ","remember hub has a clear customer choice"],
+ [add,"NewCustomerDetails","new customer registration remains available from the hub"],
+ [newCustomerDetails,'id="new-customer"',"new customer disclosure has a stable hash target"],
+ [newCustomerDetails,'window.location.hash==="#new-customer"',"new customer disclosure opens from the private-safe hash"],
+ [surfacePolish,".rememberPrimaryChoice","remember hub primary choice is visually emphasized"],
  [addForm,"登録して、この人を覚える","new customer continues into memory"],
  [addForm,"useActionState","customer registration failures stay in-page"],
  [addForm,"入力内容はこの画面に残っています","customer registration preserves the entered name on upstream failure"],
@@ -91,6 +100,7 @@ const checks=[
  [picker,"最近覚えた人","recent customer shortcut"],
  [picker,"名前・呼び名で探す","capture customer search"],
  [picker,"＋ 新しいお客様を追加","capture picker has no-dead-end add action"],
+ [picker,'href="/add#new-customer"',"capture picker opens the new customer form directly"],
  [composer,"webkitSpeechRecognition","iPhone/Safari speech fallback"],
  [composer,"stampChoiceRow","stamp field choice flow"],
  [composer,"stampSectionChoices","three remember entry areas"],
@@ -119,6 +129,7 @@ const blocked=[
  [header,'["plus", "覚える", "/capture"]',"drawer duplicates remember navigation"],
  [header,'["search", "思い出す", "/search"]',"drawer duplicates recall navigation"],
  [header,'["calendar", "予定", "/schedule"]',"drawer duplicates schedule navigation"],
+ [nav,'["plus", "覚える", "/capture"]',"bottom remember navigation bypasses the remember hub"],
  [home,"metricGrid","home uses large dashboard metric grid"],
  [detail,"この人を思い出す","customer detail exposes competing recall/profile headings"]
 ];
