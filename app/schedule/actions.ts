@@ -8,17 +8,25 @@ import { INPUT_LIMITS } from "@/lib/input-limits";
 
 const allowedKinds = new Set<ScheduleKind>(["shift", "visit", "birthday", "unavailable", "self_investment", "other"]);
 
+function normalizeTokyoDateTimeLocal(value: string) {
+  if (!/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}(?::\d{2})?$/.test(value)) return undefined;
+  const localWithSeconds = value.length === 16 ? `${value}:00` : value;
+  const parsed = new Date(`${localWithSeconds}+09:00`);
+  return Number.isFinite(parsed.getTime()) ? parsed.toISOString() : undefined;
+}
+
 export async function createScheduleAction(formData: FormData) {
   const rawKind = String(formData.get("kind") ?? "other");
   if (!allowedKinds.has(rawKind as ScheduleKind)) redirect("/schedule?error=kind");
   const kind = rawKind as ScheduleKind;
   const customerId = String(formData.get("customerId") ?? "").trim() || undefined;
-  const startsAt = String(formData.get("startsAt") ?? "").trim() || undefined;
+  const startsAtInput = String(formData.get("startsAt") ?? "").trim();
+  const startsAt = startsAtInput ? normalizeTokyoDateTimeLocal(startsAtInput) : undefined;
   const note = String(formData.get("note") ?? "").trim() || undefined;
   let title = String(formData.get("title") ?? "").trim();
   if (customerId && customerId.length > INPUT_LIMITS.customerId) redirect("/schedule?error=customer");
   if (title.length > INPUT_LIMITS.scheduleTitle || (note?.length ?? 0) > INPUT_LIMITS.scheduleNote) redirect("/schedule?error=too_long");
-  if (!startsAt || !Number.isFinite(new Date(startsAt).getTime())) redirect("/schedule?error=datetime");
+  if (!startsAt) redirect("/schedule?error=datetime");
 
   const { workspaceId, userId } = await getRequestIdentity();
   if (kind === "visit") {
