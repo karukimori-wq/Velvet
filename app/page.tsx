@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { AppHeader } from "@/components/app-header";
-import { BottomNav } from "@/components/bottom-nav";\nimport { VelvetIcon } from "@/components/velvet-icon";
+import { BottomNav } from "@/components/bottom-nav";
+import { VelvetIcon } from "@/components/velvet-icon";
 import { getRequestIdentity } from "@/lib/auth/request-identity";
 import { listCustomerMemories } from "@/lib/customer-memory-repository";
 import { listGrowthCustomersWithStatus } from "@/lib/growth-engine-customer";
