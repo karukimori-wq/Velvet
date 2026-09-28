@@ -55,11 +55,8 @@ const checks=[
  [addForm,"useActionState","customer registration failures stay in-page"],
  [addForm,"入力内容はこの画面に残っています","customer registration preserves the entered name on upstream failure"],
  [schedule,"scheduleCustomerLink","schedule links back to customer context"],
- [schedule,'scheduleHref("day"',"schedule has day tab"],
- [schedule,'scheduleHref("week"',"schedule has week tab"],
- [schedule,'scheduleHref("month"',"schedule has month tab"],
- [schedule,"schedulePager","schedule has previous today next navigation"],
- [schedule,"scheduleMonthGrid","schedule has month calendar grid"],
+ [schedule,"scheduleTimelineList","schedule uses a single mobile timeline"],
+ [schedule,"scheduleDayGroup","schedule groups timeline items by date"],
  [settings,'<AppHeader title="設定"/>',"settings uses app header"],
  [settings,"プッシュ通知やメールは送りません","display-only reminder wording"],
  [settings,"<BottomNav/>","settings keeps primary navigation"],
@@ -97,6 +94,16 @@ const checks=[
  [capturePolish,"position:sticky","review actions remain reachable"],
  [organizeAction,'redirect(`/people/${capture.customerId}?${params.toString()}`)',"save returns to customer detail"]
 ];
-const failed=checks.filter(([text,needle])=>!text.includes(needle)).map(([,needle,label])=>`${label}: ${needle}`);
+const blocked=[
+ [schedule,"view=day","schedule has day view"],
+ [schedule,"view=week","schedule has week view"],
+ [schedule,"view=month","schedule has month view"],
+ [schedule,"scheduleViewTabs","schedule has view tabs"],
+ [schedule,"scheduleMonthGrid","schedule has month calendar grid"]
+];
+const failed=[
+ ...checks.filter(([text,needle])=>!text.includes(needle)).map(([,needle,label])=>`${label}: ${needle}`),
+ ...blocked.filter(([text,needle])=>text.includes(needle)).map(([,needle,label])=>`${label}: ${needle}`)
+];
 if(failed.length){console.error("Mobile UX guard failed\n"+failed.map(v=>`- ${v}`).join("\n"));process.exit(1)}
 console.log("Mobile UX guard passed. Physical iPhone verification is still required for final UX sign-off.");
