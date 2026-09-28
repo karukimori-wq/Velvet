@@ -37,7 +37,7 @@ export function CapturePersonPicker({ customers, recentCustomerIds, todayCustome
   }, [customers, query]);
 
   if (sourceStatus !== "ok") return <div className="card empty capturePickerEmpty captureSourceError" role="status"><strong>{sourceStatus === "unconfigured" ? "お客様情報の接続を準備中です" : "お客様情報を読み込めませんでした"}</strong><span>{sourceStatus === "unconfigured" ? "Growth Engineとの接続が完了すると、ここから相手を選べます。" : "登録が消えたわけではありません。通信が戻ってから再読み込みしてください。"}</span><Link className="primaryButton actionLink" href="/capture">もう一度読み込む</Link></div>;
-  if (!customers.length) return <div className="card empty capturePickerEmpty"><strong>登録済みのお客様がいません</strong><span>まず呼び名だけ登録すれば、そのまま覚え始められます。</span><Link className="primaryButton actionLink" href="/add">＋ お客様を追加</Link></div>;
+  if (!customers.length) return <div className="card empty capturePickerEmpty"><strong>登録済みのお客様がいません</strong><span>まず呼び名だけ登録すれば、そのまま覚え始められます。</span><Link className="primaryButton actionLink" href="/add?new=1#new-customer">＋ お客様を追加</Link></div>;
 
   return <div className="capturePickerBody">
     <label className="capturePersonSearch"><input className="searchBox" value={query} onChange={event => setQuery(event.target.value)} placeholder="名前・呼び名で探す" aria-label="お客様を名前・呼び名で検索" autoComplete="off" inputMode="search"/><span aria-hidden="true">⌕</span></label>
@@ -46,6 +46,6 @@ export function CapturePersonPicker({ customers, recentCustomerIds, todayCustome
       {recent.length > 0 && <section className="capturePickerSection"><div className="capturePickerLabel">最近覚えた人</div><div className="capturePersonList captureRecentPeople">{recent.map(customer => <PersonLink customer={customer} key={customer.customerId}/>)}</div></section>}
       <section className="capturePickerSection"><div className="capturePickerLabel">{todayPeople.length || recent.length ? "すべてのお客様" : "お客様"} <span>{customers.length}人</span></div><div className="capturePersonList">{(todayPeople.length || recent.length ? others : customers).map(customer => <PersonLink customer={customer} key={customer.customerId}/>)}</div></section>
     </>}
-    <Link className="captureAddPerson actionLink" href="/add">＋ 新しいお客様を追加</Link>
+    <Link className="captureAddPerson actionLink" href="/add?new=1#new-customer">＋ 新しいお客様を追加</Link>
   </div>;
 }
