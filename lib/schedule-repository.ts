@@ -10,7 +10,14 @@ export type ScheduleEntry = { id:string; workspaceId:string; userId:string; cust
 const entries:ScheduleEntry[]=[];
 const makeId=()=>`schedule_${Date.now().toString(36)}_${Math.random().toString(36).slice(2,7)}`;
 type ScheduleRow={id:string;workspace_id:string;user_id:string;customer_id:string|null;visit_schedule_id:string|null;entry_type:ScheduleKind;title:string;starts_at:string;note:string|null;created_at:string};
-const mapRow=(r:ScheduleRow):ScheduleEntry=>({id:r.id,workspaceId:r.workspace_id,userId:r.user_id,customerId:r.customer_id??undefined,visitScheduleId:r.visit_schedule_id??undefined,kind:r.entry_type,title:r.title,startsAt:new Date(r.starts_at).toISOString(),note:r.note??undefined,createdAt:new Date(r.created_at).toISOString()});
+
+const normalizeStoredStartsAt=(value:string)=>{
+  const legacyTokyoLocal=/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}(?::\d{2}(?:\.\d{1,3})?)?$/;
+  const normalized=legacyTokyoLocal.test(value)?`${value}+09:00`:value;
+  return new Date(normalized).toISOString();
+};
+
+const mapRow=(r:ScheduleRow):ScheduleEntry=>({id:r.id,workspaceId:r.workspace_id,userId:r.user_id,customerId:r.customer_id??undefined,visitScheduleId:r.visit_schedule_id??undefined,kind:r.entry_type,title:r.title,startsAt:normalizeStoredStartsAt(r.starts_at),note:r.note??undefined,createdAt:new Date(r.created_at).toISOString()});
 
 export async function listScheduleEntries(workspaceId:string,userId:string){
   const mode=getStorageMode();
