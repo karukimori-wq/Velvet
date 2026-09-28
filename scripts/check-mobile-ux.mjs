@@ -2,8 +2,10 @@ import fs from "node:fs";
 const css=fs.readFileSync("app/mobile-fixes.css","utf8");
 const theme=fs.readFileSync("app/velvet-theme.css","utf8");
 const polish=fs.readFileSync("app/ux-polish.css","utf8");
+const refresh=fs.readFileSync("app/ui-ux-refresh.css","utf8");
 const surfacePolish=fs.readFileSync("app/surface-polish.css","utf8");
 const capturePolish=fs.readFileSync("app/capture-polish.css","utf8");
+const layout=fs.readFileSync("app/layout.tsx","utf8");
 const nav=fs.readFileSync("components/bottom-nav.tsx","utf8");
 const header=fs.readFileSync("components/app-header.tsx","utf8");
 const home=fs.readFileSync("app/page.tsx","utf8");
@@ -36,18 +38,25 @@ const checks=[
  [polish,".navLabel","compact non-wrapping navigation labels"],
  [nav,'["plus", "覚える", "/capture"]',"explicit remember action label"],
  [nav,"captureNav","prominent remember action hook"],
- [header,'["people", "顧客", "/people"]',"plain-language drawer customer label"],
- [header,'["plus", "覚える", "/capture"]',"drawer remember action"],
+ [header,'drawerLink("plan", "プラン", "/plans")',"drawer keeps secondary plan navigation"],
+ [header,'drawerLink("settings", "設定", "/settings")',"drawer keeps secondary settings navigation"],
+ [header,"画面下のメニューからいつでも開けます","drawer explains primary navigation location"],
  [polish,".bottomNav .captureNav strong","prominent remember button styling"],
- [home,'className="primaryButton actionLink quickRemember"',"prominent home remember action"],
- [home,">＋ 覚える</Link>","home remember wording"],
+ [refresh,"padding-bottom:calc(158px + env(safe-area-inset-bottom))","content clears fixed bottom navigation"],
+ [refresh,".feedbackLauncher{bottom:calc(108px + env(safe-area-inset-bottom))","feedback launcher clears bottom navigation"],
+ [layout,'import "./ui-ux-refresh.css"',"latest UX overrides are loaded"],
+ [home,'className="homeNext"',"home starts with next action"],
+ [home,"次にすること","home next-action wording"],
+ [home,"homeSummaryStrip","home metrics are compact summaries"],
  [people,"captureMiniAction","per-customer remember shortcut"],
  [people,"さんのことを覚える","customer remember shortcut accessibility"],
- [polish,".captureMiniAction","customer remember shortcut styling"],
+ [refresh,".captureMiniAction span","customer remember shortcut is visually compact"],
  [search,'<AppHeader title="思い出す" />',"recall search is a first-class app screen"],
  [search,"何を思い出しますか？","search intent covers people schedules and events"],
  [search,"予定・イベント","recall search includes schedule and event wording"],
  [search,"listScheduleEntries","recall search loads schedules"],
+ [search,"recallSearchButton","recall has one primary search action"],
+ [search,"recallExamples","recall provides search examples"],
  [search,"<BottomNav />","search keeps primary navigation"],
  [surfacePolish,".searchIntro","search mobile polish"],
  [add,'<AppHeader title="お客様を追加"',"new-customer screen uses app header"],
@@ -55,8 +64,10 @@ const checks=[
  [addForm,"useActionState","customer registration failures stay in-page"],
  [addForm,"入力内容はこの画面に残っています","customer registration preserves the entered name on upstream failure"],
  [schedule,"scheduleCustomerLink","schedule links back to customer context"],
- [schedule,"scheduleTimelineList","schedule uses a single mobile timeline"],
- [schedule,"scheduleDayGroup","schedule groups timeline items by date"],
+ [schedule,"scheduleViewTabs","schedule supports day week month views"],
+ [schedule,"scheduleMonthGrid","schedule keeps monthly calendar"],
+ [schedule,'aria-current={view==="month"?"page":undefined}',"schedule exposes selected view accessibly"],
+ [refresh,".filterPill.filterActive","schedule selected view is visually explicit"],
  [settings,'<AppHeader title="設定"/>',"settings uses app header"],
  [settings,"プッシュ通知やメールは送りません","display-only reminder wording"],
  [settings,"<BottomNav/>","settings keeps primary navigation"],
@@ -69,6 +80,8 @@ const checks=[
  [detail,"giftAdded","saved gift confirmation"],
  [detail,"続けて覚える","post-save continuation action"],
  [capture,"listRecentCaptureCustomerIds","capture picker uses recent customer context"],
+ [capture,"listScheduleEntries","capture picker uses today's schedule context"],
+ [picker,"今日会う人","today's customer shortcut"],
  [picker,"最近覚えた人","recent customer shortcut"],
  [picker,"名前・呼び名で探す","capture customer search"],
  [picker,"＋ 新しいお客様を追加","capture picker has no-dead-end add action"],
@@ -95,11 +108,12 @@ const checks=[
  [organizeAction,'redirect(`/people/${capture.customerId}?${params.toString()}`)',"save returns to customer detail"]
 ];
 const blocked=[
- [schedule,"view=day","schedule has day view"],
- [schedule,"view=week","schedule has week view"],
- [schedule,"view=month","schedule has month view"],
- [schedule,"scheduleViewTabs","schedule has view tabs"],
- [schedule,"scheduleMonthGrid","schedule has month calendar grid"]
+ [header,'["home", "ホーム", "/"]',"drawer duplicates home navigation"],
+ [header,'["people", "顧客", "/people"]',"drawer duplicates customer navigation"],
+ [header,'["plus", "覚える", "/capture"]',"drawer duplicates remember navigation"],
+ [header,'["search", "思い出す", "/search"]',"drawer duplicates recall navigation"],
+ [header,'["calendar", "予定", "/schedule"]',"drawer duplicates schedule navigation"],
+ [home,"metricGrid","home uses large dashboard metric grid"]
 ];
 const failed=[
  ...checks.filter(([text,needle])=>!text.includes(needle)).map(([,needle,label])=>`${label}: ${needle}`),
