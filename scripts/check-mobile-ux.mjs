@@ -74,7 +74,13 @@ const checks=[
  [detail,">覚える</span>","customer detail remember action"],
  [detail,">思い出す</span>","customer detail recall action"],
  [detail,">次につなぐ</span>","customer detail next action"],
- [detail,'id="memories"',"customer detail recall destination"],
+ [detail,'className="detailIdentity detailIdentityCompact"',"customer detail identity is compact"],
+ [detail,'className="visitPrimaryAction"',"customer visit action is promoted above secondary actions"],
+ [detail,'className="customerMemoryOverview" id="memories"',"customer recall and stored profile share one memory surface"],
+ [detail,"今、思い出したいこと","customer quick recall purpose is explicit"],
+ [detail,"覚えている情報","customer full profile is clearly named"],
+ [refresh,".customerDetailShell .detailIdentityCompact","compact customer detail styling"],
+ [refresh,".customerDetailShell .customerMemoryDetails>summary","collapsed full profile styling"],
  [detail,'"これまでの出来事":"最近の出来事"',"history is clearly a viewing surface"],
  [detail,"scheduleAdded","saved schedule confirmation"],
  [detail,"giftAdded","saved gift confirmation"],
@@ -113,7 +119,8 @@ const blocked=[
  [header,'["plus", "覚える", "/capture"]',"drawer duplicates remember navigation"],
  [header,'["search", "思い出す", "/search"]',"drawer duplicates recall navigation"],
  [header,'["calendar", "予定", "/schedule"]',"drawer duplicates schedule navigation"],
- [home,"metricGrid","home uses large dashboard metric grid"]
+ [home,"metricGrid","home uses large dashboard metric grid"],
+ [detail,"この人を思い出す","customer detail exposes competing recall/profile headings"]
 ];
 const failed=[
  ...checks.filter(([text,needle])=>!text.includes(needle)).map(([,needle,label])=>`${label}: ${needle}`),
