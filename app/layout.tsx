@@ -10,6 +10,7 @@ import "./capture-polish.css";
 import "./customer-detail-polish.css";
 import "./ux-polish.css";
 import "./surface-polish.css";
+import "./ui-ux-refresh.css";
 
 export const dynamic = "force-dynamic";
 
