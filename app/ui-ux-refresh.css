@@ -1,0 +1,106 @@
+/* September 2026 mobile UI/UX refresh: action-first, compact, and overlap-safe. */
+
+.shell{
+  padding-bottom:calc(158px + env(safe-area-inset-bottom))!important;
+}
+.velvetHeader{
+  height:48px!important;
+  margin-bottom:6px!important;
+}
+.velvetHeader .pageTitle{font-size:17px!important}
+.formHint,.personMeta,.subtle{color:#76636b!important}
+.feedbackLauncher{bottom:calc(108px + env(safe-area-inset-bottom))!important}
+
+/* Drawer is intentionally secondary navigation; daily destinations stay in the bottom nav. */
+.drawer{padding-bottom:calc(22px + env(safe-area-inset-bottom))!important}
+.drawerSectionLabel{margin:34px 14px 8px;color:#9a818b;font-size:11px;font-weight:700;letter-spacing:.08em}
+.drawerSecondary{margin-top:0!important}
+.drawerSecondary a{min-height:52px}
+.drawerHint{margin:18px 14px 0;padding:14px 16px;border-radius:16px;background:#fff8fa;color:#806d75;font-size:11px;line-height:1.65}
+
+/* Home: the next human interaction comes before dashboard numbers. */
+.homeNext{margin-top:8px}
+.homeNextLabel{margin:0 3px 8px;color:#775d67;font-size:12px;font-weight:800;letter-spacing:.04em}
+.homeNextCard{display:grid;grid-template-columns:auto minmax(0,1fr) auto;align-items:center;gap:13px;padding:16px 17px;border-color:#ead5dc;background:linear-gradient(145deg,#fffaf9,#fff4f7);box-shadow:0 10px 28px rgba(80,37,52,.07)}
+.homeNextCard.homeNextLink{color:inherit;text-decoration:none}
+.homeNextTime{font-family:Georgia,"Times New Roman",serif;font-size:24px;color:var(--wine);font-weight:600}
+.homeNextMain{min-width:0;display:grid;gap:3px}
+.homeNextMain a{color:inherit;text-decoration:none}
+.homeNextMain strong{font-size:17px;line-height:1.25}
+.homeNextMain span{color:#806e75;font-size:11px;line-height:1.45}
+.homeNextCard .compactButton{min-height:42px;padding:8px 13px;font-size:12px;white-space:nowrap}
+.homeNextChevron{font-size:24px;color:var(--wine)}
+.homeNextEmpty{grid-template-columns:auto minmax(0,1fr)}
+.homeNextCheck{width:38px;height:38px;border-radius:50%;display:grid;place-items:center;background:#fff;color:var(--wine)}
+.homeSummaryStrip{display:grid;grid-template-columns:repeat(3,1fr);margin:12px 0 14px;border:1px solid var(--line);border-radius:18px;background:rgba(255,255,255,.74);overflow:hidden}
+.homeSummaryStrip a{min-width:0;padding:11px 8px;text-align:center;color:inherit;text-decoration:none;border-right:1px solid var(--line)}
+.homeSummaryStrip a:last-child{border-right:0}
+.homeSummaryStrip span,.homeSummaryStrip strong{display:block}
+.homeSummaryStrip span{font-size:10px;color:#86737b}
+.homeSummaryStrip strong{margin-top:3px;font-family:Georgia,"Times New Roman",serif;font-size:20px;color:#4d343e}
+.homeSummaryStrip small{margin-left:2px;font-family:-apple-system,BlinkMacSystemFont,"Hiragino Sans",sans-serif;font-size:9px;color:#8d7981}
+.homeShell .actionPanel{margin-top:0;padding:14px 16px}
+.homeShell .actionPanelQuiet .actionEmpty{padding:8px 0 0}
+.homeShell .sectionHeading{margin-top:18px}
+.homeShell .scheduleCard{margin-bottom:6px}
+
+/* Customer list: keep scanning fast; secondary remember action becomes compact. */
+.peopleIntro{padding-top:4px!important;padding-bottom:10px!important}
+.peopleSearchForm{gap:7px!important}
+.customerToolbar{display:flex!important;flex-wrap:nowrap!important;overflow-x:auto;gap:7px!important;padding-bottom:2px;scrollbar-width:none;-webkit-overflow-scrolling:touch}
+.customerToolbar::-webkit-scrollbar{display:none}
+.customerToolbar .filterPill{flex:0 0 auto;padding:7px 11px!important;font-size:11px}
+.peopleCount{padding-top:12px!important}
+.peopleList .personRow{min-height:70px!important;padding:6px 2px!important}
+.peopleList .avatar{width:42px!important;height:42px!important;flex-basis:42px!important}
+.captureMiniAction{flex:0 0 44px!important;width:44px!important;min-height:44px!important;border-radius:50%!important;gap:0!important}
+.captureMiniAction strong{font-size:23px!important}
+.captureMiniAction span{position:absolute!important;width:1px!important;height:1px!important;padding:0!important;margin:-1px!important;overflow:hidden!important;clip:rect(0,0,0,0)!important;white-space:nowrap!important;border:0!important}
+
+/* Remember picker: today's visitor gets the first, clearest route. */
+.capturePickerHero{padding-top:10px!important;padding-bottom:14px!important}
+.capturePickerHero h1{font-size:25px!important;line-height:1.25!important}
+.captureTodayPeople{margin-top:14px}
+.captureTodayRow{border-color:#e6c1ce!important;background:linear-gradient(145deg,#fff7f9,#fbe8ef)!important;box-shadow:0 8px 20px rgba(125,25,65,.06)}
+.captureTodayRow .avatar{background:#fff!important;color:var(--wine)!important}
+.capturePersonList{gap:7px!important}
+
+/* Recall: one clear search action, with examples rather than competing buttons. */
+.searchIntro{padding-top:10px!important;padding-bottom:14px!important}
+.searchMainForm{gap:9px!important}
+.recallSearchButton{width:100%;min-height:50px}
+.searchAssist{margin-top:-1px;color:#806d75;font-size:10px;line-height:1.5;text-align:center}
+.searchAssist a{color:var(--wine);font-weight:700;text-decoration:none}
+.recallExamples{margin:14px 2px 4px}
+.recallExamples>span{display:block;margin-bottom:7px;color:#8b747d;font-size:10px}
+.recallExamples>div{display:flex;gap:7px;overflow-x:auto}
+.recallExamples a{flex:0 0 auto;padding:7px 11px;border:1px solid var(--line);border-radius:999px;background:#fff;color:#6f5660;font-size:11px;text-decoration:none}
+
+/* Schedule: preserve the calendar, but make the selected view unmistakable. */
+.scheduleIntro{padding-top:6px!important;padding-bottom:8px!important}
+.scheduleLegend{padding-top:4px!important}
+.scheduleViewTabs{display:grid!important;grid-template-columns:repeat(3,1fr);gap:6px!important;margin:8px 0 6px!important;padding:4px;border-radius:16px;background:#f6eff1;overflow:visible!important}
+.scheduleViewTabs .filterPill{min-height:38px;display:grid;place-items:center;padding:7px 10px!important;border:1px solid transparent;background:transparent;color:#806d75;font-weight:700;text-align:center}
+.scheduleViewTabs .filterPill.filterActive,.scheduleViewTabs .filterPill[aria-current="page"]{background:var(--wine)!important;border-color:var(--wine)!important;color:#fff!important;box-shadow:0 5px 14px rgba(116,19,55,.18);font-weight:800}
+.schedulePager{margin:7px 0 10px!important}
+.schedulePager .secondaryButton{border-radius:14px!important;background:#fff!important}
+.schedulePager .scheduleToday{color:var(--wine)!important;font-weight:800}
+.scheduleMonth{margin-top:8px!important;border-radius:20px!important}
+.scheduleMonthCell{min-height:50px!important}
+.scheduleMonthCell:active{background:#fff4f7}
+.scheduleMonthCell.monthToday strong{box-shadow:0 0 0 3px #f8e8ed}
+
+@media(max-width:430px){
+  .homeNextCard{padding:14px 13px;gap:10px}
+  .homeNextTime{font-size:21px}
+  .homeNextMain strong{font-size:15px}
+  .homeNextCard .compactButton{padding:7px 10px}
+  .homeSummaryStrip a{padding:10px 5px}
+  .scheduleMonthCell{min-height:47px!important}
+}
+@media(max-width:370px){
+  .homeNextCard{grid-template-columns:auto minmax(0,1fr)}
+  .homeNextCard form{grid-column:1/-1}
+  .homeNextCard .compactButton{width:100%}
+  .homeSummaryStrip strong{font-size:18px}
+}
