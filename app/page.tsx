@@ -33,7 +33,6 @@ export default async function HomePage(){
   const nameFor=(customerId:string)=>customerById.get(customerId)?.displayName??memoryByCustomer.get(customerId)?.displayNameSnapshot??"お客様";
   return <main className="shell homeShell">
     <AppHeader rightHref="/schedule" rightLabel="history" />
-    <div className="homeGreeting"><strong>今日</strong><span>必要なことだけ、ここからすぐに。</span></div>
     {customerResult.status!=="ok"&&<div className="card noticeCard sourceStatusNotice" role="status"><strong>{customerResult.status==="unconfigured"?"お客様情報の接続を準備中です":"お客様情報を一時的に同期できません"}</strong><div className="formHint">Velvetに保存済みの内容と予定はそのまま使えます。登録が消えたわけではありません。</div></div>}
     <section className="metricGrid" aria-label="今日の概要">
       <Link className="metricCard" href="/schedule"><span className="metricIcon"><VelvetIcon name="calendar" /></span><span><span className="metricLabel">今日の予定</span><span className="metricValue">{todayEntries.length}<small>件</small></span></span></Link>
