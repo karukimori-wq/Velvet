@@ -10,13 +10,12 @@ const kindLabel={shift:"出勤",visit:"来店",birthday:"誕生日",unavailable:
 const kindIcon={shift:"◇",visit:"●",birthday:"🎁",unavailable:"◆",self_investment:"○",other:"・"} as const;
 const viewLabel={day:"今日",week:"週間",month:"月間"} as const;
 type ScheduleView=keyof typeof viewLabel;
-const day=(value:string)=>new Intl.DateTimeFormat("ja-JP",{month:"numeric",day:"numeric",weekday:"short",timeZone:"Asia/Tokyo"}).format(new Date(value));
-const time=(value:string)=>new Intl.DateTimeFormat("ja-JP",{hour:"2-digit",minute:"2-digit",timeZone:"Asia/Tokyo"}).format(new Date(value));
+const day=(value:Date|string)=>new Intl.DateTimeFormat("ja-JP",{month:"numeric",day:"numeric",weekday:"short",timeZone:"Asia/Tokyo"}).format(new Date(value));
+const time=(value:Date|string)=>new Intl.DateTimeFormat("ja-JP",{hour:"2-digit",minute:"2-digit",timeZone:"Asia/Tokyo"}).format(new Date(value));
 const monthTitle=(value:Date)=>new Intl.DateTimeFormat("ja-JP",{year:"numeric",month:"long",timeZone:"Asia/Tokyo"}).format(value);
 const tokyoKey=(value:Date|string)=>{const parts=new Intl.DateTimeFormat("en-CA",{timeZone:"Asia/Tokyo",year:"numeric",month:"2-digit",day:"2-digit"}).formatToParts(new Date(value));const get=(type:string)=>parts.find(part=>part.type===type)?.value??"";return `${get("year")}-${get("month")}-${get("day")}`};
 const tokyoWeekday=(value:Date|string)=>Number(new Intl.DateTimeFormat("en-US",{timeZone:"Asia/Tokyo",weekday:"short"}).format(new Date(value)).replace(/Sun|Mon|Tue|Wed|Thu|Fri|Sat/,m=>String(["Sun","Mon","Tue","Wed","Thu","Fri","Sat"].indexOf(m))));
 const startOfTokyoDay=(key:string)=>new Date(`${key}T00:00:00+09:00`);
-const keyFromParts=(year:number,month:number,dayValue:number)=>`${year}-${String(month).padStart(2,"0")}-${String(dayValue).padStart(2,"0")}`;
 const addDays=(date:Date,days:number)=>new Date(date.getTime()+days*24*60*60*1000);
 const addMonthsTokyo=(date:Date,months:number)=>{const key=tokyoKey(date);const [year,month]=key.split("-").map(Number);return new Date(Date.UTC(year,month-1+months,1)-9*60*60*1000)};
 function viewRange(view:ScheduleView,cursor:Date){
@@ -26,7 +25,7 @@ function viewRange(view:ScheduleView,cursor:Date){
   const [year,month]=cursorKey.split("-").map(Number);const monthStart=new Date(Date.UTC(year,month-1,1)-9*60*60*1000);const monthEnd=new Date(Date.UTC(year,month,1)-9*60*60*1000);return {start:monthStart,end:monthEnd,title:monthTitle(monthStart),prev:addMonthsTokyo(monthStart,-1),next:addMonthsTokyo(monthStart,1)};
 }
 function monthCells(monthStart:Date){
-  const startKey=tokyoKey(monthStart);const [year,month]=startKey.split("-").map(Number);const firstWeekday=tokyoWeekday(monthStart);const firstCell=addDays(monthStart,-firstWeekday);return Array.from({length:42},(_,index)=>{const date=addDays(firstCell,index);const key=tokyoKey(date);const [,cellMonth,cellDay]=key.split("-").map(Number);return {date,key,day:cellDay,currentMonth:cellMonth===month,today:key===tokyoKey(new Date())};});
+  const startKey=tokyoKey(monthStart);const [,month]=startKey.split("-").map(Number);const firstWeekday=tokyoWeekday(monthStart);const firstCell=addDays(monthStart,-firstWeekday);return Array.from({length:42},(_,index)=>{const date=addDays(firstCell,index);const key=tokyoKey(date);const [,cellMonth,cellDay]=key.split("-").map(Number);return {date,key,day:cellDay,currentMonth:cellMonth===month,today:key===tokyoKey(new Date())};});
 }
 const scheduleHref=(view:ScheduleView,cursor:Date)=>`/schedule?view=${view}&cursor=${tokyoKey(cursor)}`;
 const entriesForDay=(entries:ScheduleEntry[],key:string)=>entries.filter(entry=>tokyoKey(entry.startsAt)===key);
