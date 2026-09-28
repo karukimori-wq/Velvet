@@ -2,7 +2,8 @@
 
 import Link from "next/link";
 import { useEffect, useState } from "react";
-import { usePathname } from "next/navigation";\nimport { VelvetIcon, type VelvetIconName } from "@/components/velvet-icon";
+import { usePathname } from "next/navigation";
+import { VelvetIcon, type VelvetIconName } from "@/components/velvet-icon";
 
 const menuItems = [
   ["⌂", "ホーム", "/"],
