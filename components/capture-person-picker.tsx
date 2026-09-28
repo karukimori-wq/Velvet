@@ -6,23 +6,30 @@ import type { GrowthCustomerDisplay, GrowthCustomerListResult } from "@/lib/grow
 
 const normalize = (value: string) => value.normalize("NFKC").toLocaleLowerCase("ja").replace(/\s+/g, "");
 
-function PersonLink({ customer }: { customer: GrowthCustomerDisplay }) {
+function PersonLink({ customer, emphasis = false }: { customer: GrowthCustomerDisplay; emphasis?: boolean }) {
   const name = customer.displayName ?? "お客様";
-  return <Link className="card personRow capturePersonRow" href={`/capture?customerId=${encodeURIComponent(customer.customerId)}`} aria-label={`${name}さんとの出来事を覚える`}>
+  return <Link className={`card personRow capturePersonRow${emphasis ? " captureTodayRow" : ""}`} href={`/capture?customerId=${encodeURIComponent(customer.customerId)}`} aria-label={`${name}さんとの出来事を覚える`}>
     <div className="avatar">{name.slice(0, 1)}</div>
-    <div className="personMain"><div className="personName">{name}</div><div className="formHint">この人との出来事を覚える</div></div>
+    <div className="personMain"><div className="personName">{name}</div><div className="formHint">{emphasis ? "今日会う予定 · この人とのことを覚える" : "この人との出来事を覚える"}</div></div>
     <span aria-hidden="true">›</span>
   </Link>;
 }
 
-export function CapturePersonPicker({ customers, recentCustomerIds, sourceStatus }: { customers: GrowthCustomerDisplay[]; recentCustomerIds: string[]; sourceStatus: GrowthCustomerListResult["status"] }) {
+export function CapturePersonPicker({ customers, recentCustomerIds, todayCustomerIds = [], sourceStatus }: { customers: GrowthCustomerDisplay[]; recentCustomerIds: string[]; todayCustomerIds?: string[]; sourceStatus: GrowthCustomerListResult["status"] }) {
   const [query, setQuery] = useState("");
+  const todaySet = useMemo(() => new Set(todayCustomerIds), [todayCustomerIds]);
   const recentSet = useMemo(() => new Set(recentCustomerIds), [recentCustomerIds]);
-  const recent = useMemo(() => recentCustomerIds.flatMap(id => {
+  const todayPeople = useMemo(() => todayCustomerIds.flatMap(id => {
     const customer = customers.find(item => item.customerId === id);
     return customer ? [customer] : [];
-  }), [customers, recentCustomerIds]);
-  const others = useMemo(() => customers.filter(customer => !recentSet.has(customer.customerId)), [customers, recentSet]);
+  }), [customers, todayCustomerIds]);
+  const recent = useMemo(() => recentCustomerIds.flatMap(id => {
+    if (todaySet.has(id)) return [];
+    const customer = customers.find(item => item.customerId === id);
+    return customer ? [customer] : [];
+  }), [customers, recentCustomerIds, todaySet]);
+  const shownSet = useMemo(() => new Set([...todayCustomerIds, ...recentCustomerIds]), [todayCustomerIds, recentCustomerIds]);
+  const others = useMemo(() => customers.filter(customer => !shownSet.has(customer.customerId)), [customers, shownSet]);
   const matches = useMemo(() => {
     const needle = normalize(query);
     if (!needle) return [];
@@ -35,8 +42,9 @@ export function CapturePersonPicker({ customers, recentCustomerIds, sourceStatus
   return <div className="capturePickerBody">
     <label className="capturePersonSearch"><input className="searchBox" value={query} onChange={event => setQuery(event.target.value)} placeholder="名前・呼び名で探す" aria-label="お客様を名前・呼び名で検索" autoComplete="off" inputMode="search"/><span aria-hidden="true">⌕</span></label>
     {query ? <section className="capturePickerSection"><div className="capturePickerLabel">検索結果 <span>{matches.length}人</span></div><div className="capturePersonList">{matches.map(customer => <PersonLink customer={customer} key={customer.customerId}/>)}{!matches.length && <div className="capturePickerNoMatch" role="status">見つかりませんでした。呼び名を変えて探してみてください。</div>}</div></section> : <>
+      {todayPeople.length > 0 && <section className="capturePickerSection captureTodayPeople"><div className="capturePickerLabel">今日会う人 <span>{todayPeople.length}人</span></div><div className="capturePersonList">{todayPeople.map(customer => <PersonLink customer={customer} emphasis key={customer.customerId}/>)}</div></section>}
       {recent.length > 0 && <section className="capturePickerSection"><div className="capturePickerLabel">最近覚えた人</div><div className="capturePersonList captureRecentPeople">{recent.map(customer => <PersonLink customer={customer} key={customer.customerId}/>)}</div></section>}
-      <section className="capturePickerSection"><div className="capturePickerLabel">{recent.length ? "すべてのお客様" : "お客様"} <span>{customers.length}人</span></div><div className="capturePersonList">{(recent.length ? others : customers).map(customer => <PersonLink customer={customer} key={customer.customerId}/>)}</div></section>
+      <section className="capturePickerSection"><div className="capturePickerLabel">{todayPeople.length || recent.length ? "すべてのお客様" : "お客様"} <span>{customers.length}人</span></div><div className="capturePersonList">{(todayPeople.length || recent.length ? others : customers).map(customer => <PersonLink customer={customer} key={customer.customerId}/>)}</div></section>
     </>}
     <Link className="captureAddPerson actionLink" href="/add">＋ 新しいお客様を追加</Link>
   </div>;
