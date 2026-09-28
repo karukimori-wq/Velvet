@@ -13,6 +13,7 @@ const people=fs.readFileSync("app/people/page.tsx","utf8");
 const detail=fs.readFileSync("app/people/[customerId]/page.tsx","utf8");
 const search=fs.readFileSync("app/search/page.tsx","utf8");
 const add=fs.readFileSync("app/add/page.tsx","utf8");
+const newCustomerDetails=fs.readFileSync("components/new-customer-details.tsx","utf8");
 const addForm=fs.readFileSync("components/add-customer-form.tsx","utf8");
 const schedule=fs.readFileSync("app/schedule/page.tsx","utf8");
 const settings=fs.readFileSync("app/settings/page.tsx","utf8");
@@ -64,7 +65,9 @@ const checks=[
  [add,"何を覚えますか？","remember hub explains its purpose"],
  [add,'href="/capture"',"customer choice continues to capture picker"],
  [add,"お客様から選ぶ","remember hub has a clear customer choice"],
- [add,'id="new-customer"',"new customer registration remains available from the hub"],
+ [add,"NewCustomerDetails","new customer registration remains available from the hub"],
+ [newCustomerDetails,'id="new-customer"',"new customer disclosure has a stable hash target"],
+ [newCustomerDetails,'window.location.hash==="#new-customer"',"new customer disclosure opens from the private-safe hash"],
  [surfacePolish,".rememberPrimaryChoice","remember hub primary choice is visually emphasized"],
  [addForm,"登録して、この人を覚える","new customer continues into memory"],
  [addForm,"useActionState","customer registration failures stay in-page"],
@@ -97,7 +100,7 @@ const checks=[
  [picker,"最近覚えた人","recent customer shortcut"],
  [picker,"名前・呼び名で探す","capture customer search"],
  [picker,"＋ 新しいお客様を追加","capture picker has no-dead-end add action"],
- [picker,'href="/add?new=1#new-customer"',"capture picker opens the new customer form directly"],
+ [picker,'href="/add#new-customer"',"capture picker opens the new customer form directly"],
  [composer,"webkitSpeechRecognition","iPhone/Safari speech fallback"],
  [composer,"stampChoiceRow","stamp field choice flow"],
  [composer,"stampSectionChoices","three remember entry areas"],
