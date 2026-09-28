@@ -5,11 +5,11 @@ import { usePathname } from "next/navigation";
 import { VelvetIcon, type VelvetIconName } from "@/components/velvet-icon";
 
 const items = [
-  ["⌂", "ホーム", "/"],
-  ["♙", "顧客", "/people"],
-  ["＋", "覚える", "/capture"],
-  ["⌕", "思い出す", "/search"],
-  ["▣", "予定", "/schedule"],
+  ["home", "ホーム", "/"],
+  ["people", "顧客", "/people"],
+  ["plus", "覚える", "/capture"],
+  ["search", "思い出す", "/search"],
+  ["calendar", "予定", "/schedule"],
 ] as const;
 
 export function BottomNav(){
