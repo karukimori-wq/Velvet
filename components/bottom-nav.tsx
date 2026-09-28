@@ -1,7 +1,8 @@
 "use client";
 
 import Link from "next/link";
-import { usePathname } from "next/navigation";\nimport { VelvetIcon, type VelvetIconName } from "@/components/velvet-icon";
+import { usePathname } from "next/navigation";
+import { VelvetIcon, type VelvetIconName } from "@/components/velvet-icon";
 
 const items = [
   ["⌂", "ホーム", "/"],
