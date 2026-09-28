@@ -8,6 +8,7 @@ import { getGrowthCustomer,listGrowthCustomersWithStatus } from "@/lib/growth-en
 import { getCustomerMemory } from "@/lib/customer-memory-repository";
 import { listCaptures } from "@/lib/capture-repository";
 import { listRecentCaptureCustomerIds } from "@/lib/recent-capture-customers";
+import { listScheduleEntries } from "@/lib/schedule-repository";
 import { buildCustomerRecall } from "@/lib/customer-recall";
 import { getRememberSections,rememberGroups } from "@/lib/remember-fields";
 import { getPlanAccess } from "@/lib/plan-access";
@@ -20,12 +21,16 @@ import { getRecallPhase,recallPresentation } from "@/lib/recall-phase";
 import { AnalyticsEvent } from "@/components/analytics-event";
 import { SuggestedActionButton } from "@/components/suggested-action-button";
 
+const tokyoDate=(value:Date|string)=>new Intl.DateTimeFormat("en-CA",{timeZone:"Asia/Tokyo",year:"numeric",month:"2-digit",day:"2-digit"}).format(new Date(value));
+
 export default async function CapturePage({searchParams}:{searchParams:Promise<{customerId?:string;saved?:string;error?:string;fromVisit?:string}>}){
   const {customerId,saved,error,fromVisit}=await searchParams;
   const {workspaceId,userId,ownerUserId}=await getRequestIdentity();
   if(!customerId){
-    const [customerResult,recentCustomerIds]=await Promise.all([listGrowthCustomersWithStatus(workspaceId,userId),listRecentCaptureCustomerIds(workspaceId,userId,6)]);
-    return <main className="shell captureShell"><AppHeader title="覚える"/><section className="hero capturePickerHero"><h1>誰との時間を覚えておきますか？</h1><p>最近の人からすぐ選ぶか、名前で探せます。</p></section><CapturePersonPicker customers={customerResult.customers} recentCustomerIds={recentCustomerIds} sourceStatus={customerResult.status}/><BottomNav/></main>
+    const [customerResult,recentCustomerIds,schedule]=await Promise.all([listGrowthCustomersWithStatus(workspaceId,userId),listRecentCaptureCustomerIds(workspaceId,userId,6),listScheduleEntries(workspaceId,userId)]);
+    const today=tokyoDate(new Date());
+    const todayCustomerIds=[...new Set(schedule.filter(entry=>entry.kind==="visit"&&entry.customerId&&tokyoDate(entry.startsAt)===today).sort((a,b)=>a.startsAt.localeCompare(b.startsAt)).map(entry=>entry.customerId!))];
+    return <main className="shell captureShell"><AppHeader title="覚える"/><section className="hero capturePickerHero"><h1>誰との時間を覚えておきますか？</h1><p>今日会う人を先に。ほかの人も名前ですぐ探せます。</p></section><CapturePersonPicker customers={customerResult.customers} recentCustomerIds={recentCustomerIds} todayCustomerIds={todayCustomerIds} sourceStatus={customerResult.status}/><BottomNav/></main>
   }
   const [customer,memory,captures,access,ongoingTopics,visits]=await Promise.all([getGrowthCustomer(workspaceId,userId,customerId),getCustomerMemory(workspaceId,userId,customerId),listCaptures(workspaceId,userId,customerId),getPlanAccess(ownerUserId),listOngoingTopics(workspaceId,userId,customerId),listProfessionalVisits(workspaceId,userId,customerId)]);
   const displayName=customer?.displayName??memory?.displayNameSnapshot??"お客様";
