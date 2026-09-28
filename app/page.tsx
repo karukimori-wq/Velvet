@@ -29,7 +29,7 @@ export default async function HomePage(){
   const allSoonAlerts=access.soonAlertsAllowed&&preferences.soonAlertsEnabled?sortSoonVisitAlerts(allCustomerIds.map(customerId=>buildSoonVisitAlert(customerId,visitByCustomer.get(customerId)??[])).filter(isSoonAlert)):[]; const soonAlerts=allSoonAlerts.slice(0,5);
   const followupAllowed=hasVelvetFeature(access,"followup.manage");
   const followupThrough=new Date(now.getTime()+7*24*60*60*1000);
-  const [dueFollowups,dueFollowupCount]=followupAllowed?await Promise.all([listDueNextActions(workspaceId,userId,followupThrough,5),countDueNextActions(workspaceId,userId,followupThrough)]:[[],0];
+  const [dueFollowups,dueFollowupCount]=followupAllowed?await Promise.all([listDueNextActions(workspaceId,userId,followupThrough,5),countDueNextActions(workspaceId,userId,followupThrough)]):[[],0];
   const monthKey=today.slice(0,7); const monthEvents=schedule.filter(entry=>tokyoDate(entry.startsAt).startsWith(monthKey)&&entry.kind!=="visit").length;
   const nameFor=(customerId:string)=>customerById.get(customerId)?.displayName??memoryByCustomer.get(customerId)?.displayNameSnapshot??"お客様";
   const nextCustomerId=nextEntry?.kind==="visit"?nextEntry.customerId:undefined;
