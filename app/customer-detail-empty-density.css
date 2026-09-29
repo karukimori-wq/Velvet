@@ -1,0 +1,72 @@
+/* Customer detail empty-state density pass.
+   Keeps the reference-style layout, but reduces unused height when the customer has little data. */
+.customerDetailDense{padding-bottom:calc(188px + env(safe-area-inset-bottom))!important}
+.customerDetailDense .velvetHeader{margin-bottom:4px!important}
+.customerDetailDense .detailIdentityCompact{grid-template-columns:60px minmax(0,1fr)!important;gap:13px!important;padding:0 2px 7px!important}
+.customerDetailDense .detailIdentityCompact .avatar{width:60px!important;height:60px!important;font-size:24px!important;box-shadow:0 6px 16px rgba(127,24,62,.06)!important}
+.customerDetailDense .detailIdentityText h1{font-size:22px!important;line-height:1.15!important}
+.customerMetaLine{margin-top:4px!important;font-size:9px!important;gap:3px 8px!important}
+
+.customerStatusStrip{gap:5px!important;margin:2px 0 8px!important}
+.customerStatusStrip>.customerStatusCard{min-height:66px!important;padding:6px 3px!important;border-radius:13px!important;box-shadow:0 3px 10px rgba(85,48,62,.025)!important}
+.customerStatusIcon{width:27px!important;height:27px!important;margin-bottom:4px!important;font-size:13px!important}
+.customerStatusCard strong{font-size:9px!important;line-height:1.2!important}
+.customerStatusCard small{font-size:7px!important;line-height:1.15!important;margin-top:1px!important}
+.customerStatusStrip>.customerStatusCard:first-child:not(.customerStatusCardActive){opacity:.64!important;background:rgba(255,255,255,.58)!important}
+.customerStatusStrip>.customerStatusCard:first-child:not(.customerStatusCardActive) .customerStatusIcon{background:#f8eef2!important;color:#b5879b!important}
+
+.customerDetailDense .visitPrimaryAction{margin:0 0 4px!important}
+.customerDetailDense .visitPrimaryAction .primaryButton{min-height:43px!important;border-radius:15px!important;font-size:13px!important;box-shadow:0 5px 12px rgba(142,19,70,.10)!important}
+.customerContextActions{margin:0 0 8px!important}
+.customerContextActions a{min-height:34px!important}
+.customerContextActions a strong{font-size:9px!important}
+.customerContextActions .customerSectionTabActive::after{height:2px!important;left:18%!important;right:18%!important}
+
+.customerDetailDense .customerSectionTitle{margin:12px 2px 5px!important;min-height:19px!important}
+.customerDetailDense .customerSectionTitle>span:first-child{font-size:14px!important}
+.customerDetailDense .customerSectionTitle .subtle{font-size:9px!important}
+.customerDetailDense .customerMemoryTitle{margin-top:7px!important}
+.customerMemoryFocusDense{border-radius:14px!important;padding:0 12px!important}
+.customerMemoryOverview:has(.customerCompactEmpty) .customerMemoryFocusDense{padding:8px 12px!important}
+.customerMemoryFocusDense .customerCompactEmpty{font-size:9px!important;line-height:1.35!important;color:#8e7882!important}
+.customerMemoryOverview:has(.customerCompactEmpty) .customerMemoryFocusDense::after{content:"人物情報を追加すると、接客前の要点がここに出ます。";display:block;margin-top:2px;color:#aa929c;font-size:8px;line-height:1.35}
+.customerHighlightRow{grid-template-columns:82px minmax(0,1fr)!important;padding:7px 0!important}
+.customerHighlightRow span{font-size:9px!important}
+.customerHighlightRow strong{font-size:11px!important}
+
+.customerBasicInfoCard,.customerProfilePreview{border-radius:14px!important;padding:0 12px!important}
+.customerBasicInfoRow,.customerProfileGroup{padding:7px 0!important}
+.customerBasicInfoRow{grid-template-columns:82px minmax(0,1fr)!important}
+.customerBasicInfoRow span,.customerProfileGroup>strong{font-size:9px!important}
+.customerBasicInfoRow strong,.customerProfileGroup>div span{font-size:10px!important;line-height:1.35!important}
+.customerProfileGroup{grid-template-columns:92px minmax(0,1fr)!important;gap:8px!important}
+
+.customerCompactRow{min-height:39px!important;padding:7px 11px!important;border-radius:13px!important}
+.customerCompactRow>span{font-size:8px!important}
+.customerCompactRow>strong{font-size:10px!important}
+.customerCompactRow>i{font-size:15px!important}
+.customerLockedRow{min-height:36px!important;background:rgba(255,255,255,.52)!important;opacity:.68!important;box-shadow:none!important}
+.customerLockedRow>span{font-size:7px!important;color:#aa98a0!important}
+.customerLockedRow>strong{font-size:9px!important;color:#7b6870!important}
+.customerFollowupSection .customerSectionTitle,.customerMediaSection .customerSectionTitle{margin-top:10px!important}
+.customerRecentSection .customerCompactEmpty{min-height:34px!important;padding:9px 12px!important;font-size:9px!important}
+.customerMediaSection{margin-bottom:0!important}
+
+body:has(.customerDetailDense) .feedbackLauncher{bottom:calc(104px + env(safe-area-inset-bottom))!important;right:7px!important;width:28px!important;min-width:28px!important;height:28px!important;opacity:.76!important}
+body:has(.customerDetailDense) .feedbackLauncher>span{width:19px!important;height:19px!important;font-size:11px!important}
+
+@media(max-width:430px){
+  .customerDetailDense{padding-left:14px!important;padding-right:14px!important;padding-bottom:calc(190px + env(safe-area-inset-bottom))!important}
+  .customerDetailDense .detailIdentityCompact{grid-template-columns:58px minmax(0,1fr)!important;gap:12px!important}
+  .customerDetailDense .detailIdentityCompact .avatar{width:58px!important;height:58px!important;font-size:23px!important}
+  .customerDetailDense .detailIdentityText h1{font-size:21px!important}
+  .customerStatusStrip{gap:5px!important}
+  .customerStatusStrip>.customerStatusCard{min-height:63px!important;border-radius:12px!important}
+  .customerStatusIcon{width:25px!important;height:25px!important;font-size:12px!important}
+}
+@media(max-width:370px){
+  .customerDetailDense .detailIdentityCompact{grid-template-columns:54px minmax(0,1fr)!important;gap:10px!important}
+  .customerDetailDense .detailIdentityCompact .avatar{width:54px!important;height:54px!important;font-size:22px!important}
+  .customerStatusStrip{gap:4px!important}
+  .customerStatusStrip>.customerStatusCard{min-height:60px!important;padding-left:2px!important;padding-right:2px!important}
+}
