@@ -60,20 +60,22 @@ export function CustomerMediaPanel({ customerId, initialItems }: { customerId: s
     }
   }
 
-  return <section className="card stack">
-    <div className="timelineTitle">画像</div>
-    <form action={upload} className="compactForm">
-      <input name="file" type="file" accept={accept} required disabled={busy || deletingKey !== null} />
-      <button className="secondaryButton" type="submit" disabled={busy || deletingKey !== null}>{busy ? "保存中…" : "画像を追加"}</button>
-    </form>
-    {message && <div className="formHint" aria-live="polite">{message}</div>}
-    {items.length > 0 ? <div className="mediaGrid">{items.map(item => {
-      const url = mediaUrl(customerId, item.key);
-      const deleting = deletingKey === item.key;
-      return <div className="stack" key={item.id}>
-        <a className="mediaThumb" href={url} target="_blank" rel="noreferrer"><img src={url} alt={`${item.occurredAt.slice(0, 10)}に保存した画像`} loading="lazy" /></a>
-        <button className="dangerButton compactButton" type="button" disabled={deletingKey !== null} onClick={() => remove(item)}>{deleting ? "削除中…" : "削除"}</button>
-      </div>;
-    })}</div> : <div className="formHint">保存した画像はまだありません。</div>}
-  </section>;
+  return <details className="card customerMediaCompact">
+    <summary><span>{items.length > 0 ? `${items.length}枚` : "未登録"}</span><strong>{items.length > 0 ? "画像を見る・追加する" : "画像を追加"}</strong><i>›</i></summary>
+    <div className="customerMediaCompactBody">
+      <form action={upload} className="compactForm">
+        <input name="file" type="file" accept={accept} required disabled={busy || deletingKey !== null} />
+        <button className="secondaryButton" type="submit" disabled={busy || deletingKey !== null}>{busy ? "保存中…" : "追加"}</button>
+      </form>
+      {message && <div className="formHint" aria-live="polite">{message}</div>}
+      {items.length > 0 ? <div className="mediaGrid">{items.map(item => {
+        const url = mediaUrl(customerId, item.key);
+        const deleting = deletingKey === item.key;
+        return <div className="stack" key={item.id}>
+          <a className="mediaThumb" href={url} target="_blank" rel="noreferrer"><img src={url} alt={`${item.occurredAt.slice(0, 10)}に保存した画像`} loading="lazy" /></a>
+          <button className="dangerButton compactButton" type="button" disabled={deletingKey !== null} onClick={() => remove(item)}>{deleting ? "削除中…" : "削除"}</button>
+        </div>;
+      })}</div> : <div className="formHint">保存した画像はまだありません。</div>}
+    </div>
+  </details>;
 }
