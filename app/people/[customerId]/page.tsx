@@ -86,6 +86,7 @@ export default async function Page({ params, searchParams }: { params: Promise<{
   const archivedCount = sortedTimeline.length - visibleTimeline.length;
   const followupAllowed = hasVelvetFeature(access, "followup.manage");
   const openNext = followupAllowed ? nextActions.filter(action => action.status === "open").slice(0, 3) : [];
+  const urgentNext = openNext.filter(action => action.dueAt && (daysUntil(action.dueAt) ?? 99) <= 7).slice(0, 1);
   const soonAlert = access.soonAlertsAllowed && preferences.soonAlertsEnabled ? buildSoonVisitAlert(customerId, sortedTimeline) : undefined;
 
   const factMap = new Map<string, string>();
@@ -93,7 +94,8 @@ export default async function Page({ params, searchParams }: { params: Promise<{
   const highlights: Array<{ label: string; value: string }> = [];
   const caution = quickRecall.items.find(item => item.label === "注意" || item.label === "注意点");
   if (caution?.value) highlights.push({ label: "注意", value: compactText(caution.value, 42) });
-  if (lastConversation) highlights.push({ label: "前回の話題", value: compactText(lastConversation.body || lastConversation.title, 42) });
+  if (urgentNext[0]) highlights.push({ label: "期限付きフォロー", value: `${compactText(urgentNext[0].text, 30)}${dueLabel(urgentNext[0].dueAt) ? ` · ${dueLabel(urgentNext[0].dueAt)}` : ""}` });
+  if (lastConversation && highlights.length < 4) highlights.push({ label: "前回の話題", value: compactText(lastConversation.body || lastConversation.title, 42) });
   for (const label of highlightPriority) {
     if (highlights.length >= 4) break;
     const value = factMap.get(label);
@@ -107,7 +109,7 @@ export default async function Page({ params, searchParams }: { params: Promise<{
     }
   }
   if (highlights.length < 4 && quickRecall.nextTopics.length > 0) highlights.push({ label: "次に話す", value: compactText(quickRecall.nextTopics.join("・"), 42) });
-  if (highlights.length < 4 && soonAlert) highlights.push({ label: "来店目安", value: `前回来店から${soonAlert.daysSinceLastVisit}日` });
+  if (highlights.length < 4 && soonAlert) highlights.push({ label: "そろそろ", value: `前回来店から${soonAlert.daysSinceLastVisit}日 · いつも約${soonAlert.averageIntervalDays}日周期` });
 
   const mediaItems = access.imagesAllowed ? sortedTimeline.filter(item => item.eventType === "media" && item.sourceRef?.startsWith("r2:")).map(item => ({ id: item.id, key: item.sourceRef!.slice(3), occurredAt: item.occurredAt, title: item.title })) : [];
   const savedItems = [Number(query.memoryAdded) > 0 && `人物情報 ${query.memoryAdded}件`, Number(query.knowledgeAdded) > 0 && `新しく分かったこと ${query.knowledgeAdded}件`, Number(query.preferenceAdded) > 0 && `好み ${query.preferenceAdded}件`, Number(query.nextTopicAdded) > 0 && `次回話題 ${query.nextTopicAdded}件`, Number(query.scheduleAdded) > 0 && `予定 ${query.scheduleAdded}件`, Number(query.giftAdded) > 0 && `贈り物 ${query.giftAdded}件`].filter(Boolean) as string[];
