@@ -92,3 +92,19 @@ body:has(.customerDetailDense) .feedbackLauncher>span{width:24px!important;heigh
   .customerTimelineRow>summary,.customerTimelineLink{grid-template-columns:36px 38px minmax(0,1fr) 12px;gap:4px;padding-left:8px;padding-right:8px}
   .customerTimelineBody{padding-left:86px}
 }
+
+/* Customer detail polish after iPhone production review. */
+.customerDetailDense .detailIdentityCompact{display:grid!important;grid-template-columns:56px minmax(0,1fr)!important;gap:14px!important;align-items:center!important;justify-content:stretch!important;width:100%!important;padding:2px 0 7px!important;text-align:left!important}
+.customerDetailDense .detailIdentityCompact .avatar{width:56px!important;height:56px!important;margin:0!important;font-size:23px!important;box-shadow:0 6px 16px rgba(127,24,62,.07)!important}
+.customerDetailDense .detailIdentityText{min-width:0!important;text-align:left!important}
+.customerDetailDense .detailIdentityText h1{margin:0!important;text-align:left!important;line-height:1.2!important}
+.customerMetaLine{display:none!important}
+.customerStatusStrip{margin-top:2px!important}
+.customerMemoryFocusDense{min-height:0!important;height:auto!important}
+.customerMemoryFocusDense .customerCompactEmpty{min-height:0!important;padding:4px 0 2px!important;border:0!important;background:transparent!important;box-shadow:none!important}
+.customerMemoryOverview:has(.customerCompactEmpty) .customerMemoryFocusDense{padding-top:8px!important;padding-bottom:8px!important}
+
+@media(max-width:430px){
+  .customerDetailDense .detailIdentityCompact{grid-template-columns:52px minmax(0,1fr)!important;gap:12px!important}
+  .customerDetailDense .detailIdentityCompact .avatar{width:52px!important;height:52px!important;font-size:21px!important}
+}
