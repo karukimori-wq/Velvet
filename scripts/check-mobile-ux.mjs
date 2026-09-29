@@ -1,30 +1,35 @@
 import fs from "node:fs";
-const css=fs.readFileSync("app/mobile-fixes.css","utf8");
-const theme=fs.readFileSync("app/velvet-theme.css","utf8");
-const polish=fs.readFileSync("app/ux-polish.css","utf8");
-const refresh=fs.readFileSync("app/ui-ux-refresh.css","utf8");
-const surfacePolish=fs.readFileSync("app/surface-polish.css","utf8");
-const capturePolish=fs.readFileSync("app/capture-polish.css","utf8");
-const layout=fs.readFileSync("app/layout.tsx","utf8");
-const nav=fs.readFileSync("components/bottom-nav.tsx","utf8");
-const header=fs.readFileSync("components/app-header.tsx","utf8");
-const home=fs.readFileSync("app/page.tsx","utf8");
-const people=fs.readFileSync("app/people/page.tsx","utf8");
-const detail=fs.readFileSync("app/people/[customerId]/page.tsx","utf8");
-const search=fs.readFileSync("app/search/page.tsx","utf8");
-const add=fs.readFileSync("app/add/page.tsx","utf8");
-const newCustomerDetails=fs.readFileSync("components/new-customer-details.tsx","utf8");
-const addForm=fs.readFileSync("components/add-customer-form.tsx","utf8");
-const schedule=fs.readFileSync("app/schedule/page.tsx","utf8");
-const settings=fs.readFileSync("app/settings/page.tsx","utf8");
-const capture=fs.readFileSync("app/capture/page.tsx","utf8");
-const picker=fs.readFileSync("components/capture-person-picker.tsx","utf8");
-const composer=fs.readFileSync("components/capture-chat-input.tsx","utf8");
-const composerForm=fs.readFileSync("components/capture-composer-form.tsx","utf8");
-const rememberFields=fs.readFileSync("lib/remember-fields.ts","utf8");
-const captureAction=fs.readFileSync("app/capture/organize/actions.ts","utf8");
-const organize=fs.readFileSync("app/capture/organize/[captureId]/page.tsx","utf8");
-const organizeAction=fs.readFileSync("app/capture/organize/[captureId]/actions.ts","utf8");
+
+const read=path=>fs.readFileSync(path,"utf8");
+const css=read("app/mobile-fixes.css");
+const theme=read("app/velvet-theme.css");
+const polish=read("app/ux-polish.css");
+const refresh=read("app/ui-ux-refresh.css");
+const density=read("app/customer-detail-density.css");
+const surfacePolish=read("app/surface-polish.css");
+const capturePolish=read("app/capture-polish.css");
+const layout=read("app/layout.tsx");
+const nav=read("components/bottom-nav.tsx");
+const header=read("components/app-header.tsx");
+const home=read("app/page.tsx");
+const people=read("app/people/page.tsx");
+const detail=read("app/people/[customerId]/page.tsx");
+const media=read("components/customer-media-panel.tsx");
+const search=read("app/search/page.tsx");
+const add=read("app/add/page.tsx");
+const newCustomerDetails=read("components/new-customer-details.tsx");
+const addForm=read("components/add-customer-form.tsx");
+const schedule=read("app/schedule/page.tsx");
+const settings=read("app/settings/page.tsx");
+const capture=read("app/capture/page.tsx");
+const picker=read("components/capture-person-picker.tsx");
+const composer=read("components/capture-chat-input.tsx");
+const composerForm=read("components/capture-composer-form.tsx");
+const rememberFields=read("lib/remember-fields.ts");
+const captureAction=read("app/capture/organize/actions.ts");
+const organize=read("app/capture/organize/[captureId]/page.tsx");
+const organizeAction=read("app/capture/organize/[captureId]/actions.ts");
+
 const checks=[
  [css,"safe-area-inset-bottom","safe-area bottom spacing"],
  [css,"grid-template-columns:repeat(5,1fr)","five-item daily bottom navigation"],
@@ -44,9 +49,9 @@ const checks=[
  [header,'drawerLink("settings", "設定", "/settings")',"drawer keeps secondary settings navigation"],
  [header,"画面下のメニューからいつでも開けます","drawer explains primary navigation location"],
  [polish,".bottomNav .captureNav strong","prominent remember button styling"],
- [refresh,"padding-bottom:calc(158px + env(safe-area-inset-bottom))","content clears fixed bottom navigation"],
- [refresh,".feedbackLauncher{bottom:calc(108px + env(safe-area-inset-bottom))","feedback launcher clears bottom navigation"],
+ [refresh,"padding-bottom:calc(158px + env(safe-area-inset-bottom))","general content clears fixed bottom navigation"],
  [layout,'import "./ui-ux-refresh.css"',"latest UX overrides are loaded"],
+ [layout,'import "./customer-detail-density.css"',"customer detail density overrides are loaded last"],
  [home,'className="homeNext"',"home starts with next action"],
  [home,"次にすること","home next-action wording"],
  [home,"homeSummaryStrip","home metrics are compact summaries"],
@@ -80,20 +85,32 @@ const checks=[
  [settings,'<AppHeader title="設定"/>',"settings uses app header"],
  [settings,"プッシュ通知やメールは送りません","display-only reminder wording"],
  [settings,"<BottomNav/>","settings keeps primary navigation"],
- [detail,">覚える</span>","customer detail remember action"],
- [detail,">思い出す</span>","customer detail recall action"],
- [detail,">次につなぐ</span>","customer detail next action"],
- [detail,'className="detailIdentity detailIdentityCompact"',"customer detail identity is compact"],
- [detail,'className="visitPrimaryAction"',"customer visit action is promoted above secondary actions"],
- [detail,'className="customerMemoryOverview" id="memories"',"customer recall and stored profile share one memory surface"],
- [detail,"今、思い出したいこと","customer quick recall purpose is explicit"],
- [detail,"覚えている情報","customer full profile is clearly named"],
- [refresh,".customerDetailShell .detailIdentityCompact","compact customer detail styling"],
- [refresh,".customerDetailShell .customerMemoryDetails>summary","collapsed full profile styling"],
- [detail,'"これまでの出来事":"最近の出来事"',"history is clearly a viewing surface"],
- [detail,"scheduleAdded","saved schedule confirmation"],
- [detail,"giftAdded","saved gift confirmation"],
- [detail,"続けて覚える","post-save continuation action"],
+
+ [detail,'className="detailIdentity detailIdentityCompact"',"customer detail identity stays compact"],
+ [detail,"customerStatusStrip","customer detail shows customer-specific status immediately"],
+ [detail,"最終来店","customer detail exposes last visit"],
+ [detail,"次回予定","customer detail exposes next schedule"],
+ [detail,'className="visitPrimaryAction"',"customer visit action remains primary"],
+ [detail,"customerContextActions","customer detail shortcuts are customer-scoped"],
+ [detail,"人物情報","customer profile is explicit"],
+ [detail,"次回フォロー","customer follow-up shortcut is explicit"],
+ [detail,"予定確認","customer schedule shortcut is explicit"],
+ [detail,'id="about"',"customer summary has a stable target"],
+ [detail,"今、思い出したいこと","customer quick summary remains visible"],
+ [detail,"customerHighlightList","customer quick summary uses compact label-value rows"],
+ [detail,"customerProfilePreview","profile shows useful content before expansion"],
+ [detail,"customerCompactTimeline","recent events use a compact timeline"],
+ [detail,"slice(0, 8)","customer timeline caps the first view at eight items"],
+ [detail,"customerLockedRow","Pro surfaces use compact locked rows"],
+ [detail,"scheduleAdded","saved schedule confirmation remains supported"],
+ [detail,"giftAdded","saved gift confirmation remains supported"],
+ [detail,"続けて覚える","post-save continuation action remains supported"],
+ [density,"padding-bottom:calc(210px + env(safe-area-inset-bottom))","customer detail clears the floating bottom navigation"],
+ [density,"body:has(.customerDetailDense) .feedbackLauncher","customer detail feedback launcher gets a non-obtrusive treatment"],
+ [density,".customerHighlightRow","customer memory summary uses dense rows"],
+ [density,".customerTimelineRow","customer event history uses dense rows"],
+ [media,'className="card customerMediaCompact"',"customer media is collapsed into a compact row"],
+
  [capture,"listRecentCaptureCustomerIds","capture picker uses recent customer context"],
  [capture,"listScheduleEntries","capture picker uses today's schedule context"],
  [picker,"今日会う人","today's customer shortcut"],
@@ -123,6 +140,7 @@ const checks=[
  [capturePolish,"position:sticky","review actions remain reachable"],
  [organizeAction,'redirect(`/people/${capture.customerId}?${params.toString()}`)',"save returns to customer detail"]
 ];
+
 const blocked=[
  [header,'["home", "ホーム", "/"]',"drawer duplicates home navigation"],
  [header,'["people", "顧客", "/people"]',"drawer duplicates customer navigation"],
@@ -131,8 +149,13 @@ const blocked=[
  [header,'["calendar", "予定", "/schedule"]',"drawer duplicates schedule navigation"],
  [nav,'["plus", "覚える", "/capture"]',"bottom remember navigation bypasses the remember hub"],
  [home,"metricGrid","home uses large dashboard metric grid"],
- [detail,"この人を思い出す","customer detail exposes competing recall/profile headings"]
+ [detail,"この人を思い出す","customer detail exposes competing recall/profile headings"],
+ [detail,"覚えていることを、すぐ次の時間へ。","customer detail uses generic copy instead of customer-specific status"],
+ [detail,"detailQuickActionsCompact","customer detail duplicates global navigation shortcuts"],
+ [detail,"Proで利用できます","customer detail overstates Pro gating"],
+ [detail,"quickRecallGrid","customer detail uses the old oversized recall grid"]
 ];
+
 const failed=[
  ...checks.filter(([text,needle])=>!text.includes(needle)).map(([,needle,label])=>`${label}: ${needle}`),
  ...blocked.filter(([text,needle])=>text.includes(needle)).map(([,needle,label])=>`${label}: ${needle}`)
