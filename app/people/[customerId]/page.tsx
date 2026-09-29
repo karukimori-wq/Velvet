@@ -26,6 +26,33 @@ function compactText(value: string, max = 48) {
   if (!text) return "";
   return text.length > max ? `${text.slice(0, max)}…` : text;
 }
+function compactRecallValue(value: string, max = 56) {
+  const text = value.replace(/\s+/g, " ").replace(/。+/g, "。").trim();
+  if (!text) return "";
+  const chunks = text.split(/。|\s+(?=[^：\s]{1,14}：)/).map(chunk => chunk.trim()).filter(Boolean);
+  const grouped = new Map<string, string[]>();
+  for (const chunk of chunks) {
+    const index = chunk.indexOf("：");
+    if (index <= 0) continue;
+    const label = chunk.slice(0, index).trim();
+    const rawValue = chunk.slice(index + 1).trim();
+    if (!label || !rawValue || label.length > 14) continue;
+    const arrowParts = rawValue.split("→");
+    const normalizedValue = arrowParts[arrowParts.length - 1].trim();
+    if (!normalizedValue) continue;
+    if (rawValue.includes("→")) grouped.set(label, [normalizedValue]);
+    else {
+      const values = grouped.get(label) ?? [];
+      if (!values.includes(normalizedValue)) values.push(normalizedValue);
+      grouped.set(label, values);
+    }
+  }
+  if (grouped.size >= 2) {
+    const summary = Array.from(grouped.entries()).slice(0, 3).map(([label, values]) => `${label}：${values.slice(0, 2).join("・")}`).join(" / ");
+    return compactText(summary, max);
+  }
+  return compactText(text, max);
+}
 function formatShortDate(value?: string) {
   if (!value) return "なし";
   const date = new Date(value);
@@ -91,11 +118,15 @@ export default async function Page({ params, searchParams }: { params: Promise<{
 
   const factMap = new Map<string, string>();
   for (const group of profileGroups) for (const row of group.rows) if (!factMap.has(row.label)) factMap.set(row.label, row.value);
+  const basicProfileGroup = profileGroups.find(group => group.title === "基本情報");
+  const detailProfileGroups = profileGroups.filter(group => group.title !== "基本情報");
+  const birthday = factMap.get("誕生日") || "未登録";
+
   const highlights: Array<{ label: string; value: string }> = [];
   const caution = quickRecall.items.find(item => item.label === "注意" || item.label === "注意点");
-  if (caution?.value) highlights.push({ label: "注意", value: compactText(caution.value, 42) });
+  if (caution?.value) highlights.push({ label: "注意", value: compactRecallValue(caution.value, 50) });
   if (urgentNext[0]) highlights.push({ label: "期限付きフォロー", value: `${compactText(urgentNext[0].text, 30)}${dueLabel(urgentNext[0].dueAt) ? ` · ${dueLabel(urgentNext[0].dueAt)}` : ""}` });
-  if (lastConversation && highlights.length < 4) highlights.push({ label: "前回の話題", value: compactText(lastConversation.body || lastConversation.title, 42) });
+  if (lastConversation && highlights.length < 4) highlights.push({ label: "前回の話題", value: compactRecallValue(lastConversation.body || lastConversation.title, 56) });
   for (const label of highlightPriority) {
     if (highlights.length >= 4) break;
     const value = factMap.get(label);
@@ -105,7 +136,7 @@ export default async function Page({ params, searchParams }: { params: Promise<{
     for (const item of quickRecall.items) {
       if (highlights.length >= 4) break;
       if (item.label === "前回" || !item.value || highlights.some(existing => existing.label === item.label)) continue;
-      highlights.push({ label: item.label, value: compactText(item.value, 42) });
+      highlights.push({ label: item.label, value: compactRecallValue(item.value, 50) });
     }
   }
   if (highlights.length < 4 && quickRecall.nextTopics.length > 0) highlights.push({ label: "次に話す", value: compactText(quickRecall.nextTopics.join("・"), 42) });
@@ -117,32 +148,42 @@ export default async function Page({ params, searchParams }: { params: Promise<{
   return <main className="shell customerDetailShell customerDetailDense">
     <header className="velvetHeader"><Link className="menuButton actionLink" href="/people" aria-label="顧客一覧へ戻る">‹</Link><div className="pageTitle">顧客詳細</div><Link className="headerAction" href={`/remember?customerId=${customerId}`} aria-label="顧客情報を編集">…</Link></header>
 
-    <section className="detailIdentity detailIdentityCompact"><div className="avatar">{displayName.slice(0, 1)}</div><div className="detailIdentityText"><h1>{displayName}{isVip && <span className="vipBadge">♛ VIP</span>}</h1><div className="customerMetaLine"><span>最終来店 {formatShortDate(lastVisit?.occurredAt)}</span><span>次回 {formatShortDate(nextSchedule?.startsAt)}</span></div></div></section>
+    <section className="detailIdentity detailIdentityCompact"><div className="avatar">{displayName.slice(0, 1)}</div><div className="detailIdentityText"><h1>{displayName}{isVip && <span className="vipBadge">♛ VIP</span>}</h1><div className="customerMetaLine"><span>最終来店 {formatShortDate(lastVisit?.occurredAt)}</span><span>人物情報 {memoryFactCount}件</span></div></div></section>
 
-    <div className="customerStatusStrip" aria-label="顧客の状況"><div><span>最終来店</span><strong>{formatShortDate(lastVisit?.occurredAt)}</strong></div><div><span>次回予定</span><strong>{formatShortDate(nextSchedule?.startsAt)}</strong></div><div><span>人物情報</span><strong>{memoryFactCount}件</strong></div><div><span>フォロー</span><strong>{followupAllowed ? `${openNext.length}件` : "🔒"}</strong>{!followupAllowed && <small>Pro</small>}</div></div>
+    <div className="customerStatusStrip" aria-label="顧客の状況">
+      <div className={`customerStatusCard${isVip ? " customerStatusCardActive" : ""}`}><span className="customerStatusIcon">♛</span><strong>VIP</strong><small>{isVip ? "VIP会員" : "未設定"}</small></div>
+      <div className="customerStatusCard"><span className="customerStatusIcon">◇</span><strong>誕生日</strong><small>{birthday}</small></div>
+      <Link className="customerStatusCard" href="/schedule"><span className="customerStatusIcon">▣</span><strong>予定確認</strong><small>{nextSchedule ? formatShortDate(nextSchedule.startsAt) : "予定なし"}</small></Link>
+      <Link className="customerStatusCard" href={`/remember?customerId=${customerId}`}><span className="customerStatusIcon">✎</span><strong>編集</strong><small>人物情報</small></Link>
+    </div>
 
     <div className="visitPrimaryAction">{activeVisit ? <Link className="primaryButton actionLink" href={`/visits/${activeVisit.id}`}>接客中に戻る</Link> : <form action={startVisitAction}><input type="hidden" name="customerId" value={customerId}/><button className="primaryButton" type="submit">来店を残す</button></form>}</div>
 
-    <nav className="customerContextActions" aria-label="このお客様への操作"><Link href={`/remember?customerId=${customerId}`}><strong>人物情報</strong><span>編集</span></Link><Link href={followupAllowed ? `/people/${customerId}/next-actions` : "/plans"}><strong>次回フォロー</strong><span>{followupAllowed ? "確認・追加" : "🔒 Pro"}</span></Link><Link href="/schedule"><strong>予定確認</strong><span>{nextSchedule ? formatShortDate(nextSchedule.startsAt) : "予定を見る"}</span></Link></nav>
+    <nav className="customerContextActions" aria-label="顧客詳細のセクション"><a className="customerSectionTab customerSectionTabActive" href="#about"><strong>要点</strong></a><a className="customerSectionTab" href="#basic"><strong>基本情報</strong></a><a className="customerSectionTab" href="#profile"><strong>人物情報</strong></a><a className="customerSectionTab" href="#history"><strong>履歴</strong></a></nav>
 
-    {query.captureSaved && <div className="card successCard stack captureSavedCard"><strong>今日の大切なことを覚えました</strong>{savedItems.length > 0 ? <div className="captureSavedItems">{savedItems.map(item => <div className="timelineBody" key={item}>✓ {item}</div>)}</div> : <div className="formHint">入力した会話を履歴に残しました。</div>}<div className="captureSavedActions"><Link className="secondaryButton actionLink" href={`/capture?customerId=${encodeURIComponent(customerId)}`}>続けて覚える</Link><Link className="captureSavedRecall" href="#about">この人について確認する ›</Link></div></div>}
+    {query.captureSaved && <div className="card successCard stack captureSavedCard"><strong>今日の大切なことを覚えました</strong>{savedItems.length > 0 ? <div className="captureSavedItems">{savedItems.map(item => <div className="timelineBody" key={item}>✓ {item}</div>)}</div> : <div className="formHint">入力した会話を履歴に残しました。</div>}<div className="captureSavedActions"><Link className="secondaryButton actionLink" href={`/capture?customerId=${encodeURIComponent(customerId)}`}>続けて覚える</Link><Link className="captureSavedRecall" href="#about">要点を確認する ›</Link></div></div>}
 
     <section className="customerMemoryOverview" id="about">
-      <div className="sectionTitle customerSectionTitle customerMemoryTitle"><span>この人について</span><Link className="subtle" href={`/remember?customerId=${customerId}`}>追加・訂正 ›</Link></div>
-      <div className="card customerMemoryFocus customerMemoryFocusDense"><div className="memorySectionLabel">今、思い出したいこと</div>{highlights.length > 0 ? <div className="customerHighlightList">{highlights.map(item => <div className="customerHighlightRow" key={`${item.label}-${item.value}`}><span>{item.label}</span><strong>{item.value}</strong></div>)}</div> : <div className="customerCompactEmpty">まだ要約できる人物情報がありません。</div>}</div>
+      <div className="sectionTitle customerSectionTitle customerMemoryTitle"><span>今、思い出したいこと</span><Link className="subtle" href={`/remember?customerId=${customerId}`}>追加・訂正 ›</Link></div>
+      <div className="card customerMemoryFocus customerMemoryFocusDense">{highlights.length > 0 ? <div className="customerHighlightList">{highlights.map(item => <div className="customerHighlightRow" key={`${item.label}-${item.value}`}><span>{item.label}</span><strong>{item.value}</strong></div>)}</div> : <div className="customerCompactEmpty">まだ要約できる人物情報がありません。</div>}</div>
     </section>
 
-    <section className="customerProfileSection">
+    <section className="customerBasicSection" id="basic">
+      <div className="sectionTitle customerSectionTitle"><span>基本情報</span><Link className="subtle" href={`/remember?customerId=${customerId}`}>編集 ›</Link></div>
+      {basicProfileGroup ? <div className="card customerBasicInfoCard">{basicProfileGroup.rows.map(row => <div className="customerBasicInfoRow" key={`${row.label}-${row.value}`}><span>{row.label}</span><strong>{row.value}</strong></div>)}</div> : <Link className="card customerCompactRow" href={`/remember?customerId=${customerId}`}><span>基本情報を追加</span><strong>誕生日や住まいなどを覚える</strong><i>›</i></Link>}
+    </section>
+
+    <section className="customerProfileSection" id="profile">
       <div className="sectionTitle customerSectionTitle"><span>人物情報</span><Link className="subtle" href={`/remember?customerId=${customerId}`}>編集 ›</Link></div>
-      {profileGroups.length > 0 ? <div className="card customerProfilePreview">{profileGroups.slice(0, 4).map(group => <div className="customerProfileGroup" key={group.title}><strong>{group.title}</strong><div>{group.rows.slice(0, 2).map(row => <span key={`${row.label}-${row.value}`}>{row.label}：{row.value}</span>)}</div></div>)}{profileGroups.length > 4 && <details className="customerProfileMore"><summary>すべての人物情報を見る（{profileGroups.length}カテゴリ） <span>›</span></summary><div className="customerProfileMoreBody">{profileGroups.slice(4).map(group => <div className="customerProfileGroup" key={group.title}><strong>{group.title}</strong><div>{group.rows.map(row => <span key={`${row.label}-${row.value}`}>{row.label}：{row.value}</span>)}</div></div>)}</div></details>}</div> : <Link className="card customerCompactRow" href={`/remember?customerId=${customerId}`}><span>人物情報を追加</span><strong>好きなものや特徴を覚える</strong><i>›</i></Link>}
+      {detailProfileGroups.length > 0 ? <div className="card customerProfilePreview">{detailProfileGroups.slice(0, 4).map(group => <div className="customerProfileGroup" key={group.title}><strong>{group.title}</strong><div>{group.rows.slice(0, 2).map(row => <span key={`${row.label}-${row.value}`}>{row.label}：{row.value}</span>)}</div></div>)}{detailProfileGroups.length > 4 && <details className="customerProfileMore"><summary>すべての人物情報を見る（{detailProfileGroups.length}カテゴリ） <span>›</span></summary><div className="customerProfileMoreBody">{detailProfileGroups.slice(4).map(group => <div className="customerProfileGroup" key={group.title}><strong>{group.title}</strong><div>{group.rows.map(row => <span key={`${row.label}-${row.value}`}>{row.label}：{row.value}</span>)}</div></div>)}</div></details>}</div> : <Link className="card customerCompactRow" href={`/remember?customerId=${customerId}`}><span>人物情報を追加</span><strong>好きなものや特徴を覚える</strong><i>›</i></Link>}
     </section>
 
-    <section className="customerFollowupSection">
+    <section className="customerFollowupSection" id="followup">
       <div className="sectionTitle customerSectionTitle"><span>次回の約束・フォロー</span>{followupAllowed && <Link className="subtle" href={`/people/${customerId}/next-actions`}>管理 ›</Link>}</div>
       {followupAllowed ? <Link className="card customerCompactRow" href={`/people/${customerId}/next-actions`}><span>{openNext.length > 0 ? `${openNext.length}件` : "未完了なし"}</span><strong>{openNext[0] ? `${compactText(openNext[0].text, 36)}${dueLabel(openNext[0].dueAt) ? ` · ${dueLabel(openNext[0].dueAt)}` : ""}` : "次にすることを追加"}</strong><i>›</i></Link> : <Link className="card customerCompactRow customerLockedRow" href="/plans"><span>🔒 Pro</span><strong>次回の約束・フォロー</strong><i>›</i></Link>}
     </section>
 
-    <section className="customerRecentSection">
+    <section className="customerRecentSection" id="history">
       <div className="sectionTitle customerSectionTitle"><span>最近の出来事</span><span className="subtle">{visibleTimeline.length}件</span></div>
       {recentTimeline.length > 0 ? <>{access.integratedTimeline ? <ProTimelineRows items={recentTimeline}/> : <FreeHistoryRows items={recentTimeline} customerId={customerId}/>} {access.integratedTimeline && olderTimeline.length > 0 && <details className="customerHistoryMore"><summary>以前の出来事を見る（{olderTimeline.length}件）</summary><div className="customerHistoryMoreBody"><ProTimelineRows items={olderTimeline}/></div></details>}</> : <div className="card customerCompactEmpty">まだ出来事はありません</div>}
       {!access.integratedTimeline && archivedCount > 0 && <Link className="customerArchiveNote" href="/plans">🔒 過去の出来事 {archivedCount}件 · Pro</Link>}

@@ -1,0 +1,87 @@
+/* Customer detail reference-inspired polish. Loaded after density overrides. */
+.customerDetailDense{padding-left:16px!important;padding-right:16px!important;padding-bottom:calc(220px + env(safe-area-inset-bottom))!important}
+.customerDetailDense .velvetHeader{margin-bottom:10px!important}
+.customerDetailDense .detailIdentityCompact{display:grid!important;grid-template-columns:72px minmax(0,1fr)!important;gap:16px!important;align-items:center!important;padding:4px 2px 10px!important;text-align:left!important}
+.customerDetailDense .detailIdentityCompact .avatar{width:72px!important;height:72px!important;margin:0!important;border-radius:50%!important;font-size:28px!important;font-weight:800!important;background:linear-gradient(145deg,#f8dce6,#f4cad8)!important;color:#951b4c!important;box-shadow:0 8px 22px rgba(127,24,62,.08)!important}
+.customerDetailDense .detailIdentityText{min-width:0!important;text-align:left!important}
+.customerDetailDense .detailIdentityText h1{display:flex!important;align-items:center!important;gap:7px!important;margin:0!important;font-size:25px!important;line-height:1.2!important;text-align:left!important;letter-spacing:-.02em!important}
+.customerDetailDense .vipBadge{font-size:9px!important;padding:3px 6px!important}
+.customerMetaLine{display:flex!important;flex-wrap:wrap!important;gap:4px 12px!important;margin-top:6px!important;color:#8d7881!important;font-size:10px!important;line-height:1.35!important}
+
+.customerStatusStrip{display:grid!important;grid-template-columns:repeat(4,minmax(0,1fr))!important;gap:8px!important;margin:3px 0 10px!important;border:0!important;border-radius:0!important;background:transparent!important;overflow:visible!important}
+.customerStatusStrip>.customerStatusCard{display:flex!important;min-width:0!important;min-height:82px!important;padding:9px 5px!important;border:1px solid #eedfe4!important;border-radius:16px!important;background:rgba(255,255,255,.82)!important;box-shadow:0 5px 16px rgba(85,48,62,.04)!important;color:#59404a!important;text-decoration:none!important;flex-direction:column!important;align-items:center!important;justify-content:center!important;text-align:center!important}
+.customerStatusStrip>.customerStatusCard:last-child{border-right:1px solid #eedfe4!important}
+.customerStatusIcon{display:grid!important;place-items:center!important;width:34px!important;height:34px!important;margin-bottom:5px!important;border-radius:50%!important;background:#fbe9ef!important;color:#a01751!important;font-size:17px!important;font-weight:700!important;line-height:1!important}
+.customerStatusCard strong{margin:0!important;color:#553e47!important;font-size:10px!important;line-height:1.25!important;white-space:nowrap!important;overflow:hidden!important;text-overflow:ellipsis!important;max-width:100%!important}
+.customerStatusCard small{margin-top:2px!important;color:#9a828c!important;font-size:8px!important;line-height:1.2!important;white-space:nowrap!important;overflow:hidden!important;text-overflow:ellipsis!important;max-width:100%!important}
+.customerStatusCardActive .customerStatusIcon{background:#f7d9e4!important;color:#8f1245!important}
+
+.customerDetailDense .visitPrimaryAction{margin:0 0 8px!important}
+.customerDetailDense .visitPrimaryAction .primaryButton{min-height:48px!important;border-radius:17px!important;font-size:14px!important;font-weight:800!important;box-shadow:0 7px 16px rgba(142,19,70,.12)!important}
+
+.customerContextActions{display:grid!important;grid-template-columns:repeat(4,minmax(0,1fr))!important;gap:0!important;margin:0 0 12px!important;padding:0 2px!important;border-bottom:1px solid #eadce1!important}
+.customerContextActions a{display:flex!important;min-height:41px!important;padding:0 4px!important;border:0!important;border-radius:0!important;background:transparent!important;box-shadow:none!important;color:#85727a!important;text-decoration:none!important;align-items:center!important;justify-content:center!important;text-align:center!important;position:relative!important}
+.customerContextActions a strong{font-size:10px!important;font-weight:650!important;line-height:1.2!important}
+.customerContextActions a span{display:none!important}
+.customerContextActions .customerSectionTabActive{color:var(--wine)!important}
+.customerContextActions .customerSectionTabActive::after{content:"";position:absolute;left:12%;right:12%;bottom:-1px;height:2px;border-radius:2px;background:var(--wine)}
+
+.customerDetailDense .customerSectionTitle{margin:14px 2px 6px!important;min-height:22px!important;align-items:center!important}
+.customerDetailDense .customerSectionTitle>span:first-child{font-size:15px!important;font-weight:800!important;color:#4d3a42!important}
+.customerDetailDense .customerSectionTitle .subtle{font-size:10px!important;color:#806b74!important}
+.customerDetailDense .customerMemoryTitle{margin-top:8px!important}
+.customerMemoryFocusDense{padding:4px 13px!important;margin:0!important;border-radius:16px!important;background:rgba(255,255,255,.78)!important;box-shadow:0 5px 16px rgba(85,48,62,.035)!important}
+.customerHighlightList{display:grid!important;gap:0!important;border-top:0!important}
+.customerHighlightRow{display:grid!important;grid-template-columns:92px minmax(0,1fr)!important;gap:10px!important;align-items:start!important;padding:9px 0!important;border-bottom:1px solid #f0e2e6!important}
+.customerHighlightRow:last-child{border-bottom:0!important}
+.customerHighlightRow span{color:#947e87!important;font-size:10px!important;line-height:1.45!important}
+.customerHighlightRow strong{color:#49363e!important;font-size:12px!important;line-height:1.45!important;font-weight:700!important;overflow-wrap:anywhere!important}
+.customerMemoryOverview:has(.customerCompactEmpty) .customerMemoryFocusDense{padding:9px 13px!important}
+.customerMemoryFocusDense .customerCompactEmpty{padding:0!important}
+
+.customerBasicInfoCard{padding:2px 13px!important;border-radius:16px!important;background:rgba(255,255,255,.8)!important;box-shadow:0 5px 16px rgba(85,48,62,.035)!important}
+.customerBasicInfoRow{display:grid;grid-template-columns:92px minmax(0,1fr);gap:10px;align-items:start;padding:9px 0;border-bottom:1px solid #efe1e5}
+.customerBasicInfoRow:last-child{border-bottom:0}
+.customerBasicInfoRow span{color:#947e87;font-size:10px;line-height:1.45}
+.customerBasicInfoRow strong{color:#49363e;font-size:12px;line-height:1.45;font-weight:700;overflow-wrap:anywhere}
+
+.customerProfilePreview{padding:2px 13px!important;border-radius:16px!important;background:rgba(255,255,255,.8)!important;box-shadow:0 5px 16px rgba(85,48,62,.035)!important}
+.customerProfileGroup{display:grid!important;grid-template-columns:118px minmax(0,1fr)!important;gap:10px!important;padding:10px 0!important;border-bottom:1px solid #efe1e5!important}
+.customerProfileGroup:last-child{border-bottom:0!important}
+.customerProfileGroup>strong{color:#65505a!important;font-size:10px!important;line-height:1.45!important;font-weight:650!important}
+.customerProfileGroup>div{display:grid!important;gap:4px!important}
+.customerProfileGroup>div span{color:#49363e!important;font-size:11px!important;line-height:1.5!important;overflow-wrap:anywhere!important}
+.customerProfileMore>summary{min-height:40px!important;padding:0 1px!important;font-size:10px!important}
+
+.customerCompactRow{min-height:43px!important;padding:8px 12px!important;border-radius:14px!important;background:rgba(255,255,255,.76)!important}
+.customerCompactTimeline{border-radius:16px!important;background:rgba(255,255,255,.78)!important;box-shadow:0 5px 16px rgba(85,48,62,.03)!important}
+.customerTimelineRow>summary,.customerTimelineLink{min-height:39px!important;padding-top:7px!important;padding-bottom:7px!important}
+.customerLockedRow{opacity:.82!important}
+.customerLockedRow>span{font-size:8px!important}
+
+body:has(.customerDetailDense) .feedbackLauncher{bottom:calc(102px + env(safe-area-inset-bottom))!important;right:8px!important;width:32px!important;min-width:32px!important;height:32px!important;border-radius:16px!important}
+body:has(.customerDetailDense) .feedbackLauncher>span{width:22px!important;height:22px!important;font-size:12px!important}
+
+@media(max-width:430px){
+  .customerDetailDense{padding-left:14px!important;padding-right:14px!important;padding-bottom:calc(220px + env(safe-area-inset-bottom))!important}
+  .customerDetailDense .detailIdentityCompact{grid-template-columns:66px minmax(0,1fr)!important;gap:14px!important}
+  .customerDetailDense .detailIdentityCompact .avatar{width:66px!important;height:66px!important;font-size:26px!important}
+  .customerDetailDense .detailIdentityText h1{font-size:23px!important}
+  .customerStatusStrip{gap:6px!important}
+  .customerStatusStrip>.customerStatusCard{min-height:78px!important;padding:8px 3px!important;border-radius:14px!important}
+  .customerStatusIcon{width:31px!important;height:31px!important;font-size:15px!important}
+  .customerHighlightRow,.customerBasicInfoRow{grid-template-columns:82px minmax(0,1fr)!important}
+  .customerProfileGroup{grid-template-columns:104px minmax(0,1fr)!important}
+}
+
+@media(max-width:370px){
+  .customerDetailDense .detailIdentityCompact{grid-template-columns:60px minmax(0,1fr)!important;gap:11px!important}
+  .customerDetailDense .detailIdentityCompact .avatar{width:60px!important;height:60px!important;font-size:24px!important}
+  .customerStatusStrip{gap:4px!important}
+  .customerStatusStrip>.customerStatusCard{min-height:74px!important}
+  .customerStatusIcon{width:28px!important;height:28px!important;font-size:14px!important}
+  .customerStatusCard strong{font-size:9px!important}
+  .customerStatusCard small{font-size:7px!important}
+  .customerContextActions a strong{font-size:9px!important}
+  .customerProfileGroup{grid-template-columns:94px minmax(0,1fr)!important}
+}
