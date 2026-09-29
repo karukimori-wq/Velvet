@@ -11,6 +11,7 @@ import "./customer-detail-polish.css";
 import "./ux-polish.css";
 import "./surface-polish.css";
 import "./ui-ux-refresh.css";
+import "./customer-detail-density.css";
 
 export const dynamic = "force-dynamic";
 
