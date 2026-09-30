@@ -42,7 +42,7 @@ export function RememberEditor({ groups, initialTags, customerId, isNew }: Props
     setSaved(false);
     setError(false);
     try {
-      const response = await fetch("/api/memory/editor", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ customerId, tags }) });
+      const response = await fetch("/api/memory/editor", { method: "POST", headers: { "Content-Type": "application/json" }, body:JSON.stringify({customerId,tags}) });
       if (!response.ok) throw new Error();
       setSavedTags(tags);
       setSaved(true);
