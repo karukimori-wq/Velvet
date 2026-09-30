@@ -67,6 +67,17 @@ function formatTimelineDate(value: string) {
   if (!Number.isFinite(date.getTime())) return value.slice(0, 10);
   return new Intl.DateTimeFormat("ja-JP", { month: "numeric", day: "numeric", timeZone: "Asia/Tokyo" }).format(date);
 }
+function formatLongTimelineDate(value: string) {
+  const date = new Date(value);
+  if (!Number.isFinite(date.getTime())) return value.slice(0, 10);
+  return new Intl.DateTimeFormat("ja-JP", { year: "numeric", month: "long", day: "numeric", timeZone: "Asia/Tokyo" }).format(date);
+}
+function formatScheduleDateTime(value?: string) {
+  if (!value) return undefined;
+  const date = new Date(value);
+  if (!Number.isFinite(date.getTime())) return undefined;
+  return new Intl.DateTimeFormat("ja-JP", { month: "numeric", day: "numeric", hour: "2-digit", minute: "2-digit", timeZone: "Asia/Tokyo" }).format(date);
+}
 function daysUntil(dateLike?: string) { if (!dateLike) return undefined; const due = new Date(dateLike); if (!Number.isFinite(due.getTime())) return undefined; const today = new Date(); today.setHours(0, 0, 0, 0); const target = new Date(due); target.setHours(0, 0, 0, 0); return Math.round((target.getTime() - today.getTime()) / DAY); }
 function dueLabel(dateLike?: string) { const days = daysUntil(dateLike); if (days === undefined) return undefined; if (days < 0) return `${Math.abs(days)}日過ぎ`; if (days === 0) return "今日まで"; return `あと${days}日`; }
 function normalizeVisitReason(value?: string) {
@@ -75,12 +86,43 @@ function normalizeVisitReason(value?: string) {
   return visitReasonOptions.find(option => text.includes(option)) ?? compactText(text, 10);
 }
 function tabHref(customerId: string, tab: CustomerTab) { return `/people/${encodeURIComponent(customerId)}?tab=${tab}`; }
-
-function ProTimelineRows({ items }: { items: ProfessionalTimelineItem[] }) {
-  return <div className="customerCompactTimeline">{items.map(item => <details className="customerTimelineRow" key={item.id}><summary><time>{formatTimelineDate(item.occurredAt)}</time><span className="customerTimelineKind">{eventLabels[item.eventType] ?? "記録"}</span><strong>{compactText(item.title, 34)}</strong><span className="customerTimelineChevron">›</span></summary>{item.body && <div className="customerTimelineBody">{compactText(item.body, 120)}</div>}</details>)}</div>;
+function timelineBadges(item: ProfessionalTimelineItem) {
+  const body = `${item.title} ${item.body ?? ""}`;
+  const labels = [eventLabels[item.eventType] ?? "記録"];
+  if (/次回|予約|提案|約束/.test(body)) labels.push("次回提案あり");
+  if (/会話|話題|盛り上が|聞/.test(body)) labels.push("会話あり");
+  if (/VIP|指名|場内/.test(body)) labels.push(body.includes("場内") ? "場内指名" : body.includes("指名") ? "指名" : "VIP");
+  return Array.from(new Set(labels)).slice(0, 3);
 }
-function FreeHistoryRows({ items, customerId }: { items: ProfessionalTimelineItem[]; customerId: string }) {
-  return <div className="customerCompactTimeline">{items.map(item => <Link className="customerTimelineRow customerTimelineLink" href={`/people/${customerId}/history/${item.id}`} key={item.id}><time>{formatTimelineDate(item.occurredAt)}</time><span className="customerTimelineKind">{eventLabels[item.eventType] ?? "記録"}</span><strong>{compactText(item.title, 34)}</strong><span className="customerTimelineChevron">›</span></Link>)}</div>;
+function timelineBody(item: ProfessionalTimelineItem) {
+  const body = item.body ? compactText(item.body, 96) : "";
+  if (body) return body;
+  if (item.eventType === "visit") return "来店内容を記録しました。";
+  if (item.eventType === "note") return "人物情報や会話メモを更新しました。";
+  if (item.eventType === "schedule") return "予定を追加しました。";
+  return "この人との出来事を記録しました。";
+}
+function CustomerHistoryTimeline({ items, customerId, integrated, nextScheduleLabel }: { items: ProfessionalTimelineItem[]; customerId: string; integrated: boolean; nextScheduleLabel?: string }) {
+  return <div className="customerCompactTimeline customerStoryTimeline" style={{ display: "grid", gap: 0, marginTop: 10 }}>
+    {items.map((item, index) => {
+      const href = integrated ? undefined : `/people/${customerId}/history/${item.id}`;
+      const showNext = Boolean(nextScheduleLabel && index === 0 && (item.eventType === "visit" || /次回|予約/.test(`${item.title} ${item.body ?? ""}`)));
+      const card = <article className="card customerStoryCard" style={{ padding: 14, marginBottom: 14, borderColor: "#ead8df", background: "rgba(255,255,255,.68)", color: "#3a3038", boxShadow: "0 10px 24px rgba(98, 42, 68, .06)" }}>
+        <div style={{ color: "#8e7e88", fontSize: 14, marginBottom: 4 }}>{formatLongTimelineDate(item.occurredAt)}</div>
+        <strong style={{ display: "block", fontSize: 18, lineHeight: 1.35, marginBottom: 6 }}>{compactText(item.title, 44)}</strong>
+        <p style={{ margin: 0, color: "#5e535b", lineHeight: 1.55 }}>{timelineBody(item)}</p>
+        <div className="chips" style={{ marginTop: 10 }}>{timelineBadges(item).map(label => <span className="chip" style={{ background: "#f8e9f0", color: "#a31553", padding: "6px 10px" }} key={`${item.id}-${label}`}>{label}</span>)}</div>
+        {showNext && <div style={{ marginTop: 10, borderRadius: 12, padding: "10px 12px", background: "#fdeaf2", color: "#a31553", fontWeight: 700 }}>▣ 次回：{nextScheduleLabel} 予約予定 <span style={{ float: "right" }}>›</span></div>}
+      </article>;
+      return <div key={item.id} style={{ display: "grid", gridTemplateColumns: "28px 1fr", alignItems: "stretch", position: "relative" }}>
+        <div aria-hidden="true" style={{ position: "relative", display: "flex", justifyContent: "center" }}>
+          <span style={{ position: "absolute", top: index === 0 ? 13 : 0, bottom: index === items.length - 1 ? "50%" : 0, width: 2, background: "#ead8df" }} />
+          <span style={{ position: "relative", zIndex: 1, width: 14, height: 14, marginTop: 12, borderRadius: 999, background: "#a31553", boxShadow: "0 0 0 4px #fff5f9" }} />
+        </div>
+        {href ? <Link className="customerStoryLink" href={href}>{card}</Link> : card}
+      </div>;
+    })}
+  </div>;
 }
 
 export default async function Page({ params, searchParams }: { params: Promise<{ customerId: string }>; searchParams: Promise<Record<string, string | undefined>> }) {
@@ -132,6 +174,7 @@ export default async function Page({ params, searchParams }: { params: Promise<{
   const detailProfileGroups = profileGroups.filter(group => group.title !== "基本情報");
   const birthday = factMap.get("誕生日") || "未登録";
   const visitReason = normalizeVisitReason(factMap.get("来店理由") ?? factMap.get("来店区分") ?? (isVip ? "VIP" : undefined));
+  const nextScheduleLabel = formatScheduleDateTime(nextSchedule?.startsAt);
 
   const highlights: Array<{ label: string; value: string }> = [];
   const caution = quickRecall.items.find(item => item.label === "注意" || item.label === "注意点");
@@ -199,8 +242,8 @@ export default async function Page({ params, searchParams }: { params: Promise<{
     </section>}
 
     {activeTab === "history" && <section className="customerRecentSection customerTabPanel" id="history">
-      <div className="sectionTitle customerSectionTitle"><span>最近の出来事</span><span className="subtle">{visibleTimeline.length}件</span></div>
-      {recentTimeline.length > 0 ? <>{access.integratedTimeline ? <ProTimelineRows items={recentTimeline}/> : <FreeHistoryRows items={recentTimeline} customerId={customerId}/>} {access.integratedTimeline && olderTimeline.length > 0 && <details className="customerHistoryMore"><summary>以前の出来事を見る（{olderTimeline.length}件）</summary><div className="customerHistoryMoreBody"><ProTimelineRows items={olderTimeline}/></div></details>}</> : <div className="card customerCompactEmpty">まだ出来事はありません</div>}
+      <div className="sectionTitle customerSectionTitle"><span>この人との流れ</span><span className="subtle">{visibleTimeline.length}件</span></div>
+      {recentTimeline.length > 0 ? <>{<CustomerHistoryTimeline items={recentTimeline} customerId={customerId} integrated={access.integratedTimeline} nextScheduleLabel={nextScheduleLabel}/>} {access.integratedTimeline && olderTimeline.length > 0 && <details className="customerHistoryMore"><summary>以前の出来事を見る（{olderTimeline.length}件）</summary><div className="customerHistoryMoreBody"><CustomerHistoryTimeline items={olderTimeline} customerId={customerId} integrated={access.integratedTimeline}/></div></details>}</> : <div className="card customerCompactEmpty">まだ出来事はありません</div>}
       {!access.integratedTimeline && archivedCount > 0 && <Link className="customerArchiveNote" href="/plans">🔒 過去の出来事 {archivedCount}件 · Pro</Link>}
       <section className="customerMediaSection">
         <div className="sectionTitle customerSectionTitle"><span>思い出の画像</span></div>
