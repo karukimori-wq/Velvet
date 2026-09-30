@@ -1,7 +1,82 @@
 "use client";
 import Link from "next/link";
-import { useMemo,useState } from "react";
+import { useMemo, useState } from "react";
 import type { RememberGroup } from "@/lib/remember-fields";
 import { memoryTagMode } from "@/lib/memory-tag-policy";
-type Props={groups:RememberGroup[];initialTags:string[];customerId:string;isNew:boolean};const labelOf=(tag:string)=>{const i=tag.indexOf("：");return i>0?tag.slice(0,i):""};const valueOf=(tag:string)=>{const i=tag.indexOf("：");return i>0?tag.slice(i+1):""};const signature=(tags:string[])=>[...tags].sort().join("\n");
-export function RememberEditor({groups,initialTags,customerId,isNew}:Props){const [tags,setTags]=useState(initialTags);const [savedTags,setSavedTags]=useState(initialTags);const [open,setOpen]=useState(()=>new Set(groups.slice(0,isNew?2:1).map(g=>g.title)));const [drafts,setDrafts]=useState<Record<string,string>>({});const [saving,setSaving]=useState(false);const [saved,setSaved]=useState(false);const [error,setError]=useState(false);const total=useMemo(()=>new Set(tags.map(labelOf).filter(Boolean)).size,[tags]);const dirty=signature(tags)!==signature(savedTags);function values(label:string){return tags.filter(t=>labelOf(t)===label).map(valueOf)}function select(label:string,value:string){const tag=`${label}：${value}`;setTags(current=>{if(current.includes(tag))return current.filter(t=>t!==tag);if(memoryTagMode(label)==="replace")return[...current.filter(t=>labelOf(t)!==label),tag];return[...current,tag]});setSaved(false);setError(false)}function addFree(label:string){const value=(drafts[label]??"").trim();if(!value)return;select(label,value);setDrafts(d=>({...d,[label]:""}))}async function save(){if(!dirty)return;setSaving(true);setSaved(false);setError(false);try{const response=await fetch("/api/memory/editor",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({customerId,tags})});if(!response.ok)throw new Error();setSavedTags(tags);setSaved(true)}catch{setError(true)}finally{setSaving(false)}}return <div className="stack rememberEditor">{total>0&&<div className="card noticeCard"><div className="row"><div><div className="formHint">選択中</div><strong>{total}項目</strong></div><span className="subtle">{dirty?"まだ保存していません":"保存済み"}</span></div></div>}{groups.map(group=>{const filled=group.fields.filter(f=>values(f.label).length).length;const isOpen=open.has(group.title);return <section className="card rememberGroup" key={group.title}><button type="button" className="rememberGroupToggle" onClick={()=>setOpen(current=>{const next=new Set(current);next.has(group.title)?next.delete(group.title):next.add(group.title);return next})}><div><strong>{group.title}</strong>{group.hint&&<div className="formHint">{group.hint}</div>}</div><span className="subtle">{filled?`${filled}項目`:`＋`} {isOpen?"▲":"▼"}</span></button>{isOpen&&<div className="profileFields rememberGroupBody">{group.fields.map(field=>{const selected=values(field.label);return <div className="profileField" key={field.label}><div className="row"><strong>{field.label}</strong>{selected.length>0&&<span className="subtle">{selected.length}件選択</span>}</div>{selected.length>0&&<div className="chips">{selected.map(value=><button type="button" className="chip selectedChip" key={value} onClick={()=>select(field.label,value)}>{value} ×</button>)}</div>}<div className="chips">{field.examples.map(example=><button type="button" className={`chip chipButton${selected.includes(example)?" selectedChip":""}`} key={example} onClick={()=>select(field.label,example)}>{example}</button>)}</div><div className="profileInputRow"><input className="searchBox" value={drafts[field.label]??""} onChange={e=>setDrafts(d=>({...d,[field.label]:e.target.value}))} placeholder="自由に入力"/><button className="secondaryButton compactButton" type="button" onClick={()=>addFree(field.label)}>追加</button></div></div>})}</div>}</section>})}<div className="rememberSaveBar">{dirty&&<button className="primaryButton" type="button" disabled={saving} onClick={save}>{saving?"保存中…":"まとめて保存"}</button>}{error&&<span className="formError">保存できませんでした。もう一度お試しください。</span>}{saved&&!dirty&&<div className="rememberAfterSave"><div className="searchActions"><Link className="secondaryButton actionLink" href={`/people/${customerId}`}>情報と履歴を見る</Link><Link className="primaryButton actionLink" href={`/capture?customerId=${encodeURIComponent(customerId)}`}>今日の接客へ</Link></div></div>}</div></div>}
+
+type Props = { groups: RememberGroup[]; initialTags: string[]; customerId: string; isNew: boolean };
+const labelOf = (tag: string) => { const i = tag.indexOf("："); return i > 0 ? tag.slice(0, i) : ""; };
+const valueOf = (tag: string) => { const i = tag.indexOf("："); return i > 0 ? tag.slice(i + 1) : ""; };
+const signature = (tags: string[]) => [...tags].sort().join("\n");
+
+export function RememberEditor({ groups, initialTags, customerId, isNew }: Props) {
+  const [tags, setTags] = useState(initialTags);
+  const [savedTags, setSavedTags] = useState(initialTags);
+  const [open, setOpen] = useState(() => new Set(groups.slice(0, isNew ? 2 : 1).map(g => g.title)));
+  const [drafts, setDrafts] = useState<Record<string, string>>({});
+  const [saving, setSaving] = useState(false);
+  const [saved, setSaved] = useState(false);
+  const [error, setError] = useState(false);
+  const total = useMemo(() => new Set(tags.map(labelOf).filter(Boolean)).size, [tags]);
+  const dirty = signature(tags) !== signature(savedTags);
+  function values(label: string) { return tags.filter(t => labelOf(t) === label).map(valueOf); }
+  function select(label: string, value: string) {
+    const tag = `${label}：${value}`;
+    setTags(current => {
+      if (current.includes(tag)) return current.filter(t => t !== tag);
+      if (memoryTagMode(label) === "replace") return [...current.filter(t => labelOf(t) !== label), tag];
+      return [...current, tag];
+    });
+    setSaved(false);
+    setError(false);
+  }
+  function addFree(label: string) {
+    const value = (drafts[label] ?? "").trim();
+    if (!value) return;
+    select(label, value);
+    setDrafts(d => ({ ...d, [label]: "" }));
+  }
+  async function save() {
+    if (!dirty) return;
+    setSaving(true);
+    setSaved(false);
+    setError(false);
+    try {
+      const response = await fetch("/api/memory/editor", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ customerId, tags }) });
+      if (!response.ok) throw new Error();
+      setSavedTags(tags);
+      setSaved(true);
+    } catch {
+      setError(true);
+    } finally {
+      setSaving(false);
+    }
+  }
+  return <div className="stack rememberEditor rememberEditorWithSave">
+    {total > 0 && <div className="card noticeCard"><div className="row"><div><div className="formHint">選択中</div><strong>{total}項目</strong></div><span className="subtle">{dirty ? "まだ保存していません" : "保存済み"}</span></div></div>}
+    {groups.map(group => {
+      const filled = group.fields.filter(f => values(f.label).length).length;
+      const isOpen = open.has(group.title);
+      return <section className="card rememberGroup" key={group.title}>
+        <button type="button" className="rememberGroupToggle" onClick={() => setOpen(current => { const next = new Set(current); next.has(group.title) ? next.delete(group.title) : next.add(group.title); return next; })}>
+          <div><strong>{group.title}</strong>{group.hint && <div className="formHint">{group.hint}</div>}</div><span className="subtle">{filled ? `${filled}項目` : `＋`} {isOpen ? "▲" : "▼"}</span>
+        </button>
+        {isOpen && <div className="profileFields rememberGroupBody">{group.fields.map(field => {
+          const selected = values(field.label);
+          return <div className="profileField" key={field.label}>
+            <div className="row"><strong>{field.label}</strong>{selected.length > 0 && <span className="subtle">{selected.length}件選択</span>}</div>
+            {selected.length > 0 && <div className="chips">{selected.map(value => <button type="button" className="chip selectedChip" key={value} onClick={() => select(field.label, value)}>{value} ×</button>)}</div>}
+            <div className="chips">{field.examples.map(example => <button type="button" className={`chip chipButton${selected.includes(example) ? " selectedChip" : ""}`} key={example} onClick={() => select(field.label, example)}>{example}</button>)}</div>
+            <div className="profileInputRow"><input className="searchBox" value={drafts[field.label] ?? ""} onChange={e => setDrafts(d => ({ ...d, [field.label]: e.target.value }))} placeholder="自由に入力" /><button className="secondaryButton compactButton" type="button" onClick={() => addFree(field.label)}>追加</button></div>
+          </div>;
+        })}</div>}
+      </section>;
+    })}
+    <div className="rememberSaveSpacer" aria-hidden="true" />
+    <div className="rememberSaveBar" style={{ position: "fixed", left: "50%", transform: "translateX(-50%)", bottom: "calc(82px + env(safe-area-inset-bottom))", width: "min(688px, calc(100% - 32px))", zIndex: 30, display: "grid", gap: 8, padding: 12, borderRadius: 20, background: "rgba(17,16,20,.96)", border: "1px solid #2c2830", boxShadow: "0 12px 36px rgba(0,0,0,.34)", backdropFilter: "blur(16px)" }}>
+      {dirty ? <button className="primaryButton" type="button" disabled={saving} onClick={save}>{saving ? "保存中…" : "まとめて保存"}</button> : <button className="secondaryButton" type="button" disabled>保存済み</button>}
+      {error && <span className="formError">保存できませんでした。もう一度お試しください。</span>}
+      {saved && !dirty && <div className="rememberAfterSave"><div className="searchActions"><Link className="secondaryButton actionLink" href={`/people/${customerId}`}>情報と履歴を見る</Link><Link className="primaryButton actionLink" href={`/capture?customerId=${encodeURIComponent(customerId)}`}>今日の接客へ</Link></div></div>}
+    </div>
+  </div>;
+}
