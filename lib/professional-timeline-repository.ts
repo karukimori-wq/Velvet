@@ -17,6 +17,7 @@ export type ProfessionalTimelineItem = {
 const rows: ProfessionalTimelineItem[] = [];
 const makeId = () => `note_${Date.now().toString(36)}_${Math.random().toString(36).slice(2, 8)}`;
 const D1_ID_CHUNK = 80;
+let d1TimelineSchemaReady: Promise<void> | undefined;
 
 type Row = {
   id: string;
@@ -42,6 +43,17 @@ const map = (row: Row): ProfessionalTimelineItem => ({
   sourceRef: row.source_ref ?? undefined,
 });
 
+async function ensureD1TimelineSchema(db: NonNullable<Awaited<ReturnType<typeof getD1Database>>>) {
+  d1TimelineSchemaReady ??= (async () => {
+    const columns = await db.prepare("SELECT name FROM pragma_table_info('velvet_professional_timeline')").all<{ name: string }>();
+    const existing = new Set((columns.results ?? []).map(row => row.name));
+    for (const [name, type] of [["body", "TEXT"], ["source_ref", "TEXT"]]) {
+      if (!existing.has(name)) await db.prepare(`ALTER TABLE velvet_professional_timeline ADD COLUMN ${name} ${type}`).run();
+    }
+  })();
+  await d1TimelineSchemaReady;
+}
+
 function groupByCustomer(customerIds: string[], items: ProfessionalTimelineItem[]) {
   const result = new Map<string, ProfessionalTimelineItem[]>(customerIds.map(id => [id, []]));
   for (const item of items) result.get(item.customerId)?.push(item);
@@ -57,6 +69,7 @@ function chunks<T>(values: T[], size: number) {
 export async function listProfessionalTimeline(workspaceId: string, userId: string, customerId: string) {
   const db = await getD1Database();
   if (db) {
+    await ensureD1TimelineSchema(db);
     const result = await db.prepare("select id,workspace_id,user_id,customer_id,occurred_at,event_type,title,body,source_ref from velvet_professional_timeline where workspace_id=? and user_id=? and customer_id=? order by occurred_at desc").bind(workspaceId, userId, customerId).all<Row>();
     return result.results.map(map);
   }
@@ -73,6 +86,7 @@ export async function listVisitTimelinesByCustomer(workspaceId: string, userId: 
   const allowed = new Set(uniqueIds);
   const db = await getD1Database();
   if (db) {
+    await ensureD1TimelineSchema(db);
     const resultRows: Row[] = [];
     for (const batch of chunks(uniqueIds, D1_ID_CHUNK)) {
       const placeholders = batch.map(() => "?").join(",");
@@ -92,6 +106,7 @@ export async function listVisitTimelinesByCustomer(workspaceId: string, userId: 
 export async function getProfessionalTimelineItem(workspaceId: string, userId: string, customerId: string, id: string) {
   const db = await getD1Database();
   if (db) {
+    await ensureD1TimelineSchema(db);
     const row = await db.prepare("select id,workspace_id,user_id,customer_id,occurred_at,event_type,title,body,source_ref from velvet_professional_timeline where id=? and workspace_id=? and user_id=? and customer_id=? limit 1").bind(id, workspaceId, userId, customerId).first<Row>();
     return row ? map(row) : undefined;
   }
@@ -108,6 +123,7 @@ export async function listLatestConversationsByCustomer(workspaceId: string, use
   const allowed = new Set(uniqueIds);
   const db = await getD1Database();
   if (db) {
+    await ensureD1TimelineSchema(db);
     for (const batch of chunks(uniqueIds, D1_ID_CHUNK)) {
       const placeholders = batch.map(() => "?").join(",");
       const query = await db.prepare(`select id,workspace_id,user_id,customer_id,occurred_at,event_type,title,body,source_ref from velvet_professional_timeline where workspace_id=? and user_id=? and event_type='conversation' and customer_id in (${placeholders}) order by customer_id,occurred_at desc`).bind(workspaceId, userId, ...batch).all<Row>();
@@ -133,25 +149,13 @@ export async function listLatestConversationsByCustomer(workspaceId: string, use
 
 export async function addProfessionalTimelineItem(input: { workspaceId: string; userId: string; customerId: string; eventType: string; title: string; body?: string; sourceRef?: string; occurredAt?: string }) {
   const db = await getD1Database();
-  const item: ProfessionalTimelineItem = {
-    id: db ? makeD1Id("timeline") : makeId(),
-    workspaceId: input.workspaceId,
-    userId: input.userId,
-    customerId: input.customerId,
-    occurredAt: input.occurredAt ?? new Date().toISOString(),
-    eventType: input.eventType,
-    title: input.title,
-    body: input.body,
-    sourceRef: input.sourceRef,
-  };
+  const item: ProfessionalTimelineItem = { id: db ? makeD1Id("timeline") : makeId(), workspaceId: input.workspaceId, userId: input.userId, customerId: input.customerId, occurredAt: input.occurredAt ?? new Date().toISOString(), eventType: input.eventType, title: input.title, body: input.body, sourceRef: input.sourceRef };
   if (db) {
+    await ensureD1TimelineSchema(db);
     await db.prepare("insert into velvet_professional_timeline(id,workspace_id,user_id,customer_id,occurred_at,event_type,title,body,source_ref) values(?,?,?,?,?,?,?,?,?)").bind(item.id, item.workspaceId, item.userId, item.customerId, item.occurredAt, item.eventType, item.title, item.body ?? null, item.sourceRef ?? null).run();
     return item;
   }
-  if (getStorageMode() !== "postgres") {
-    rows.unshift(item);
-    return item;
-  }
+  if (getStorageMode() !== "postgres") { rows.unshift(item); return item; }
   await dbQuery(`insert into velvet_professional_timeline(id,workspace_id,user_id,customer_id,occurred_at,event_type,title,body,source_ref) values($1,$2,$3,$4,$5,$6,$7,$8,$9)`, [item.id, item.workspaceId, item.userId, item.customerId, item.occurredAt, item.eventType, item.title, item.body ?? null, item.sourceRef ?? null]);
   return item;
 }
@@ -159,6 +163,7 @@ export async function addProfessionalTimelineItem(input: { workspaceId: string; 
 export async function deleteProfessionalTimelineItem(workspaceId: string, userId: string, customerId: string, id: string) {
   const db = await getD1Database();
   if (db) {
+    await ensureD1TimelineSchema(db);
     await db.prepare("delete from velvet_professional_timeline where id=? and workspace_id=? and user_id=? and customer_id=?").bind(id, workspaceId, userId, customerId).run();
     return;
   }
