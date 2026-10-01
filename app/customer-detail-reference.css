@@ -46,12 +46,12 @@
 .customerBasicInfoRow strong{color:#49363e;font-size:12px;line-height:1.45;font-weight:700;overflow-wrap:anywhere}
 
 .customerProfilePreview{padding:2px 13px!important;border-radius:16px!important;background:rgba(255,255,255,.8)!important;box-shadow:0 5px 16px rgba(85,48,62,.035)!important}
-.customerProfileGroup{display:grid!important;grid-template-columns:118px minmax(0,1fr)!important;gap:10px!important;padding:10px 0!important;border-bottom:1px solid #efe1e5!important}
+.customerProfileGroup{display:grid!important;grid-template-columns:118px minmax(0,1fr)!important;gap:10px!important;padding:11px 0!important;border-bottom:1px solid #efe1e5!important}
 .customerProfileGroup:last-child{border-bottom:0!important}
-.customerProfileGroup>strong{color:#65505a!important;font-size:10px!important;line-height:1.45!important;font-weight:650!important}
-.customerProfileGroup>div{display:grid!important;gap:4px!important}
-.customerProfileGroup>div span{color:#49363e!important;font-size:11px!important;line-height:1.5!important;overflow-wrap:anywhere!important}
-.customerProfileMore>summary{min-height:40px!important;padding:0 1px!important;font-size:10px!important}
+.customerProfileGroup>strong{color:#65505a!important;font-size:12px!important;line-height:1.5!important;font-weight:700!important}
+.customerProfileGroup>div{display:grid!important;gap:5px!important}
+.customerProfileGroup>div span{color:#49363e!important;font-size:13px!important;line-height:1.55!important;overflow-wrap:anywhere!important}
+.customerProfileMore>summary{min-height:40px!important;padding:0 1px!important;font-size:11px!important}
 
 .customerCompactRow{min-height:43px!important;padding:8px 12px!important;border-radius:14px!important;background:rgba(255,255,255,.76)!important}
 .customerCompactTimeline{border-radius:16px!important;background:rgba(255,255,255,.78)!important;box-shadow:0 5px 16px rgba(85,48,62,.03)!important}
@@ -71,7 +71,7 @@ body:has(.customerDetailDense) .feedbackLauncher>span{width:22px!important;heigh
   .customerStatusStrip>.customerStatusCard{min-height:78px!important;padding:8px 3px!important;border-radius:14px!important}
   .customerStatusIcon{width:31px!important;height:31px!important;font-size:15px!important}
   .customerHighlightRow,.customerBasicInfoRow{grid-template-columns:82px minmax(0,1fr)!important}
-  .customerProfileGroup{grid-template-columns:104px minmax(0,1fr)!important}
+  .customerProfileGroup{grid-template-columns:108px minmax(0,1fr)!important}
 }
 
 @media(max-width:370px){
@@ -83,5 +83,5 @@ body:has(.customerDetailDense) .feedbackLauncher>span{width:22px!important;heigh
   .customerStatusCard strong{font-size:9px!important}
   .customerStatusCard small{font-size:7px!important}
   .customerContextActions a strong{font-size:9px!important}
-  .customerProfileGroup{grid-template-columns:94px minmax(0,1fr)!important}
+  .customerProfileGroup{grid-template-columns:100px minmax(0,1fr)!important}
 }
