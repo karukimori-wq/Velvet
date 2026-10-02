@@ -4,15 +4,15 @@ import { useMemo, useState } from "react";
 import type { RememberGroup } from "@/lib/remember-fields";
 import { memoryTagMode } from "@/lib/memory-tag-policy";
 
-type Props = { groups: RememberGroup[]; initialTags: string[]; customerId: string; isNew: boolean };
+type Props = { groups: RememberGroup[]; initialTags: string[]; customerId: string; isNew: boolean; initialGroup?: string };
 const labelOf = (tag: string) => { const i = tag.indexOf("："); return i > 0 ? tag.slice(0, i) : ""; };
 const valueOf = (tag: string) => { const i = tag.indexOf("："); return i > 0 ? tag.slice(i + 1) : ""; };
 const signature = (tags: string[]) => [...tags].sort().join("\n");
 
-export function RememberEditor({ groups, initialTags, customerId, isNew }: Props) {
+export function RememberEditor({ groups, initialTags, customerId, isNew, initialGroup }: Props) {
   const [tags, setTags] = useState(initialTags);
   const [savedTags, setSavedTags] = useState(initialTags);
-  const [open, setOpen] = useState(() => new Set(groups.slice(0, isNew ? 2 : 1).map(g => g.title)));
+  const [open, setOpen] = useState(() => new Set(initialGroup ? [initialGroup] : groups.slice(0, isNew ? 2 : 1).map(g => g.title)));
   const [drafts, setDrafts] = useState<Record<string, string>>({});
   const [saving, setSaving] = useState(false);
   const [saved, setSaved] = useState(false);
