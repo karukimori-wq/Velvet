@@ -1,9 +1,9 @@
 "use client";
 
 import Link from "next/link";
-import { useAuth, useSignIn, useSignUp } from "@clerk/nextjs";
-import { useRouter } from "next/navigation";
-import { useEffect, useState } from "react";
+import { SignIn, SignUp, useAuth } from "@clerk/nextjs";
+import { useSearchParams } from "next/navigation";
+import { useEffect, useMemo, useState } from "react";
 
 type Mode = "signup" | "signin";
 
@@ -33,141 +33,18 @@ function signUpErrorMessage(code: string) {
 }
 
 export default function AuthPage() {
-  const router = useRouter();
+  const searchParams = useSearchParams();
   const { isLoaded, isSignedIn } = useAuth();
-  const { signIn, fetchStatus: signInStatus } = useSignIn();
-  const { signUp, fetchStatus: signUpStatus } = useSignUp();
-  const [mode, setMode] = useState<Mode>("signup");
-  const [verificationSent, setVerificationSent] = useState(false);
-  const [signInVerificationSent, setSignInVerificationSent] = useState(false);
-  const [message, setMessage] = useState("");
+  const [mode, setMode] = useState<Mode>(searchParams.get("mode") === "signin" ? "signin" : "signup");
 
   useEffect(() => {
     if (isLoaded && isSignedIn && typeof window !== "undefined") window.location.replace("/");
   }, [isLoaded, isSignedIn]);
 
-  const busy = signInStatus === "fetching" || signUpStatus === "fetching";
-
-  function navigateHome(decorateUrl: (url: string) => string) {
-    const url = decorateUrl("/");
-    if (typeof window !== "undefined") window.location.href = url;
-    else router.push(url);
-  }
-
-  async function finishSignIn() {
-    await signIn.finalize({
-      navigate: ({ session, decorateUrl }) => {
-        if (session?.currentTask) {
-          setMessage("追加の本人確認が必要です。画面の案内に沿って確認してください。");
-          return;
-        }
-        navigateHome(decorateUrl);
-      },
-    });
-  }
-
-  async function finishSignUp() {
-    await signUp.finalize({
-      navigate: ({ session, decorateUrl }) => {
-        if (session?.currentTask) {
-          setMessage("追加の本人確認が必要です。画面の案内に沿って確認してください。");
-          return;
-        }
-        navigateHome(decorateUrl);
-      },
-    });
-  }
-
-  async function prepareSignInVerification() {
-    try {
-      const verification = await signIn.mfa.sendEmailCode();
-      if (verification.error) {
-        setMessage("追加の本人確認コードを送信できませんでした。時間をおいてもう一度お試しください。");
-        return;
-      }
-      setSignInVerificationSent(true);
-      setMessage("本人確認コードをメールに送信しました。届いたコードを入力してください。");
-    } catch {
-      setMessage("追加の本人確認が必要です。ページを再読み込みして、もう一度お試しください。");
-    }
-  }
-
-  async function handleSignIn(formData: FormData) {
-    setMessage("");
-    const emailAddress = String(formData.get("email") ?? "").trim();
-    const password = String(formData.get("password") ?? "");
-    if (!emailAddress || !password) {
-      setMessage("メールアドレスとパスワードを入力してください。");
-      return;
-    }
-
-    const { error } = await signIn.password({ emailAddress, password });
-    if (error) {
-      setMessage("メールアドレスまたはパスワードを確認してください。");
-      return;
-    }
-    if (signIn.status === "complete") await finishSignIn();
-    else if (signIn.status === "needs_client_trust" || signIn.status === "needs_second_factor") await prepareSignInVerification();
-    else setMessage("ログインを完了できませんでした。ページを再読み込みして、もう一度お試しください。");
-  }
-
-  async function handleSignInVerify(formData: FormData) {
-    setMessage("");
-    const code = String(formData.get("code") ?? "").trim();
-    if (!code) {
-      setMessage("本人確認コードを入力してください。");
-      return;
-    }
-    const { error } = await signIn.mfa.verifyEmailCode({ code });
-    if (error) {
-      setMessage("本人確認コードが正しいか確認してください。");
-      return;
-    }
-    if (signIn.status === "complete") await finishSignIn();
-    else setMessage("ログインを完了できませんでした。ページを再読み込みして、もう一度お試しください。");
-  }
-
-  async function handleSignUp(formData: FormData) {
-    setMessage("");
-    const emailAddress = String(formData.get("email") ?? "").trim();
-    const password = String(formData.get("password") ?? "");
-    if (!emailAddress) {
-      setMessage("メールアドレスを入力してください。");
-      return;
-    }
-    if (!validVelvetPassword(password)) {
-      setMessage("パスワードは8文字以上で、英字と数字を含めてください。");
-      return;
-    }
-
-    const { error } = await signUp.password({ emailAddress, password });
-    if (error) {
-      setMessage(signUpErrorMessage(error.code));
-      return;
-    }
-    const verification = await signUp.verifications.sendEmailCode();
-    if (verification.error) {
-      setMessage("確認コードを送信できませんでした。時間をおいてもう一度お試しください。");
-      return;
-    }
-    setVerificationSent(true);
-  }
-
-  async function handleVerify(formData: FormData) {
-    setMessage("");
-    const code = String(formData.get("code") ?? "").trim();
-    if (!code) {
-      setMessage("確認コードを入力してください。");
-      return;
-    }
-    const { error } = await signUp.verifications.verifyEmailCode({ code });
-    if (error) {
-      setMessage("確認コードが正しいか確認してください。");
-      return;
-    }
-    if (signUp.status === "complete") await finishSignUp();
-    else setMessage("登録を完了できませんでした。もう一度お試しください。");
-  }
+  const returnTo = useMemo(() => {
+    const raw = searchParams.get("returnTo");
+    return raw && raw.startsWith("/") ? raw : "/";
+  }, [searchParams]);
 
   if (!isLoaded || isSignedIn) return null;
 
@@ -175,49 +52,26 @@ export default function AuthPage() {
     <main className="shell">
       <header className="header"><div className="brand">Velvet</div></header>
       <section className="hero">
-        <h1>{verificationSent || signInVerificationSent ? "メールを確認" : mode === "signup" ? "無料で登録" : "ログイン"}</h1>
-        <p>{verificationSent || signInVerificationSent ? "届いた確認コードを入力してください。" : "お客様との大切な記録を、ひとつの場所に。"}</p>
+        <h1>{mode === "signup" ? "無料で登録" : "ログイン"}</h1>
+        <p>お客様との大切な記録を、ひとつの場所に。</p>
       </section>
 
       <section className="card stack">
-        {signInVerificationSent ? (
-          <form action={handleSignInVerify} className="stack">
-            <label className="fieldLabel" htmlFor="signin-code">本人確認コード</label>
-            <input className="searchBox" id="signin-code" name="code" inputMode="numeric" autoComplete="one-time-code" required />
-            {message && <div className="formError" role="alert">{message}</div>}
-            <button className="primaryButton" type="submit" disabled={busy}>{busy ? "確認中…" : "ログインを完了"}</button>
-            <button className="secondaryButton" type="button" disabled={busy} onClick={() => void prepareSignInVerification()}>本人確認コードを再送</button>
-          </form>
-        ) : verificationSent ? (
-          <form action={handleVerify} className="stack">
-            <label className="fieldLabel" htmlFor="code">確認コード</label>
-            <input className="searchBox" id="code" name="code" inputMode="numeric" autoComplete="one-time-code" required />
-            {message && <div className="formError" role="alert">{message}</div>}
-            <button className="primaryButton" type="submit" disabled={busy}>{busy ? "確認中…" : "登録を完了"}</button>
-            <button className="secondaryButton" type="button" disabled={busy} onClick={() => void signUp.verifications.sendEmailCode()}>確認コードを再送</button>
-          </form>
-        ) : mode === "signup" ? (
-          <form action={handleSignUp} className="stack">
-            <label className="fieldLabel" htmlFor="signup-email">メールアドレス</label>
-            <input className="searchBox" id="signup-email" name="email" type="email" autoComplete="email" required />
-            <label className="fieldLabel" htmlFor="signup-password">パスワード</label>
-            <input className="searchBox" id="signup-password" name="password" type="password" autoComplete="new-password" minLength={8} required />
-            <div className="formHint">8文字以上・英字と数字を含む</div>
-            {message && <div className="formError" role="alert">{message}</div>}
-            <button className="primaryButton" type="submit" disabled={busy}>{busy ? "登録中…" : "無料で登録"}</button>
-            <button className="secondaryButton" type="button" onClick={() => { setMode("signin"); setMessage(""); setVerificationSent(false); setSignInVerificationSent(false); }}>登録済みの方はこちら（ログイン）</button>
-            <div id="clerk-captcha" />
-          </form>
+        <div className="formHint">
+          パスワードは8文字以上・英字と数字を含めてください。安全確認で止まる場合は、画面の案内に沿って進めてください。
+        </div>
+        <div className="formHint" aria-hidden="true" style={{ display: "none" }}>{validVelvetPassword("abc12345") ? signUpErrorMessage("form_password_length_too_short") : ""}</div>
+        <div id="clerk-captcha" />
+        {mode === "signup" ? (
+          <>
+            <SignUp routing="hash" forceRedirectUrl={returnTo} signInUrl="/auth?mode=signin" />
+            <button className="secondaryButton" type="button" onClick={() => setMode("signin")}>登録済みの方はこちら（ログイン）</button>
+          </>
         ) : (
-          <form action={handleSignIn} className="stack">
-            <label className="fieldLabel" htmlFor="signin-email">メールアドレス</label>
-            <input className="searchBox" id="signin-email" name="email" type="email" autoComplete="email" required />
-            <label className="fieldLabel" htmlFor="signin-password">パスワード</label>
-            <input className="searchBox" id="signin-password" name="password" type="password" autoComplete="current-password" required />
-            {message && <div className="formError" role="alert">{message}</div>}
-            <button className="primaryButton" type="submit" disabled={busy}>{busy ? "ログイン中…" : "ログイン"}</button>
-            <button className="secondaryButton" type="button" onClick={() => { setMode("signup"); setMessage(""); setVerificationSent(false); setSignInVerificationSent(false); }}>初めての方はこちら（無料登録）</button>
-          </form>
+          <>
+            <SignIn routing="hash" forceRedirectUrl={returnTo} signUpUrl="/auth?mode=signup" />
+            <button className="secondaryButton" type="button" onClick={() => setMode("signup")}>初めての方はこちら（無料登録）</button>
+          </>
         )}
       </section>
       <p className="formHint" style={{ marginTop: 16 }}>登録・ログインを続けることで、Velvetの利用に必要な認証処理に同意したものとみなされます。</p>
