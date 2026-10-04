@@ -34,29 +34,34 @@ function signUpErrorMessage(code: string) {
 
 export default function AuthPage() {
   const router = useRouter();
-  const { isSignedIn } = useAuth();
+  const { isLoaded, isSignedIn } = useAuth();
   const { signIn, fetchStatus: signInStatus } = useSignIn();
   const { signUp, fetchStatus: signUpStatus } = useSignUp();
   const [mode, setMode] = useState<Mode>("signup");
   const [verificationSent, setVerificationSent] = useState(false);
+  const [signInVerificationSent, setSignInVerificationSent] = useState(false);
   const [message, setMessage] = useState("");
 
   useEffect(() => {
-    if (isSignedIn) router.replace("/");
-  }, [isSignedIn, router]);
+    if (isLoaded && isSignedIn && typeof window !== "undefined") window.location.replace("/");
+  }, [isLoaded, isSignedIn]);
 
   const busy = signInStatus === "fetching" || signUpStatus === "fetching";
+
+  function navigateHome(decorateUrl: (url: string) => string) {
+    const url = decorateUrl("/");
+    if (typeof window !== "undefined") window.location.href = url;
+    else router.push(url);
+  }
 
   async function finishSignIn() {
     await signIn.finalize({
       navigate: ({ session, decorateUrl }) => {
         if (session?.currentTask) {
-          setMessage("追加の本人確認が必要です。もう一度お試しください。");
+          setMessage("追加の本人確認が必要です。画面の案内に沿って確認してください。");
           return;
         }
-        const url = decorateUrl("/");
-        if (url.startsWith("http")) window.location.href = url;
-        else router.push(url);
+        navigateHome(decorateUrl);
       },
     });
   }
@@ -65,14 +70,26 @@ export default function AuthPage() {
     await signUp.finalize({
       navigate: ({ session, decorateUrl }) => {
         if (session?.currentTask) {
-          setMessage("追加の本人確認が必要です。もう一度お試しください。");
+          setMessage("追加の本人確認が必要です。画面の案内に沿って確認してください。");
           return;
         }
-        const url = decorateUrl("/");
-        if (url.startsWith("http")) window.location.href = url;
-        else router.push(url);
+        navigateHome(decorateUrl);
       },
     });
+  }
+
+  async function prepareSignInVerification() {
+    try {
+      const verification = await signIn.mfa.sendEmailCode();
+      if (verification.error) {
+        setMessage("追加の本人確認コードを送信できませんでした。時間をおいてもう一度お試しください。");
+        return;
+      }
+      setSignInVerificationSent(true);
+      setMessage("本人確認コードをメールに送信しました。届いたコードを入力してください。");
+    } catch {
+      setMessage("追加の本人確認が必要です。ページを再読み込みして、もう一度お試しください。");
+    }
   }
 
   async function handleSignIn(formData: FormData) {
@@ -90,7 +107,24 @@ export default function AuthPage() {
       return;
     }
     if (signIn.status === "complete") await finishSignIn();
-    else setMessage("追加の本人確認が必要です。もう一度お試しください。");
+    else if (signIn.status === "needs_client_trust" || signIn.status === "needs_second_factor") await prepareSignInVerification();
+    else setMessage("ログインを完了できませんでした。ページを再読み込みして、もう一度お試しください。");
+  }
+
+  async function handleSignInVerify(formData: FormData) {
+    setMessage("");
+    const code = String(formData.get("code") ?? "").trim();
+    if (!code) {
+      setMessage("本人確認コードを入力してください。");
+      return;
+    }
+    const { error } = await signIn.mfa.verifyEmailCode({ code });
+    if (error) {
+      setMessage("本人確認コードが正しいか確認してください。");
+      return;
+    }
+    if (signIn.status === "complete") await finishSignIn();
+    else setMessage("ログインを完了できませんでした。ページを再読み込みして、もう一度お試しください。");
   }
 
   async function handleSignUp(formData: FormData) {
@@ -135,18 +169,26 @@ export default function AuthPage() {
     else setMessage("登録を完了できませんでした。もう一度お試しください。");
   }
 
-  if (isSignedIn) return null;
+  if (!isLoaded || isSignedIn) return null;
 
   return (
     <main className="shell">
       <header className="header"><div className="brand">Velvet</div></header>
       <section className="hero">
-        <h1>{verificationSent ? "メールを確認" : mode === "signup" ? "無料で登録" : "ログイン"}</h1>
-        <p>{verificationSent ? "届いた確認コードを入力してください。" : "お客様との大切な記録を、ひとつの場所に。"}</p>
+        <h1>{verificationSent || signInVerificationSent ? "メールを確認" : mode === "signup" ? "無料で登録" : "ログイン"}</h1>
+        <p>{verificationSent || signInVerificationSent ? "届いた確認コードを入力してください。" : "お客様との大切な記録を、ひとつの場所に。"}</p>
       </section>
 
       <section className="card stack">
-        {verificationSent ? (
+        {signInVerificationSent ? (
+          <form action={handleSignInVerify} className="stack">
+            <label className="fieldLabel" htmlFor="signin-code">本人確認コード</label>
+            <input className="searchBox" id="signin-code" name="code" inputMode="numeric" autoComplete="one-time-code" required />
+            {message && <div className="formError" role="alert">{message}</div>}
+            <button className="primaryButton" type="submit" disabled={busy}>{busy ? "確認中…" : "ログインを完了"}</button>
+            <button className="secondaryButton" type="button" disabled={busy} onClick={() => void prepareSignInVerification()}>本人確認コードを再送</button>
+          </form>
+        ) : verificationSent ? (
           <form action={handleVerify} className="stack">
             <label className="fieldLabel" htmlFor="code">確認コード</label>
             <input className="searchBox" id="code" name="code" inputMode="numeric" autoComplete="one-time-code" required />
@@ -163,7 +205,7 @@ export default function AuthPage() {
             <div className="formHint">8文字以上・英字と数字を含む</div>
             {message && <div className="formError" role="alert">{message}</div>}
             <button className="primaryButton" type="submit" disabled={busy}>{busy ? "登録中…" : "無料で登録"}</button>
-            <button className="secondaryButton" type="button" onClick={() => { setMode("signin"); setMessage(""); }}>登録済みの方はこちら（ログイン）</button>
+            <button className="secondaryButton" type="button" onClick={() => { setMode("signin"); setMessage(""); setVerificationSent(false); setSignInVerificationSent(false); }}>登録済みの方はこちら（ログイン）</button>
             <div id="clerk-captcha" />
           </form>
         ) : (
@@ -174,7 +216,7 @@ export default function AuthPage() {
             <input className="searchBox" id="signin-password" name="password" type="password" autoComplete="current-password" required />
             {message && <div className="formError" role="alert">{message}</div>}
             <button className="primaryButton" type="submit" disabled={busy}>{busy ? "ログイン中…" : "ログイン"}</button>
-            <button className="secondaryButton" type="button" onClick={() => { setMode("signup"); setMessage(""); }}>初めての方はこちら（無料登録）</button>
+            <button className="secondaryButton" type="button" onClick={() => { setMode("signup"); setMessage(""); setVerificationSent(false); setSignInVerificationSent(false); }}>初めての方はこちら（無料登録）</button>
           </form>
         )}
       </section>
