@@ -32,6 +32,31 @@ function signUpErrorMessage(code: string) {
   }
 }
 
+const clerkAppearance = {
+  variables: {
+    colorPrimary: "#9b1248",
+    colorText: "#34272d",
+    colorTextSecondary: "#786d73",
+    colorBackground: "#fffafa",
+    colorInputBackground: "#fffefe",
+    colorInputText: "#34272d",
+    borderRadius: "18px",
+    fontFamily: "-apple-system, BlinkMacSystemFont, 'Hiragino Sans', 'Yu Gothic', sans-serif",
+  },
+  elements: {
+    rootBox: "velvetClerkRoot",
+    cardBox: "velvetClerkCardBox",
+    card: "velvetClerkCard",
+    header: "velvetClerkHeader",
+    headerTitle: "velvetClerkTitle",
+    headerSubtitle: "velvetClerkSubtitle",
+    formButtonPrimary: "velvetClerkPrimary",
+    footer: "velvetClerkFooter",
+    socialButtonsBlockButton: "velvetClerkSocialButton",
+    dividerRow: "velvetClerkDivider",
+  },
+} as const;
+
 export default function AuthPage() {
   const searchParams = useSearchParams();
   const { isLoaded, isSignedIn } = useAuth();
@@ -66,12 +91,12 @@ export default function AuthPage() {
         <div id="clerk-captcha" />
         {mode === "signup" ? (
           <>
-            <SignUp routing="hash" forceRedirectUrl={returnTo} signInUrl="/auth?mode=signin" />
+            <SignUp routing="hash" forceRedirectUrl={returnTo} signInUrl="/auth?mode=signin" appearance={clerkAppearance} />
             <button className="secondaryButton" type="button" onClick={() => setMode("signin")}>登録済みの方はこちら（ログイン）</button>
           </>
         ) : (
           <>
-            <SignIn routing="hash" forceRedirectUrl={returnTo} signUpUrl="/auth?mode=signup" />
+            <SignIn routing="hash" forceRedirectUrl={returnTo} signUpUrl="/auth?mode=signup" appearance={clerkAppearance} />
             <button className="secondaryButton" type="button" onClick={() => setMode("signup")}>初めての方はこちら（無料登録）</button>
           </>
         )}
