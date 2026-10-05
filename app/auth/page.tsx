@@ -35,7 +35,7 @@ function signUpErrorMessage(code: string) {
 export default function AuthPage() {
   const searchParams = useSearchParams();
   const { isLoaded, isSignedIn } = useAuth();
-  const [mode, setMode] = useState<Mode>(searchParams.get("mode") === "signin" ? "signin" : "signup");
+  const [mode, setMode] = useState<Mode>(searchParams.get("mode") === "signup" ? "signup" : "signin");
 
   useEffect(() => {
     if (isLoaded && isSignedIn && typeof window !== "undefined") window.location.replace("/");
@@ -58,7 +58,9 @@ export default function AuthPage() {
 
       <section className="card stack">
         <div className="formHint">
-          パスワードは8文字以上・英字と数字を含めてください。安全確認で止まる場合は、画面の案内に沿って進めてください。
+          {mode === "signup"
+            ? "パスワードは8文字以上・英字と数字を含めてください。安全確認で止まる場合は、画面の案内に沿って進めてください。"
+            : "登録済みのメールアドレスでログインしてください。追加の本人確認が出た場合は、画面の案内に沿って進めてください。"}
         </div>
         <div className="formHint" aria-hidden="true" style={{ display: "none" }}>{validVelvetPassword("abc12345") ? signUpErrorMessage("form_password_length_too_short") : ""}</div>
         <div id="clerk-captcha" />
