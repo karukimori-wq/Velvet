@@ -31,6 +31,46 @@
   font-weight: 600;
 }
 
+.customerProfilePreview .customerProfileGroup {
+  grid-template-columns: 30px minmax(0, 1fr) !important;
+  gap: 4px 12px !important;
+  align-items: center !important;
+  padding: 13px 0 !important;
+}
+
+.customerProfilePreview .customerProfileGroup > span:first-child {
+  grid-column: 1;
+  grid-row: 1 / span 2;
+  align-self: center;
+}
+
+.customerProfilePreview .customerProfileGroup > div {
+  grid-column: 2;
+  grid-row: 1;
+  display: grid;
+  gap: 3px;
+  min-width: 0;
+  color: #332932;
+}
+
+.customerProfilePreview .customerProfileGroup > div > span {
+  display: block;
+  font-size: 16px;
+  line-height: 1.45;
+  font-weight: 800;
+  color: #332932;
+  overflow-wrap: anywhere;
+}
+
+.customerProfilePreview .customerProfileGroup > strong {
+  grid-column: 2;
+  grid-row: 2;
+  color: #9b8f98;
+  font-size: 12px;
+  line-height: 1.2;
+  font-weight: 700;
+}
+
 .rememberEditor .basicRememberGroup {
   border-color: #ead8df;
   background: rgba(255,255,255,.78);
