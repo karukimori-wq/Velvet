@@ -8,6 +8,7 @@ type Props = { groups: RememberGroup[]; initialTags: string[]; customerId: strin
 const labelOf = (tag: string) => { const i = tag.indexOf("："); return i > 0 ? tag.slice(0, i) : ""; };
 const valueOf = (tag: string) => { const i = tag.indexOf("："); return i > 0 ? tag.slice(i + 1) : ""; };
 const signature = (tags: string[]) => [...tags].sort().join("\n");
+const latestValue = (values: string[]) => values.length ? values[values.length - 1] : "未登録";
 
 export function RememberEditor({ groups, initialTags, customerId, isNew, initialGroup }: Props) {
   const [tags, setTags] = useState(initialTags);
@@ -57,12 +58,19 @@ export function RememberEditor({ groups, initialTags, customerId, isNew, initial
     {groups.map(group => {
       const filled = group.fields.filter(f => values(f.label).length).length;
       const isOpen = open.has(group.title);
-      return <section className="card rememberGroup" key={group.title}>
+      const isBasicGroup = group.title === "基本情報";
+      return <section className={`card rememberGroup${isBasicGroup ? " basicRememberGroup" : ""}`} key={group.title}>
         <button type="button" className="rememberGroupToggle" onClick={() => setOpen(current => { const next = new Set(current); next.has(group.title) ? next.delete(group.title) : next.add(group.title); return next; })}>
           <div><strong>{group.title}</strong>{group.hint && <div className="formHint">{group.hint}</div>}</div><span className="subtle">{filled ? `${filled}項目` : `＋`} {isOpen ? "▲" : "▼"}</span>
         </button>
         {isOpen && <div className="profileFields rememberGroupBody">{group.fields.map(field => {
           const selected = values(field.label);
+          if (isBasicGroup) return <div className="basicFieldEditor" key={field.label}>
+            <div className="basicFieldHead"><strong className="basicFieldValue">{latestValue(selected)}</strong><span className="basicFieldLabel">{field.label}</span></div>
+            {selected.length > 0 && <div className="chips">{selected.map(value => <button type="button" className="chip selectedChip" key={value} onClick={() => select(field.label, value)}>{value} ×</button>)}</div>}
+            {field.examples.length > 0 && <div className="chips">{field.examples.map(example => <button type="button" className={`chip chipButton${selected.includes(example) ? " selectedChip" : ""}`} key={example} onClick={() => select(field.label, example)}>{example}</button>)}</div>}
+            <div className="profileInputRow"><input className="searchBox" value={drafts[field.label] ?? ""} onChange={e => setDrafts(d => ({ ...d, [field.label]: e.target.value }))} placeholder={`${field.label}を入力`} /><button className="secondaryButton compactButton" type="button" onClick={() => addFree(field.label)}>追加</button></div>
+          </div>;
           return <div className="profileField" key={field.label}>
             <div className="row"><strong>{field.label}</strong>{selected.length > 0 && <span className="subtle">{selected.length}件選択</span>}</div>
             {selected.length > 0 && <div className="chips">{selected.map(value => <button type="button" className="chip selectedChip" key={value} onClick={() => select(field.label, value)}>{value} ×</button>)}</div>}
