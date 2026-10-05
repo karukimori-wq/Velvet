@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import { ClerkProvider } from "@clerk/nextjs";
+import { jaJP } from "@clerk/localizations";
 import { FeedbackHubLauncher } from "@/components/feedback-hub-launcher";
 import { PrivacySafeAnalytics } from "@/components/privacy-safe-analytics";
 import "./globals.css";
@@ -28,7 +29,7 @@ export default function RootLayout({ children }: Readonly<{ children: React.Reac
 
   return (
     <html lang="ja">
-      <body>{clerkEnabled ? <ClerkProvider>{content}</ClerkProvider> : content}</body>
+      <body>{clerkEnabled ? <ClerkProvider localization={jaJP}>{content}</ClerkProvider> : content}</body>
     </html>
   );
 }
