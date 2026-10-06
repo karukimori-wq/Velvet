@@ -98,7 +98,7 @@ const checks=[
  [detail,'id="about"',"customer summary has a stable target"],
  [detail,"今、思い出したいこと","customer quick summary remains visible"],
  [detail,"customerHighlightList","customer quick summary uses compact label-value rows"],
- [detail,"customerProfilePreview","profile shows useful content before expansion"],
+ [detail,"customerProfileCardList","profile shows useful content before expansion"],
  [detail,"customerCompactTimeline","recent events use a compact timeline"],
  [detail,"slice(0, 8)","customer timeline caps the first view at eight items"],
  [detail,"customerLockedRow","Pro surfaces use compact locked rows"],
