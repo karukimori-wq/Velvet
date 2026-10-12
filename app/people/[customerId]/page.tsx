@@ -3,7 +3,7 @@ import { BottomNav } from "@/components/bottom-nav";
 import { getRequestIdentity } from "@/lib/auth/request-identity";
 import { getCustomerMemory } from "@/lib/customer-memory-repository";
 import { getGrowthCustomerDisplay } from "@/lib/growth-engine-customer";
-import { getActiveProfessionalVisit } from "@/lib/professional-visit-repository";
+import { getActiveProfessionalVisit, listProfessionalVisits } from "@/lib/professional-visit-repository";
 import { listProfessionalTimeline, type ProfessionalTimelineItem } from "@/lib/professional-timeline-repository";
 import { listScheduleEntries } from "@/lib/schedule-repository";
 import { buildCustomerRecall } from "@/lib/customer-recall";
@@ -61,10 +61,11 @@ export default async function Page({ params, searchParams }: { params: Promise<{
   const query = await searchParams;
   const activeTab: CustomerTab = customerTabs.includes(query.tab as CustomerTab) ? query.tab as CustomerTab : "basic";
   const identity = await getRequestIdentity();
-  const [customer, memory, activeVisit, schedules, access] = await Promise.all([
+  const [customer, memory, activeVisit, visits, schedules, access] = await Promise.all([
     getGrowthCustomerDisplay({ workspaceId: identity.workspaceId, userId: identity.userId, customerId }),
     getCustomerMemory(identity.workspaceId, identity.userId, customerId),
     getActiveProfessionalVisit(identity.workspaceId, identity.userId, customerId),
+    listProfessionalVisits(identity.workspaceId, identity.userId, customerId),
     listScheduleEntries(identity.workspaceId, identity.userId),
     getPlanAccess(identity.ownerUserId),
   ]);
@@ -88,15 +89,17 @@ export default async function Page({ params, searchParams }: { params: Promise<{
   const contacts = (customer as { contacts?: CustomerContact[] }).contacts;
   const visitReason = normalizeVisitReason(factMap.get("来店理由") ?? factMap.get("来店区分") ?? undefined);
   const birthday = factMap.get("誕生日") || "未登録";
-  const lastVisitLabel = factMap.get("前回来店日") ?? factMap.get("最終来店日");
+  const completedVisits = visits.filter(visit => Boolean(visit.endedAt));
+  const lastVisitLabel = completedVisits[0]?.visitedAt;
+  const firstVisitLabel = completedVisits.at(-1)?.visitedAt;
   const basicInfoRows = [
     { icon: "👤", label: "名前", value: showValue(displayName) },
     { icon: "☎", label: "電話番号", value: showValue(factMap.get("電話番号") ?? factMap.get("電話") ?? contactValue(contacts, ["phone", "tel", "電話"])) },
     { icon: "✉", label: "メールアドレス", value: showValue(factMap.get("メールアドレス") ?? factMap.get("メール") ?? contactValue(contacts, ["email", "mail", "メール", "@"])) },
     { icon: "💬", label: "連絡方法", value: showValue(factMap.get("連絡方法") ?? factMap.get("連絡手段") ?? contactValue(contacts, ["line", "LINE", "メール", "電話"])) },
     { icon: "来", label: "来店理由", value: showValue(visitReason) },
-    { icon: "始", label: "初回来店日", value: formatFieldDate(factMap.get("初回来店日")) },
-    { icon: "前", label: "前回来店日", value: formatFieldDate(lastVisitLabel) },
+    { icon: "始", label: "初回来店日", value: formatFieldDate(firstVisitLabel ? formatTimelineDate(firstVisitLabel) : undefined) },
+    { icon: "前", label: "前回来店日", value: formatFieldDate(lastVisitLabel ? formatTimelineDate(lastVisitLabel) : undefined) },
     { icon: "◇", label: "誕生日", value: showValue(birthday) },
     { icon: "!", label: "注意事項", value: showValue(factMap.get("注意事項") ?? factMap.get("注意点") ?? factMap.get("注意") ?? memory?.cautionNote) },
   ].filter(row => row.label === "名前" || (row.value !== "未登録" && row.value !== "なし"));
