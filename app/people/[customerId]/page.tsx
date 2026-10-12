@@ -10,6 +10,7 @@ import { buildCustomerRecall } from "@/lib/customer-recall";
 import { rememberGroups } from "@/lib/remember-fields";
 import { getPlanAccess, hasVelvetFeature, isWithinHistoryWindow } from "@/lib/plan-access";
 import { startVisitAction } from "@/app/visits/actions";
+import { CustomerMediaPanel } from "@/components/customer-media-panel";
 
 const DAY = 24 * 60 * 60 * 1000;
 const customerTabs = ["basic", "profile", "history", "about"] as const;
@@ -100,11 +101,15 @@ export default async function Page({ params, searchParams }: { params: Promise<{
     { icon: "!", label: "注意事項", value: showValue(factMap.get("注意事項") ?? factMap.get("注意点") ?? factMap.get("注意") ?? memory?.cautionNote) },
   ].filter(row => row.label === "名前" || (row.value !== "未登録" && row.value !== "なし"));
 
+  const mediaItems: { id: string; key: string; occurredAt: string; title: string }[] = [];
   let visibleTimeline: ProfessionalTimelineItem[] = [];
   if (activeTab === "history") {
     try {
       const timeline = await listProfessionalTimeline(identity.workspaceId, identity.userId, customerId);
       visibleTimeline = (access.fullHistory ? timeline : timeline.filter(item => isWithinHistoryWindow(item.occurredAt, access))).sort((a, b) => b.occurredAt.localeCompare(a.occurredAt));
+      if (access.imagesAllowed) for (const item of timeline) {
+        if (item.eventType === "media" && item.sourceRef?.startsWith("r2:")) mediaItems.push({ id: item.id, key: item.sourceRef.slice(3), occurredAt: item.occurredAt, title: item.title });
+      }
     } catch {
       visibleTimeline = [];
     }
@@ -133,7 +138,7 @@ export default async function Page({ params, searchParams }: { params: Promise<{
     {activeTab === "basic" && <section className="customerBasicSection customerTabPanel" id="basic"><div className="sectionTitle customerSectionTitle"><span>基本情報</span><Link className="subtle" href={rememberHref(customerId, "basic")}>編集 ›</Link></div><div className="card customerBasicInfoCard">{basicInfoRows.map(row => <div className="customerBasicInfoRow" key={row.label} style={{ gridTemplateColumns: "28px minmax(84px,.8fr) 1.4fr", alignItems: "center" }}><span aria-hidden="true" style={{ display: "inline-grid", placeItems: "center", width: 22, height: 22, borderRadius: 999, background: "#f8e9f0", color: "#a31553", fontSize: 12, fontWeight: 800 }}>{row.icon}</span><span>{row.label}</span><strong>{row.value}</strong></div>)}</div></section>}
     {activeTab === "profile" && <section className="customerProfileSection customerTabPanel" id="profile"><div className="sectionTitle customerSectionTitle"><span>人物情報</span><Link className="customerProfileEditButton" href={rememberHref(customerId, "profile")}><span aria-hidden="true">✎</span>編集 ›</Link></div>{detailProfileGroups.length > 0 ? <div className="customerProfileCardList">{detailProfileGroups.slice(0, 6).map(group => <Link className="card customerProfileSummaryCard" href={rememberHref(customerId, "profile")} key={group.title}><span className="customerProfileSummaryIcon" aria-hidden="true">{groupIcons[group.title] ?? "•"}</span><div className="customerProfileSummaryBody"><div className="customerProfileSummaryValues">{group.rows.slice(0, 2).map(row => <strong key={`${row.label}-${row.value}`}>{row.label}：{row.value}</strong>)}</div><span className="customerProfileSummaryLabel">{group.title}</span></div><span className="customerProfileSummaryChevron" aria-hidden="true">›</span></Link>)}</div> : <Link className="card customerCompactRow" href={rememberHref(customerId, "profile")}><span>人物情報を追加</span><strong>好きなものや特徴を覚える</strong><i>›</i></Link>}</section>}
     {activeTab === "about" && <section className="customerMemoryOverview customerTabPanel" id="about"><div className="sectionTitle customerSectionTitle customerMemoryTitle"><span>今、思い出したいこと</span><Link className="subtle" href={rememberHref(customerId, "profile")}>追加・訂正 ›</Link></div><div className="card customerMemoryFocus customerMemoryFocusDense">{highlights.length > 0 ? <div className="customerHighlightList">{highlights.map(item => <div className="customerHighlightRow" key={`${item.label}-${item.value}`}><span>{item.label}</span><strong>{item.value}</strong></div>)}</div> : <div className="customerCompactEmpty">まだ要約できる人物情報がありません。</div>}</div><section className="customerFollowupSection" id="followup"><div className="sectionTitle customerSectionTitle"><span>次回の約束・フォロー</span></div><Link className={`card customerCompactRow${canManageFollowup ? "" : " customerLockedRow"}`} href={canManageFollowup ? `/people/${encodeURIComponent(customerId)}/next-actions` : "/plans"}><span>{canManageFollowup ? "＋" : "🔒 Pro"}</span><strong>{canManageFollowup ? "次回アクションを確認・追加" : "次回の約束・フォロー"}</strong><i>›</i></Link></section></section>}
-    {activeTab === "history" && <section className="customerRecentSection customerTabPanel" id="history"><div className="sectionTitle customerSectionTitle"><span>この人との流れ</span><span className="subtle">{visibleTimeline.length}件</span></div>{visibleTimeline.length > 0 ? <CustomerHistoryTimeline items={visibleTimeline} customerId={customerId} integrated={access.integratedTimeline} nextScheduleLabel={nextScheduleLabel}/> : <div className="card customerCompactEmpty">まだ出来事はありません</div>}<section className="customerMediaSection"><div className="sectionTitle customerSectionTitle"><span>思い出の画像</span></div><Link className="card customerCompactRow customerLockedRow" href="/plans"><span>🔒 Pro</span><strong>画像を追加</strong><i>›</i></Link></section></section>}
+    {activeTab === "history" && <section className="customerRecentSection customerTabPanel" id="history"><div className="sectionTitle customerSectionTitle"><span>この人との流れ</span><span className="subtle">{visibleTimeline.length}件</span></div>{visibleTimeline.length > 0 ? <CustomerHistoryTimeline items={visibleTimeline} customerId={customerId} integrated={access.integratedTimeline} nextScheduleLabel={nextScheduleLabel}/> : <div className="card customerCompactEmpty">まだ出来事はありません</div>}<section className="customerMediaSection"><div className="sectionTitle customerSectionTitle"><span>思い出の画像</span></div>{access.imagesAllowed ? <CustomerMediaPanel customerId={customerId} initialItems={mediaItems}/> : <Link className="card customerCompactRow customerLockedRow" href="/plans"><span>🔒 Pro</span><strong>画像を追加</strong><i>›</i></Link>}</section></section>}
     <BottomNav/>
   </main>;
 }
