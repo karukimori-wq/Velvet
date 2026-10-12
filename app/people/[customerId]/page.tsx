@@ -8,7 +8,7 @@ import { listProfessionalTimeline, type ProfessionalTimelineItem } from "@/lib/p
 import { listScheduleEntries } from "@/lib/schedule-repository";
 import { buildCustomerRecall } from "@/lib/customer-recall";
 import { rememberGroups } from "@/lib/remember-fields";
-import { getPlanAccess, isWithinHistoryWindow } from "@/lib/plan-access";
+import { getPlanAccess, hasVelvetFeature, isWithinHistoryWindow } from "@/lib/plan-access";
 import { startVisitAction } from "@/app/visits/actions";
 
 const DAY = 24 * 60 * 60 * 1000;
@@ -39,12 +39,12 @@ function timelineBody(item: ProfessionalTimelineItem) { const body = compactText
 
 function CustomerHistoryTimeline({ items, customerId, integrated, nextScheduleLabel }: { items: ProfessionalTimelineItem[]; customerId: string; integrated: boolean; nextScheduleLabel?: string }) {
   return <div className="customerCompactTimeline customerStoryTimeline" style={{ display: "grid", gap: 0, marginTop: 10 }}>{items.map((item, index) => {
-    const href = integrated ? undefined : `/people/${customerId}/history/${item.id}`;
+    const href = undefined;
     const showNext = Boolean(nextScheduleLabel && index === 0 && (item.eventType === "visit" || /次回|予約/.test(`${item.title} ${item.body ?? ""}`)));
     const card = <article className="card customerStoryCard" style={{ padding: 12, marginBottom: 12, borderColor: "#ead8df", background: "rgba(255,255,255,.72)", color: "#3a3038", boxShadow: "0 8px 20px rgba(98,42,68,.05)" }}>
       <div style={{ color: "#8e7e88", fontSize: 13, marginBottom: 4 }}>{formatTimelineDate(item.occurredAt)}</div>
       <strong style={{ display: "block", fontSize: 16, lineHeight: 1.35, marginBottom: 6 }}>{compactText(item.title, 44)}</strong>
-      <p style={{ margin: 0, color: "#5e535b", lineHeight: 1.55, fontSize: 14 }}>{timelineBody(item)}</p>
+      {item.body && item.body.length > 92 ? <details><summary style={{ cursor: "pointer", color: "#a31553" }}>{timelineBody(item)} 続きを読む</summary><p style={{ whiteSpace: "pre-wrap", lineHeight: 1.6 }}>{item.body}</p></details> : <p style={{ margin: 0, color: "#5e535b", lineHeight: 1.55, fontSize: 14 }}>{timelineBody(item)}</p>}
       <div className="chips" style={{ marginTop: 8 }}>{timelineBadges(item).map(label => <span className="chip" style={{ background: "#f8e9f0", color: "#a31553", padding: "5px 9px" }} key={`${item.id}-${label}`}>{label}</span>)}</div>
       {showNext && <div style={{ marginTop: 8, borderRadius: 12, padding: "9px 11px", background: "#fdeaf2", color: "#a31553", fontWeight: 700 }}>▣ 次回：{nextScheduleLabel} 予約予定 <span style={{ float: "right" }}>›</span></div>}
     </article>;
@@ -70,7 +70,7 @@ export default async function Page({ params, searchParams }: { params: Promise<{
 
   const displayName = customer.displayName || memory?.displayNameSnapshot || "お客様";
   const tags = memory?.tags ?? [];
-  const isVip = tags.some(tag => tag.toUpperCase().includes("VIP"));
+  const canManageFollowup = hasVelvetFeature(access, "followup.manage");
   const profileGroups = rememberGroups.map(group => {
     const rows = group.fields.map(field => {
       const values = Array.from(new Set(tags.filter(tag => tagLabel(tag) === field.label).map(tagValue).filter(Boolean)));
@@ -85,7 +85,7 @@ export default async function Page({ params, searchParams }: { params: Promise<{
   const nextSchedule = schedules.filter(item => item.customerId === customerId && new Date(item.startsAt).getTime() >= Date.now()).sort((a, b) => a.startsAt.localeCompare(b.startsAt))[0];
   const nextScheduleLabel = formatScheduleDateTime(nextSchedule?.startsAt);
   const contacts = (customer as { contacts?: CustomerContact[] }).contacts;
-  const visitReason = normalizeVisitReason(factMap.get("来店理由") ?? factMap.get("来店区分") ?? (isVip ? "VIP" : undefined));
+  const visitReason = normalizeVisitReason(factMap.get("来店理由") ?? factMap.get("来店区分") ?? undefined);
   const birthday = factMap.get("誕生日") || "未登録";
   const lastVisitLabel = factMap.get("前回来店日") ?? factMap.get("最終来店日");
   const basicInfoRows = [
@@ -98,13 +98,13 @@ export default async function Page({ params, searchParams }: { params: Promise<{
     { icon: "前", label: "前回来店日", value: formatFieldDate(lastVisitLabel) },
     { icon: "◇", label: "誕生日", value: showValue(birthday) },
     { icon: "!", label: "注意事項", value: showValue(factMap.get("注意事項") ?? factMap.get("注意点") ?? factMap.get("注意") ?? memory?.cautionNote) },
-  ];
+  ].filter(row => row.label === "名前" || (row.value !== "未登録" && row.value !== "なし"));
 
   let visibleTimeline: ProfessionalTimelineItem[] = [];
   if (activeTab === "history") {
     try {
       const timeline = await listProfessionalTimeline(identity.workspaceId, identity.userId, customerId);
-      visibleTimeline = (access.fullHistory ? timeline : timeline.filter(item => isWithinHistoryWindow(item.occurredAt, access))).sort((a, b) => b.occurredAt.localeCompare(a.occurredAt)).slice(0, 8);
+      visibleTimeline = (access.fullHistory ? timeline : timeline.filter(item => isWithinHistoryWindow(item.occurredAt, access))).sort((a, b) => b.occurredAt.localeCompare(a.occurredAt));
     } catch {
       visibleTimeline = [];
     }
@@ -125,14 +125,14 @@ export default async function Page({ params, searchParams }: { params: Promise<{
 
   return <main className="shell customerDetailShell customerDetailDense">
     <header className="velvetHeader"><Link className="menuButton actionLink" href="/people" aria-label="顧客一覧へ戻る">‹</Link><div className="pageTitle">顧客詳細</div><Link className="headerAction" href={rememberHref(customerId, "profile")} aria-label="顧客情報を編集">…</Link></header>
-    <section className="detailIdentity detailIdentityCompact"><div className="avatar">{displayName.slice(0, 1)}</div><div className="detailIdentityText"><h1>{displayName}{isVip && <span className="vipBadge">♛ VIP</span>}</h1><div className="customerMetaLine"><span>最終来店 {formatShortDate(lastVisitLabel)}</span><span>人物情報 {memoryFactCount}件</span></div></div></section>
+    <section className="detailIdentity detailIdentityCompact"><div className="avatar">{displayName.slice(0, 1)}</div><div className="detailIdentityText"><h1>{displayName}</h1><div className="customerMetaLine">{lastVisitLabel && <span>最終来店 {formatShortDate(lastVisitLabel)}</span>}<span>人物情報 {memoryFactCount}件</span></div></div></section>
     <div className="customerStatusStrip" aria-label="顧客の状況"><div className={`customerStatusCard${visitReason !== "未登録" ? " customerStatusCardActive" : ""}`}><span className="customerStatusIcon">来</span><strong>来店理由</strong><small>{visitReason}</small></div><div className="customerStatusCard"><span className="customerStatusIcon">◇</span><strong>誕生日</strong><small>{birthday}</small></div><Link className="customerStatusCard" href="/schedule"><span className="customerStatusIcon">▣</span><strong>予定確認</strong><small>{nextSchedule ? formatShortDate(nextSchedule.startsAt) : "予定なし"}</small></Link><Link className="customerStatusCard" href={rememberHref(customerId, "profile")}><span className="customerStatusIcon">✎</span><strong>編集</strong><small>人物情報</small></Link></div>
     <div className="visitPrimaryAction" style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 }}>{activeVisit ? <Link className="primaryButton actionLink" href={`/visits/${activeVisit.id}`}>接客中に戻る</Link> : <form action={startVisitAction}><input type="hidden" name="customerId" value={customerId}/><button className="primaryButton customerVisitAddButton" type="submit"><span aria-hidden="true">＋</span>来店を残す</button></form>}<Link className="secondaryButton actionLink" href={scheduleAddHref(customerId)}><span aria-hidden="true">▣</span>予定を追加</Link></div>
     <nav className="customerContextActions" aria-label="顧客詳細のセクション">{customerTabs.map(tab => <Link key={tab} className={`customerSectionTab${activeTab === tab ? " customerSectionTabActive" : ""}`} href={tabHref(customerId, tab)} scroll={false}><strong>{{ basic: "基本情報", profile: "人物情報", history: "履歴", about: "要点" }[tab]}</strong></Link>)}</nav>
     {query.captureSaved && <div className="card successCard stack captureSavedCard"><strong>今日の大切なことを覚えました</strong>{savedItems.length > 0 ? <div className="captureSavedItems">{savedItems.map(item => <div className="timelineBody" key={item}>✓ {item}</div>)}</div> : <div className="formHint">入力した会話を履歴に残しました。</div>}<div className="captureSavedActions"><Link className="secondaryButton actionLink" href={`/capture?customerId=${encodeURIComponent(customerId)}`}>続けて覚える</Link><Link className="captureSavedRecall" href={tabHref(customerId, "about")}>要点を確認する ›</Link></div></div>}
     {activeTab === "basic" && <section className="customerBasicSection customerTabPanel" id="basic"><div className="sectionTitle customerSectionTitle"><span>基本情報</span><Link className="subtle" href={rememberHref(customerId, "basic")}>編集 ›</Link></div><div className="card customerBasicInfoCard">{basicInfoRows.map(row => <div className="customerBasicInfoRow" key={row.label} style={{ gridTemplateColumns: "28px minmax(84px,.8fr) 1.4fr", alignItems: "center" }}><span aria-hidden="true" style={{ display: "inline-grid", placeItems: "center", width: 22, height: 22, borderRadius: 999, background: "#f8e9f0", color: "#a31553", fontSize: 12, fontWeight: 800 }}>{row.icon}</span><span>{row.label}</span><strong>{row.value}</strong></div>)}</div></section>}
     {activeTab === "profile" && <section className="customerProfileSection customerTabPanel" id="profile"><div className="sectionTitle customerSectionTitle"><span>人物情報</span><Link className="customerProfileEditButton" href={rememberHref(customerId, "profile")}><span aria-hidden="true">✎</span>編集 ›</Link></div>{detailProfileGroups.length > 0 ? <div className="customerProfileCardList">{detailProfileGroups.slice(0, 6).map(group => <Link className="card customerProfileSummaryCard" href={rememberHref(customerId, "profile")} key={group.title}><span className="customerProfileSummaryIcon" aria-hidden="true">{groupIcons[group.title] ?? "•"}</span><div className="customerProfileSummaryBody"><div className="customerProfileSummaryValues">{group.rows.slice(0, 2).map(row => <strong key={`${row.label}-${row.value}`}>{row.label}：{row.value}</strong>)}</div><span className="customerProfileSummaryLabel">{group.title}</span></div><span className="customerProfileSummaryChevron" aria-hidden="true">›</span></Link>)}</div> : <Link className="card customerCompactRow" href={rememberHref(customerId, "profile")}><span>人物情報を追加</span><strong>好きなものや特徴を覚える</strong><i>›</i></Link>}</section>}
-    {activeTab === "about" && <section className="customerMemoryOverview customerTabPanel" id="about"><div className="sectionTitle customerSectionTitle customerMemoryTitle"><span>今、思い出したいこと</span><Link className="subtle" href={rememberHref(customerId, "profile")}>追加・訂正 ›</Link></div><div className="card customerMemoryFocus customerMemoryFocusDense">{highlights.length > 0 ? <div className="customerHighlightList">{highlights.map(item => <div className="customerHighlightRow" key={`${item.label}-${item.value}`}><span>{item.label}</span><strong>{item.value}</strong></div>)}</div> : <div className="customerCompactEmpty">まだ要約できる人物情報がありません。</div>}</div><section className="customerFollowupSection" id="followup"><div className="sectionTitle customerSectionTitle"><span>次回の約束・フォロー</span></div><Link className="card customerCompactRow customerLockedRow" href="/plans"><span>🔒 Pro</span><strong>次回の約束・フォロー</strong><i>›</i></Link></section></section>}
+    {activeTab === "about" && <section className="customerMemoryOverview customerTabPanel" id="about"><div className="sectionTitle customerSectionTitle customerMemoryTitle"><span>今、思い出したいこと</span><Link className="subtle" href={rememberHref(customerId, "profile")}>追加・訂正 ›</Link></div><div className="card customerMemoryFocus customerMemoryFocusDense">{highlights.length > 0 ? <div className="customerHighlightList">{highlights.map(item => <div className="customerHighlightRow" key={`${item.label}-${item.value}`}><span>{item.label}</span><strong>{item.value}</strong></div>)}</div> : <div className="customerCompactEmpty">まだ要約できる人物情報がありません。</div>}</div><section className="customerFollowupSection" id="followup"><div className="sectionTitle customerSectionTitle"><span>次回の約束・フォロー</span></div><Link className={`card customerCompactRow${canManageFollowup ? "" : " customerLockedRow"}`} href={canManageFollowup ? `/people/${encodeURIComponent(customerId)}/next-actions` : "/plans"}><span>{canManageFollowup ? "＋" : "🔒 Pro"}</span><strong>{canManageFollowup ? "次回アクションを確認・追加" : "次回の約束・フォロー"}</strong><i>›</i></Link></section></section>}
     {activeTab === "history" && <section className="customerRecentSection customerTabPanel" id="history"><div className="sectionTitle customerSectionTitle"><span>この人との流れ</span><span className="subtle">{visibleTimeline.length}件</span></div>{visibleTimeline.length > 0 ? <CustomerHistoryTimeline items={visibleTimeline} customerId={customerId} integrated={access.integratedTimeline} nextScheduleLabel={nextScheduleLabel}/> : <div className="card customerCompactEmpty">まだ出来事はありません</div>}<section className="customerMediaSection"><div className="sectionTitle customerSectionTitle"><span>思い出の画像</span></div><Link className="card customerCompactRow customerLockedRow" href="/plans"><span>🔒 Pro</span><strong>画像を追加</strong><i>›</i></Link></section></section>}
     <BottomNav/>
   </main>;
